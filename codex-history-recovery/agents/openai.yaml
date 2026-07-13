@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex History Recovery"
+  short_description: "Safely restore Codex sessions, projects, archives, and titles"
+  default_prompt: "Use $codex-history-recovery to safely restore my Codex sessions, projects, archives, and readable sidebar titles."

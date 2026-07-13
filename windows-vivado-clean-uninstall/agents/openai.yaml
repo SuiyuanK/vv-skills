@@ -1,0 +1,7 @@
+interface:
+  display_name: "Windows Vivado Clean Uninstall"
+  short_description: "安全整理 Vivado 卸载残留清理流程"
+  default_prompt: "Use $windows-vivado-clean-uninstall to diagnose Vivado uninstall leftovers and draft a safe cleanup plan."
+
+policy:
+  allow_implicit_invocation: true
