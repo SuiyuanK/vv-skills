@@ -1,6 +1,6 @@
-# Codex Skills
+# VV Skills
 
-这个仓库收录两个面向 Windows 的个人 Codex skill，重点强调只读诊断、备份和确认门控。
+这个仓库用于收录个人可复用的 agent skills 与自动化工作流，不限定只能用于 Codex。当前两个 Windows skill 重点强调只读诊断、备份和确认门控。
 
 ## Skills
 
