@@ -18,6 +18,7 @@ Recover local Codex data without overwriting the current account, configuration,
 - Stop on same-name rollout files with different content.
 - Preserve tasks created after reinstall and preserve intentional user deletions.
 - Run SQLite `quick_check` before and after every database mutation.
+- Never stop or relaunch Codex Desktop automatically. Ask the user to close it manually before writes and reopen it manually after verification.
 
 Read [references/windows-layout.md](references/windows-layout.md) before changing live data.
 
@@ -26,13 +27,13 @@ Read [references/windows-layout.md](references/windows-layout.md) before changin
 1. Inventory source and target with `scripts/audit_codex_history.py`.
 2. Compare rollout IDs, SQLite thread IDs, active/archive counts, providers, malformed rollout first lines, and path roots.
 3. Record current `config.toml` SHA-256 and current task IDs.
-4. Close Codex before writing. For title-only repair, use the bundled independent worker; for history/project merges, launch an external worker before closing Codex.
+4. Prepare and audit the repair while Codex is open, then ask the user to close Codex Desktop manually. Run writes from an external PowerShell only after the App is fully closed; the bundled title worker refuses to write while packaged Codex processes remain.
 5. Merge rollout files by original relative path. Refuse differing collisions.
 6. In one SQLite transaction, insert only missing `threads` rows using common columns. Add related dynamic-tool and valid spawn-edge rows only when their endpoints exist. Rewrite restored rollout paths to the current Codex home and set the intended provider.
 7. Do not create missing historical working directories unless requested.
 8. Restore saved projects separately by selectively merging existing workspace roots and project ordering from `.codex-global-state.json`. Do not derive projects from every historical `cwd`.
 9. Repair titles after session restoration. Prefer a genuine prior Desktop App title when concise; otherwise derive a short action-and-object title from the actual rollout. Avoid raw prompts, pasted pages, paths, logs, plans, and duplicate placeholders.
-10. Verify database integrity, unique IDs, rollout parsing, current-home paths, provider consistency, preserved configuration hash, saved projects, and the sidebar after restart.
+10. Verify database integrity, unique IDs, rollout parsing, current-home paths, provider consistency, preserved configuration hash, and saved projects. Ask the user to reopen Codex manually, then verify the sidebar in the next turn.
 
 ## Read-only audit
 
@@ -61,18 +62,17 @@ Audit the plan:
 python scripts/apply_title_map.py audit --home "$env:USERPROFILE\.codex" --map title-map.json
 ```
 
-Apply safely with Codex closed, or use the independent worker:
+After the audit passes, ask the user to close Codex Desktop manually. From an external PowerShell, run:
 
 ```powershell
-Start-Process C:\Python314\python.exe -WindowStyle Hidden -ArgumentList @(
-  'scripts/run_title_repair.py',
-  '--home', "$env:USERPROFILE\.codex",
-  '--map', 'title-map.json',
-  '--work-dir', '.codex\vvwork\history-recovery'
-)
+& C:\Python314\python.exe `
+  'scripts/run_title_repair.py' `
+  --home "$env:USERPROFILE\.codex" `
+  --map 'title-map.json' `
+  --work-dir '.codex\vvwork\history-recovery'
 ```
 
-The worker starts before Codex closes, backs up SQLite/WAL/index files, updates both `threads.title` and `session_index.jsonl`, verifies, and restarts the App. Missing IDs are skipped by default so deleted tasks are not resurrected.
+The worker checks that packaged Codex processes are no longer running, backs up SQLite/WAL/index files, updates both `threads.title` and `session_index.jsonl`, and verifies the result. It never stops or relaunches the App. After it reports `complete`, ask the user to reopen Codex manually from the Start menu. Missing IDs are skipped by default so deleted tasks are not resurrected.
 
 ## Title quality
 
@@ -85,6 +85,7 @@ The worker starts before Codex closes, backs up SQLite/WAL/index files, updates 
 ## Failure handling
 
 - If a mutation or verification fails, keep Codex closed and restore the latest complete snapshot.
+- After any successful repair, leave Codex closed and tell the user to reopen it manually; do not use `explorer.exe`, a hard-coded AppUserModelId, or a background auto-restart helper.
 - If the database is correct but the UI is stale, inspect `session_index.jsonl`, the package App database, and restart behavior before rewriting data again.
 - If an official rename API cannot find a restored thread, use the title-map workflow rather than assuming the task is absent.
 - In Windows PowerShell 5, always read UTF-8 JSON with `Get-Content -Encoding UTF8`; avoid parsing Python UTF-8 output through the console.
