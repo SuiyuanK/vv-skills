@@ -41,12 +41,12 @@ Project visibility is not reconstructed merely by restoring thread `cwd`. Inspec
 
 ## Process lifecycle
 
-The reliable Windows pattern is:
+Use a user-controlled lifecycle for history writes:
 
-1. Start an independent worker process while Codex is still open.
-2. Let that worker wait briefly.
-3. Stop only processes whose executable path matches `C:\Program Files\WindowsApps\OpenAI.Codex_*\app\*`.
-4. Mutate and verify data in the already-running worker.
-5. Restart with `explorer.exe shell:AppsFolder\OpenAI.Codex_2p2nqsd0c76g0!App`.
+1. Complete the audit, prepare inputs, and open an external PowerShell while Codex is still available.
+2. Ask the user to close Codex Desktop manually and wait for the packaged App processes to exit.
+3. Run the repair from the external PowerShell. Refuse to write if a process under `C:\Program Files\WindowsApps\OpenAI.Codex_*\app\*` is still running.
+4. Mutate and verify data without attempting to stop or relaunch the App.
+5. After verification succeeds, ask the user to reopen Codex manually from the Start menu and confirm the sidebar in the next turn.
 
-Starting Python from a new Windows PowerShell process after Codex is killed can fail in some packaged environments; start the Python worker first.
+Do not depend on a narrow executable path such as `app\Codex.exe`: current packages can keep helpers under `app\resources\codex.exe`. Do not use `explorer.exe shell:AppsFolder\...`, a hard-coded AppUserModelId, or an automatic restart worker; those launch paths can fail even when the data repair succeeded.
