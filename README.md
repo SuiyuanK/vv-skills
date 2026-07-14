@@ -1,6 +1,6 @@
 # VV Skills
 
-这个仓库用于收录个人可复用的 agent skills 与自动化工作流，不限定只能用于 Codex。当前两个 Windows skill 重点强调只读诊断、备份和确认门控。
+这个仓库用于收录个人可复用的 agent skills 与自动化工作流，不限定只能用于 Codex。当前 Windows skills 重点强调只读诊断、备份和确认门控。
 
 ## Skills
 
@@ -25,6 +25,17 @@
 - 未经明确授权，不卸载 Vivado、不删除目录、不修改注册表、服务或环境变量。
 - 执行任何清理前，先列出精确目标并准备备份。
 
+### `codex-windows-fast-patch-skill`
+
+诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
+
+主要安全边界：
+
+- 优先执行只读检查和 `-DryRun`，根据证据选择最小修复路径。
+- 修改配置、历史数据库或应用包前创建备份，并验证修复后的状态。
+- Provider 会话同步不修改 `config.toml`，同时对 SQLite 与会话 JSONL 元数据进行一致性修复。
+- 涉及关闭、重装或重启 Codex Desktop 的操作必须由独立外部进程执行。
+
 ## 安装
 
 将所需 skill 目录复制到 Codex skills 目录：
@@ -32,6 +43,7 @@
 ```powershell
 Copy-Item -Recurse .\codex-history-recovery "$env:USERPROFILE\.codex\skills\codex-history-recovery"
 Copy-Item -Recurse .\windows-vivado-clean-uninstall "$env:USERPROFILE\.codex\skills\windows-vivado-clean-uninstall"
+Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
 ```
 
 重新启动 Codex，或开启一个新任务以重新加载 skill。
