@@ -1,0 +1,27 @@
+{
+  "name": "research-writing-assistant",
+  "displayName": "科研写作助手 (Research Writing Assistant)",
+  "description": "面向中文科研论文的AI写作助手：支持头脑风暴、章节写作、文献综述、Python图表、LaTeX输出",
+  "version": "3.1.0",
+  "author": {
+    "name": "Norman-bury"
+  },
+  "homepage": "https://github.com/Norman-bury/research-writing-skill",
+  "repository": "https://github.com/Norman-bury/research-writing-skill",
+  "license": "MIT",
+  "keywords": [
+    "research",
+    "writing",
+    "thesis",
+    "paper",
+    "academic",
+    "chinese",
+    "latex",
+    "literature-review",
+    "科研",
+    "论文",
+    "写作"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}
