@@ -1,6 +1,6 @@
 ---
 name: codex-history-recovery
-description: Safely diagnose, restore, merge, verify, and repair local Codex Desktop history on Windows, including sessions, archived sessions, state_5.sqlite metadata, saved projects, provider visibility, and unreadable sidebar titles. Use after uninstall/reinstall, provider changes, missing history or projects, partial restores, malformed titles, SQLite/WAL drift, or when a user supplies backup .codex and OpenAI package directories.
+description: Safely diagnose, restore, merge, verify, and repair local Codex Desktop history on Windows, including sessions, archived sessions, state_5.sqlite metadata, saved projects, provider visibility, and unreadable sidebar titles. Use after uninstall/reinstall, when merging a backup or old .codex tree, for missing or partially restored history/projects, malformed titles, SQLite/WAL drift, or when provider sync alone cannot recover the required data. For intact local history hidden only after a model_provider or account switch, prefer codex-windows-fast-patch Provider History Sync.
 ---
 
 # Codex History Recovery
@@ -21,6 +21,31 @@ Recover local Codex data without overwriting the current account, configuration,
 - Never stop or relaunch Codex Desktop automatically. Ask the user to close it manually before writes and reopen it manually after verification.
 
 Read [references/windows-layout.md](references/windows-layout.md) before changing live data.
+
+## Boundary with Provider History Sync
+
+Choose the smallest workflow that matches the evidence. Do not run both skills blindly.
+
+Use `codex-windows-fast-patch` Provider History Sync when the current Codex home still contains the conversations and the problem is limited to:
+
+- sidebar filtering after a `model_provider`, API account, or provider-config switch;
+- provider mismatch between rollout first lines, App SQLite, and legacy SQLite;
+- missing App SQLite thread rows that still exist in the legacy SQLite store;
+- a recovered conversation that is visible but cannot continue only because its original `cwd` directory is missing.
+
+That workflow is an in-place normalizer. It aligns provider metadata, can copy missing legacy thread rows into the App store, and can explicitly recreate missing historical `cwd` directories. It does not merge an external backup, restore deleted rollout files, repair sidebar titles, or restore saved projects.
+
+Use this skill when recovery requires any of the following:
+
+- compare or merge a backup, old `.codex` tree, or OpenAI package data into the current home;
+- recover missing active or archived rollout files and thread rows while preserving newer tasks and intentional deletions;
+- detect same-ID/different-content collisions, SQLite/WAL drift, broken rollout paths, or partial restores;
+- restore saved projects selectively or repair malformed/unreadable sidebar titles and `session_index.jsonl`;
+- perform a narrower provider repair only after audit shows that data is also missing or inconsistent beyond provider metadata.
+
+Both workflows must back up before writes, preserve `config.toml`, and require the user to close and reopen Codex manually. If rollout files and SQLite rows are absent from both the current home and every available backup, do not claim either workflow can reconstruct the conversation; locate another source first.
+
+Be explicit about bundled-tool coverage: `scripts/audit_codex_history.py` automates source/target inventory and collision reporting, while `scripts/apply_title_map.py` and `scripts/run_title_repair.py` automate title repair. Full rollout/SQLite merging and saved-project restoration remain evidence-driven, task-specific operations. After audit, place any required one-off merge scripts and reports under the active workspace's `.codex/vvwork/`; do not imply that this skill currently provides a one-command full restore.
 
 ## Workflow
 
