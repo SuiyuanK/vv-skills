@@ -1,0 +1,13 @@
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Local temporary files
+*.tmp
+*.temp
+
+# Local planning artifacts (optional, keep plan-template)
+plan/
+
+# Local draft image sources (optional)
+assets/source-images/

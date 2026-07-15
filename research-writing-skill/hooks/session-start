@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# SessionStart hook for research-writing-assistant plugin
+
+set -euo pipefail
+
+# Determine plugin root directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Read using-research-writing content
+using_skill_content=$(cat "${PLUGIN_ROOT}/skills/using-research-writing/SKILL.md" 2>&1 || echo "Error reading using-research-writing skill")
+
+# Escape string for JSON embedding
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+using_skill_escaped=$(escape_for_json "$using_skill_content")
+session_context="<EXTREMELY_IMPORTANT>\n你已加载科研写作助手 (Research Writing Assistant)。\n\n**以下是入口技能 'research-writing:using-research-writing' 的完整内容。其他技能请使用 'Skill' 工具调用：**\n\n${using_skill_escaped}\n</EXTREMELY_IMPORTANT>"
+
+# Output context injection as JSON
+# Cursor hooks expect additional_context
+# Claude Code hooks expect hookSpecificOutput.additionalContext
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+  printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+else
+  printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+fi
+
+exit 0
