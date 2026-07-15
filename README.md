@@ -30,6 +30,11 @@
 
 诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
 
+- 上游来源：[chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)
+- 当前同步基线：上游 `main` 提交 [`4a0b0df`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/4a0b0dfd3bf996340d1342e138a09c2757be8a84)
+- 本目录是上游内容在 `vv-skills` 中的已审核镜像，不替代或冒充上游仓库。
+- `vv-skills` 保留本机验证后的安全调整：Provider 历史等数据层修复必须由用户手动关闭和重新打开 Codex，不自动停止或拉起应用。
+
 主要安全边界：
 
 - 优先执行只读检查和 `-DryRun`，根据证据选择最小修复路径。
@@ -67,6 +72,18 @@ New-Item -ItemType Junction `
 ```
 
 重新启动 Codex，或开启一个新任务以重新加载 skill。
+
+## `codex-windows-fast-patch-skill` 更新顺序
+
+仅在明确有更新意图时同步该第三方 skill，固定顺序如下：
+
+1. 从[上游仓库](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)获取新版到 `.codex/vvwork/upstream-sync/codex-windows-fast-patch-skill/`，不要直接覆盖本机已安装副本。
+2. 对比上游与 `vv-skills/codex-windows-fast-patch-skill/`，检查敏感信息、文件范围、脚本变化及本仓库的安全调整。
+3. 将确认后的上游内容同步到本仓库，重新应用并验证 Provider 历史修复的手动关闭/重开规则，再提交、审核并合并进 `main`。
+4. 仅从已合并的 `vv-skills/main/codex-windows-fast-patch-skill/` 更新 `%USERPROFILE%\.codex\skills\codex-windows-fast-patch-skill`。
+5. 在新任务中确认 skill 可被发现，并检查上游基线、仓库副本和本机安装副本一致。
+
+不要采用“上游仓库直接覆盖本机、但不更新 `vv-skills`”的路径；`vv-skills/main` 应作为后续本地更新的已审核来源。
 
 ## `research-writing-skill` 更新顺序
 
