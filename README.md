@@ -51,6 +51,15 @@
 - 本目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
 - 保留上游的 `LICENSE`、README、多平台配置、模块、脚本和子 skills。
 
+### `ppt-master`
+
+将 PDF、DOCX、URL、Markdown 等资料转换为可编辑的 PowerPoint，支持原生形状、图表、表格、模板、演讲者备注、动画和音频旁白工作流。
+
+- 上游来源：[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)
+- 当前镜像基线：上游 `main` 提交 [`619a954`](https://github.com/hugohe3/ppt-master/commit/619a954695d866dde970552db9fb1a6640c643c8)
+- 本目录镜像上游的 `skills/ppt-master/` 可安装 skill，并附带上游 MIT `LICENSE`；不复制网站、示例演示文稿和项目工作区。
+- Python 3.10+ 依赖记录在 `ppt-master/requirements.txt`，应安装到实际执行 skill 脚本的 Python 解释器。
+
 ## 安装
 
 将所需 skill 目录复制到 Codex skills 目录：
@@ -60,6 +69,13 @@ Copy-Item -Recurse .\codex-history-recovery "$env:USERPROFILE\.codex\skills\code
 Copy-Item -Recurse .\windows-vivado-clean-uninstall "$env:USERPROFILE\.codex\skills\windows-vivado-clean-uninstall"
 Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
 Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
+Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"
+```
+
+安装 `ppt-master` 的 Python 依赖：
+
+```powershell
+python -m pip install -r "$env:USERPROFILE\.codex\skills\ppt-master\requirements.txt"
 ```
 
 `research-writing-skill` 是多 skill 套件。安装后还需将其子 skills 暴露给 Codex：
@@ -82,6 +98,18 @@ New-Item -ItemType Junction `
 3. 将确认后的上游内容同步到本仓库，重新应用并验证 Provider 历史修复的手动关闭/重开规则，再提交、审核并合并进 `main`。
 4. 仅从已合并的 `vv-skills/main/codex-windows-fast-patch-skill/` 更新 `%USERPROFILE%\.codex\skills\codex-windows-fast-patch-skill`。
 5. 在新任务中确认 skill 可被发现，并检查上游基线、仓库副本和本机安装副本一致。
+
+不要采用“上游仓库直接覆盖本机、但不更新 `vv-skills`”的路径；`vv-skills/main` 应作为后续本地更新的已审核来源。
+
+## `ppt-master` 更新顺序
+
+仅在明确有更新意图时同步该第三方 skill，固定顺序如下：
+
+1. 从[上游仓库](https://github.com/hugohe3/ppt-master)获取新版到 `.codex/vvwork/upstream-sync/ppt-master/`，不要直接覆盖本机已安装副本。
+2. 对比上游 `skills/ppt-master/` 与 `vv-skills/ppt-master/`，检查许可证、敏感信息、文件范围、依赖清单和 skill 结构。
+3. 将确认后的 skill 内容及上游 `LICENSE` 同步到本仓库，验证后提交、审核并合并进 `main`。
+4. 使用已合并的 `vv-skills/main/ppt-master/requirements.txt` 更新实际执行脚本的 Python 环境。
+5. 仅从已合并的 `vv-skills/main/ppt-master/` 更新本机安装目录，并在新任务中验证发现结果和核心脚本。
 
 不要采用“上游仓库直接覆盖本机、但不更新 `vv-skills`”的路径；`vv-skills/main` 应作为后续本地更新的已审核来源。
 
