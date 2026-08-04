@@ -26,6 +26,14 @@
 - 未经明确授权，不卸载 Vivado、不删除目录、不修改注册表、服务或环境变量。
 - 执行任何清理前，先列出精确目标并准备备份。
 
+### `vivado-ubuntu26-ncurses-fix`
+
+修复 Xilinx Vivado/Vitis 2025.2.1 在 Ubuntu 26.04（及任何 `ldlibpath.sh` 未识别的发行版）上安装时卡在 "Generating installed device list" 的问题。
+
+- 根因：`ldlibpath.sh` 只识别 Ubuntu 18/20/22/24，26.04 匹配不到，导致 `libncurses.so.5`/`libtinfo.so.5`（存放在 `lib/lnx64.o/Ubuntu/24/`）永远不会进入动态库搜索路径，安装器最后一步的 Vivado 批处理子进程死锁。
+- `scripts/vivado_fix_ncurses.sh`：幂等修复脚本，复制库到三个产品的 `lib/lnx64.o/` 根级 + 安装器目录根级（防重装卡死），并在器件列表缺失时自动重新生成。
+- `references/diagnosis.md`：完整排查过程记录（症状、根因、诊断命令、验证方法）。
+
 ### `codex-windows-fast-patch-skill`
 
 诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
@@ -67,6 +75,7 @@
 ```powershell
 Copy-Item -Recurse .\codex-history-recovery "$env:USERPROFILE\.codex\skills\codex-history-recovery"
 Copy-Item -Recurse .\windows-vivado-clean-uninstall "$env:USERPROFILE\.codex\skills\windows-vivado-clean-uninstall"
+Copy-Item -Recurse .\vivado-ubuntu26-ncurses-fix "$env:USERPROFILE\.codex\skills\vivado-ubuntu26-ncurses-fix"
 Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
 Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
 Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"
