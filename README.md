@@ -34,6 +34,17 @@
 - `scripts/vivado_fix_ncurses.sh`：幂等修复脚本，复制库到三个产品的 `lib/lnx64.o/` 根级 + 安装器目录根级（防重装卡死），并在器件列表缺失时自动重新生成。
 - `references/diagnosis.md`：完整排查过程记录（症状、根因、诊断命令、验证方法）。
 
+### `linux-ext4-superblock-recovery`
+
+安全诊断和恢复无法启动或无法识别的 EXT4 文件系统，覆盖 dracut UUID 超时、超级块校验失败、备用超级块验证，以及 DiskGenius 修改卷标后未同步更新 `metadata_csum` 的实证案例。
+
+主要安全边界：
+
+- 每次启动后按型号、容量、偏移、UUID 和 PARTUUID 重新确认目标；不把 `/dev/nvme0n1p3` 等设备名当作稳定身份。
+- 默认只读检查，禁止将 `mkfs`、`e2fsck -y`、`ntfsfix` 或 Windows 分区修复工具用于尚未确认的文件系统。
+- 仅在多个超级块结构一致、错误局限于校验和且目录可读时，才允许带撤销文件的最小 `debugfs` 写入。
+- 正式修复后必须再次执行 `dumpe2fs`、只读 `e2fsck` 和启动后日志验证。
+
 ### `codex-windows-fast-patch-skill`
 
 诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
@@ -76,6 +87,7 @@
 Copy-Item -Recurse .\codex-history-recovery "$env:USERPROFILE\.codex\skills\codex-history-recovery"
 Copy-Item -Recurse .\windows-vivado-clean-uninstall "$env:USERPROFILE\.codex\skills\windows-vivado-clean-uninstall"
 Copy-Item -Recurse .\vivado-ubuntu26-ncurses-fix "$env:USERPROFILE\.codex\skills\vivado-ubuntu26-ncurses-fix"
+Copy-Item -Recurse .\linux-ext4-superblock-recovery "$env:USERPROFILE\.codex\skills\linux-ext4-superblock-recovery"
 Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
 Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
 Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"

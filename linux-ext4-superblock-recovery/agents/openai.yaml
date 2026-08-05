@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linux EXT4 Superblock Recovery"
+  short_description: "Safe EXT4 superblock checksum recovery"
+  default_prompt: "Use $linux-ext4-superblock-recovery to diagnose an unbootable EXT4 root partition and choose a safe recovery path."
