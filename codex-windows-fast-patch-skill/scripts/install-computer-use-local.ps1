@@ -4,6 +4,7 @@ param(
   [string]$PluginVersion = '0.1.0-local',
   [switch]$VerifyOnly,
   [switch]$StrictVerifyOnly,
+  [switch]$VerifyAllBundledPluginsAvailable,
   [switch]$SkipUserEnvironment
 )
 
@@ -107,6 +108,19 @@ function Remove-ReparsePointOrDirectory {
   Remove-Item -LiteralPath $item.FullName -Recurse -Force
 }
 
+function Test-TransientCopyRace {
+  param([System.Exception]$Exception)
+
+  $current = $Exception
+  while ($current) {
+    if ($current -is [System.IO.FileNotFoundException] -or $current -is [System.IO.DirectoryNotFoundException]) {
+      return $true
+    }
+    $current = $current.InnerException
+  }
+  return $false
+}
+
 function Copy-DirectoryDataOnly {
   param(
     [string]$Source,
@@ -117,26 +131,38 @@ function Copy-DirectoryDataOnly {
     throw "copy source directory not found: $Source"
   }
 
-  if (Test-Path -LiteralPath $Destination) {
-    Remove-ReparsePointOrDirectory $Destination
-  }
+  $maxAttempts = 3
+  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+    try {
+      if (Test-Path -LiteralPath $Destination) {
+        Remove-ReparsePointOrDirectory $Destination
+      }
 
-  $sourceRoot = (Resolve-Path -LiteralPath $Source).ProviderPath
-  Resolve-OrCreateDirectory $Destination | Out-Null
+      $sourceRoot = (Resolve-Path -LiteralPath $Source).ProviderPath
+      Resolve-OrCreateDirectory $Destination | Out-Null
 
-  foreach ($dir in Get-ChildItem -LiteralPath $sourceRoot -Recurse -Directory -Force) {
-    $relative = $dir.FullName.Substring($sourceRoot.Length).TrimStart('\')
-    Resolve-OrCreateDirectory (Join-Path $Destination $relative) | Out-Null
-  }
+      foreach ($dir in Get-ChildItem -LiteralPath $sourceRoot -Recurse -Directory -Force) {
+        $relative = $dir.FullName.Substring($sourceRoot.Length).TrimStart('\')
+        Resolve-OrCreateDirectory (Join-Path $Destination $relative) | Out-Null
+      }
 
-  foreach ($file in Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force) {
-    $relative = $file.FullName.Substring($sourceRoot.Length).TrimStart('\')
-    $target = Join-Path $Destination $relative
-    $targetParent = Split-Path -Parent $target
-    Resolve-OrCreateDirectory $targetParent | Out-Null
-    [System.IO.Directory]::CreateDirectory($targetParent) | Out-Null
-    [System.IO.File]::WriteAllBytes($target, [System.IO.File]::ReadAllBytes($file.FullName))
-    [System.IO.File]::SetLastWriteTime($target, $file.LastWriteTime)
+      foreach ($file in Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Force) {
+        $relative = $file.FullName.Substring($sourceRoot.Length).TrimStart('\')
+        $target = Join-Path $Destination $relative
+        $targetParent = Split-Path -Parent $target
+        Resolve-OrCreateDirectory $targetParent | Out-Null
+        [System.IO.Directory]::CreateDirectory($targetParent) | Out-Null
+        [System.IO.File]::WriteAllBytes($target, [System.IO.File]::ReadAllBytes($file.FullName))
+        [System.IO.File]::SetLastWriteTime($target, $file.LastWriteTime)
+      }
+      return
+    } catch {
+      if ($attempt -ge $maxAttempts -or -not (Test-TransientCopyRace $_.Exception)) {
+        throw
+      }
+      Write-Log "warning: source tree changed during copy; retrying $attempt/${maxAttempts}: $Source"
+      Start-Sleep -Seconds 1
+    }
   }
 }
 
@@ -268,6 +294,69 @@ function Remove-TomlTableKeys {
   Write-Utf8NoBom $ConfigPath $updated
 }
 
+function Get-ChromeUserDataDirectoryOverride {
+  $candidates = @()
+  $userOverride = [Environment]::GetEnvironmentVariable('CODEX_CHROME_USER_DATA_DIR', 'User')
+  if (-not [string]::IsNullOrWhiteSpace($userOverride)) {
+    $candidates += [Environment]::ExpandEnvironmentVariables($userOverride.Trim().Trim('"'))
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+    $candidates += (Join-Path $env:LOCALAPPDATA 'Google\Chrome\User Data')
+  }
+
+  $chromeAppPathKeys = @(
+    'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe',
+    'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe',
+    'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe'
+  )
+  foreach ($registryPath in $chromeAppPathKeys) {
+    try {
+      $chromeExe = [string](Get-Item -LiteralPath $registryPath -ErrorAction Stop).GetValue('')
+    } catch {
+      continue
+    }
+    if ([string]::IsNullOrWhiteSpace($chromeExe)) {
+      continue
+    }
+
+    $chromeExe = [Environment]::ExpandEnvironmentVariables($chromeExe.Trim().Trim('"'))
+    if (-not (Test-Path -LiteralPath $chromeExe -PathType Leaf)) {
+      continue
+    }
+
+    $appDirectory = Split-Path -Parent $chromeExe
+    if ((Split-Path -Leaf $appDirectory) -ieq 'App') {
+      $candidates += (Join-Path (Split-Path -Parent $appDirectory) 'Data')
+    }
+  }
+
+  $seen = @{}
+  foreach ($candidate in $candidates) {
+    try {
+      $resolved = (Resolve-Path -LiteralPath $candidate -ErrorAction Stop).Path
+    } catch {
+      continue
+    }
+    $key = $resolved.TrimEnd('\').ToLowerInvariant()
+    if ($seen.ContainsKey($key)) {
+      continue
+    }
+    $seen[$key] = $true
+
+    if (-not (Test-Path -LiteralPath (Join-Path $resolved 'Local State') -PathType Leaf)) {
+      continue
+    }
+    foreach ($profile in @(Get-ChildItem -LiteralPath $resolved -Directory -Force -ErrorAction SilentlyContinue)) {
+      if (Test-Path -LiteralPath (Join-Path $profile.FullName 'Preferences') -PathType Leaf) {
+        return $resolved
+      }
+    }
+  }
+
+  return $null
+}
+
 function Enable-UserEnvironment {
   if ($SkipUserEnvironment) {
     Write-Log 'skipping user environment update'
@@ -276,6 +365,14 @@ function Enable-UserEnvironment {
 
   [Environment]::SetEnvironmentVariable('CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE', '1', 'User')
   $env:CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE = '1'
+
+  $chromeUserDataDirectory = Get-ChromeUserDataDirectoryOverride
+  if ($chromeUserDataDirectory) {
+    [Environment]::SetEnvironmentVariable('CODEX_CHROME_USER_DATA_DIR', $chromeUserDataDirectory, 'User')
+    $env:CODEX_CHROME_USER_DATA_DIR = $chromeUserDataDirectory
+  } else {
+    Write-Log 'warning: Chrome user data directory was not detected; CODEX_CHROME_USER_DATA_DIR was not changed'
+  }
 
   try {
     $signature = @'
@@ -296,6 +393,9 @@ public static class CodexEnvBroadcast {
   }
 
   Write-Log 'enabled CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE=1 for this process and the current user'
+  if ($chromeUserDataDirectory) {
+    Write-Log "enabled CODEX_CHROME_USER_DATA_DIR=$chromeUserDataDirectory for this process and the current user"
+  }
 }
 
 function Get-PluginJson {
@@ -690,7 +790,8 @@ function Write-PluginTree {
     Write-Utf8NoBom $skillPath ((Get-SkillMarkdown) + "`n")
   }
   if (-not (Test-Path -LiteralPath $clientPath -PathType Leaf)) {
-    throw "installed Computer Use client script is missing: $clientPath"
+    Write-Log "descriptor-only Computer Use plugin uses the independent cua_node runtime: $Root"
+    return
   }
   Patch-ComputerUseClientScript $clientPath
 
@@ -747,8 +848,73 @@ function Update-BundledMarketplaceManifest {
   }
 
   $plugins = @($json.plugins | Where-Object { $_.name -ne 'computer-use' })
+  $pluginNames = @{}
+  foreach ($plugin in $plugins) {
+    $pluginNames[[string]$plugin.name] = $true
+  }
+
+  $sourceRoot = Get-InstalledBundledMarketplaceRoot
+  $sourceManifestPath = Join-Path $sourceRoot '.agents\plugins\marketplace.json'
+  $sourceManifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $sourceManifestPath | ConvertFrom-Json
+  foreach ($sourcePlugin in @($sourceManifest.plugins)) {
+    $name = [string]$sourcePlugin.name
+    if ($name -ne 'computer-use' -and -not $pluginNames.ContainsKey($name)) {
+      $plugins += $sourcePlugin
+      $pluginNames[$name] = $true
+      Write-Log "restored bundled marketplace entry from installed package: $name"
+    }
+  }
+
   $json.plugins = @($entry) + $plugins
   ConvertTo-JsonFile $manifestPath $json
+}
+
+function Get-StableBundledMarketplaceRoot {
+  param([string]$CodexHomeResolved)
+
+  $tmpRoot = Join-Path $CodexHomeResolved '.tmp'
+  if (Test-Path -LiteralPath $tmpRoot -PathType Container) {
+    $tmpItem = Get-Item -LiteralPath $tmpRoot -Force
+    if (($tmpItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+      $target = [string](@($tmpItem.Target) | Select-Object -First 1)
+      if (-not [string]::IsNullOrWhiteSpace($target)) {
+        if (-not [System.IO.Path]::IsPathRooted($target)) {
+          $target = Join-Path (Split-Path -Parent $tmpRoot) $target
+        }
+        $target = [System.IO.Path]::GetFullPath($target)
+        return Join-Path (Split-Path -Parent $target) 'openai-bundled-marketplace'
+      }
+    }
+  }
+
+  return Join-Path $CodexHomeResolved 'marketplaces\openai-bundled-local'
+}
+
+function Get-ComputerUsePipeConfigState {
+  param([string]$ConfigPath)
+
+  if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+    return [pscustomobject]@{ Present = $false; Active = $false; PipePath = '' }
+  }
+
+  $content = [System.IO.File]::ReadAllText($ConfigPath, [System.Text.UTF8Encoding]::new($false))
+  $present = $content -match '(?m)^\s*SKY_CUA_NATIVE_PIPE(?:_DIRECTORY)?\s*='
+  if (-not $present) {
+    return [pscustomobject]@{ Present = $false; Active = $false; PipePath = '' }
+  }
+
+  $enabledMatch = [regex]::Match($content, '(?m)^\s*SKY_CUA_NATIVE_PIPE\s*=\s*["''](?<value>[^"'']+)["'']\s*$')
+  $directoryMatch = [regex]::Match($content, '(?m)^\s*SKY_CUA_NATIVE_PIPE_DIRECTORY\s*=\s*["''](?<value>[^"'']+)["'']\s*$')
+  $pipePath = if ($directoryMatch.Success) { $directoryMatch.Groups['value'].Value } else { '' }
+  $active = (
+    $enabledMatch.Success -and
+    $enabledMatch.Groups['value'].Value -eq '1' -and
+    $directoryMatch.Success -and
+    $pipePath.StartsWith('\\.\pipe\codex-computer-use-', [StringComparison]::OrdinalIgnoreCase) -and
+    (Test-Path -LiteralPath $pipePath)
+  )
+
+  return [pscustomobject]@{ Present = $true; Active = $active; PipePath = $pipePath }
 }
 
 function Update-CodexConfig {
@@ -773,10 +939,15 @@ function Update-CodexConfig {
   Set-TomlTable $configPath '[windows]' @{
     sandbox = 'unelevated'
   }
-  Remove-TomlTableKeys $configPath '[mcp_servers.node_repl.env]' @(
-    'SKY_CUA_NATIVE_PIPE',
-    'SKY_CUA_NATIVE_PIPE_DIRECTORY'
-  ) 'remove-stale-computer-use-pipe-env'
+  $pipeState = Get-ComputerUsePipeConfigState $configPath
+  if ($pipeState.Present -and $pipeState.Active) {
+    Write-Log "preserving active Computer Use pipe config: $($pipeState.PipePath)"
+  } else {
+    Remove-TomlTableKeys $configPath '[mcp_servers.node_repl.env]' @(
+      'SKY_CUA_NATIVE_PIPE',
+      'SKY_CUA_NATIVE_PIPE_DIRECTORY'
+    ) 'remove-stale-computer-use-pipe-env'
+  }
 }
 
 function Test-TomlSyntax {
@@ -822,6 +993,7 @@ function Get-CuaSkyRuntimeRoot {
         [pscustomobject]@{
           Path = $skyRoot
           LastWriteTime = $packageItem.LastWriteTime
+          Priority = 0
         }
       }
     }
@@ -839,11 +1011,15 @@ function Get-CuaSkyRuntimeRoot {
       $candidates += [pscustomobject]@{
         Path = $packageSkyRoot
         LastWriteTime = $packageItem.LastWriteTime
+        Priority = 1
       }
     }
   }
 
-  $selected = @($candidates | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+  # Prefer the extracted per-user runtime. Executables inside WindowsApps can
+  # be readable yet fail to spawn with EPERM from an ordinary PowerShell/Node
+  # process. The package copy remains a discovery fallback only.
+  $selected = @($candidates | Sort-Object Priority, @{ Expression = 'LastWriteTime'; Descending = $true } | Select-Object -First 1)
   if ($selected.Count -eq 0) {
     throw "no usable Codex CUA @oai/sky runtime was found under $runtimeRoot or the installed Codex package"
   }
@@ -976,6 +1152,179 @@ function Get-PluginVersion {
   return $version
 }
 
+function Test-BundledMarketplacePluginAvailable {
+  param(
+    [string]$MarketplaceRoot,
+    [string]$PluginName
+  )
+
+  $pluginJson = Join-Path $MarketplaceRoot "plugins\$PluginName\.codex-plugin\plugin.json"
+  if (-not (Test-Path -LiteralPath $pluginJson -PathType Leaf)) {
+    return $false
+  }
+
+  $manifestPath = Join-Path $MarketplaceRoot '.agents\plugins\marketplace.json'
+  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    return $false
+  }
+  try {
+    $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $manifestPath | ConvertFrom-Json
+    return @($manifest.plugins | Where-Object { [string]$_.name -eq $PluginName }).Count -gt 0
+  } catch {
+    return $false
+  }
+}
+
+function Get-BundledMarketplacePluginNames {
+  param([string]$MarketplaceRoot)
+
+  $manifestPath = Join-Path $MarketplaceRoot '.agents\plugins\marketplace.json'
+  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    throw "missing bundled marketplace manifest: $manifestPath"
+  }
+
+  $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $manifestPath | ConvertFrom-Json
+  $pluginNames = @(
+    $manifest.plugins |
+      ForEach-Object { [string]$_.name } |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+      Sort-Object -Unique
+  )
+  if ($pluginNames.Count -eq 0) {
+    throw "bundled marketplace has no plugin descriptors: $MarketplaceRoot"
+  }
+
+  $incomplete = @($pluginNames | Where-Object {
+    -not (Test-BundledMarketplacePluginAvailable $MarketplaceRoot $_)
+  })
+  if ($incomplete.Count -gt 0) {
+    throw "bundled marketplace has incomplete plugin descriptors: $($incomplete -join ',')"
+  }
+
+  return $pluginNames
+}
+
+function Get-UsableCodexCliPath {
+  param([string]$FailureContext)
+
+  $candidates = @(Get-Command codex -All -ErrorAction SilentlyContinue | Where-Object {
+    $_.Source -and $_.Source -notmatch '(?i)\\WindowsApps\\'
+  })
+  $codex = $candidates | Where-Object { $_.Source.EndsWith('.cmd', [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+  if (-not $codex) {
+    $codex = $candidates | Where-Object { $_.Source.EndsWith('.ps1', [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+  }
+  if (-not $codex) {
+    $codex = $candidates | Where-Object { $_.Source.EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+  }
+  $codexPath = if ($codex) { [string]$codex.Source } else { '' }
+  if ([string]::IsNullOrWhiteSpace($codexPath)) {
+    $localBinRoot = Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\bin'
+    if (Test-Path -LiteralPath $localBinRoot -PathType Container) {
+      $codexPath = [string](Get-ChildItem -LiteralPath $localBinRoot -Recurse -Filter 'codex.exe' -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1 -ExpandProperty FullName)
+      if (-not [string]::IsNullOrWhiteSpace($codexPath)) {
+        Write-Log "using user-local Codex CLI: $codexPath"
+      }
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($codexPath)) {
+    throw "Codex CLI not found; cannot $FailureContext"
+  }
+  return $codexPath
+}
+
+function Install-BundledMarketplacePluginWithCodexCli {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PluginName
+  )
+
+  $selector = "$PluginName@openai-bundled"
+  $codexPath = Get-UsableCodexCliPath "register $selector"
+  $output = @(& $codexPath plugin add $selector --json 2>&1)
+  if ($LASTEXITCODE -ne 0) {
+    $detail = ($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+    throw "Codex CLI failed to register ${selector}: $detail"
+  }
+
+  Write-Log "registered bundled plugin with Codex CLI: $selector"
+}
+
+function Get-BundledMarketplacePluginListWithCodexCli {
+  param([switch]$IncludeAvailable)
+
+  $codexPath = Get-UsableCodexCliPath 'inspect bundled plugin availability'
+  $args = @('plugin', 'list', '--marketplace', 'openai-bundled', '--json')
+  if ($IncludeAvailable) {
+    $args = @('plugin', 'list', '--marketplace', 'openai-bundled', '--available', '--json')
+  }
+  $output = @(& $codexPath @args 2>&1)
+  if ($LASTEXITCODE -ne 0) {
+    $detail = ($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+    throw "Codex CLI failed to list bundled plugins: $detail"
+  }
+
+  $json = ($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+  try {
+    return $json | ConvertFrom-Json -ErrorAction Stop
+  } catch {
+    throw "Codex CLI returned invalid bundled plugin JSON: $json"
+  }
+}
+
+function Test-BundledMarketplacePluginInstalledWithCodexCli {
+  param([string]$PluginName)
+
+  $pluginList = Get-BundledMarketplacePluginListWithCodexCli
+  $selector = "$PluginName@openai-bundled"
+  return @($pluginList.installed | Where-Object {
+    [string]$_.pluginId -eq $selector -and [bool]$_.installed
+  }).Count -gt 0
+}
+
+function Test-AllBundledMarketplacePluginsAvailableWithCodexCli {
+  param(
+    [string]$MarketplaceRoot,
+    [string]$InstalledMarketplaceRoot
+  )
+
+  if ([string]::IsNullOrWhiteSpace($InstalledMarketplaceRoot)) {
+    $InstalledMarketplaceRoot = Get-InstalledBundledMarketplaceRoot
+  }
+  $pluginNames = @(Get-BundledMarketplacePluginNames $InstalledMarketplaceRoot)
+  $stablePluginNames = @(Get-BundledMarketplacePluginNames $MarketplaceRoot)
+  $descriptorDrift = @(Compare-Object -ReferenceObject $pluginNames -DifferenceObject $stablePluginNames)
+  if ($descriptorDrift.Count -gt 0) {
+    $detail = @($descriptorDrift | ForEach-Object { "$($_.InputObject):$($_.SideIndicator)" }) -join ','
+    throw "stable bundled marketplace descriptor set does not match the installed package: $detail"
+  }
+
+  $pluginList = Get-BundledMarketplacePluginListWithCodexCli -IncludeAvailable
+  $entries = @($pluginList.installed) + @($pluginList.available)
+  foreach ($pluginName in $pluginNames) {
+    $selector = "$pluginName@openai-bundled"
+    $availablePlugin = @($entries | Where-Object {
+      [string]$_.pluginId -eq $selector
+    } | Select-Object -First 1)
+    if ($availablePlugin.Count -eq 0) {
+      throw "bundled plugin is not discoverable as installed or available: $selector"
+    }
+
+    $sourcePath = [string]$availablePlugin[0].source.path
+    $descriptorPath = if ([string]::IsNullOrWhiteSpace($sourcePath)) {
+      $null
+    } else {
+      Join-Path $sourcePath '.codex-plugin\plugin.json'
+    }
+    if ([string]::IsNullOrWhiteSpace($descriptorPath) -or -not (Test-Path -LiteralPath $descriptorPath -PathType Leaf)) {
+      throw "bundled plugin has no installable local source: $selector"
+    }
+  }
+  Write-Log "all bundled marketplace plugins are available without changing install state: $($pluginNames -join ',')"
+}
+
 function Sync-OpenAiBundledPluginCache {
   param(
     [string]$MarketplaceRoot,
@@ -1065,9 +1414,11 @@ function Update-ChromeNativeMessagingManifest {
 }
 
 function Sync-BundledMarketplaceFromInstalledApp {
-  param([string]$MarketplaceRoot)
+  param(
+    [string]$MarketplaceRoot,
+    [string]$SourceRoot
+  )
 
-  $sourceRoot = Get-InstalledBundledMarketplaceRoot
   $parent = Split-Path -Parent $MarketplaceRoot
   Resolve-OrCreateDirectory $parent | Out-Null
   Assert-UnderPath $MarketplaceRoot $parent
@@ -1076,8 +1427,116 @@ function Sync-BundledMarketplaceFromInstalledApp {
     (Join-Path $CodexHome 'plugins\cache\openai-bundled')
   )
 
-  Write-Log "syncing installed openai-bundled marketplace: $sourceRoot -> $MarketplaceRoot"
-  Copy-DirectoryDataOnly $sourceRoot $MarketplaceRoot
+  Write-Log "syncing installed openai-bundled marketplace: $SourceRoot -> $MarketplaceRoot"
+  Copy-DirectoryDataOnly $SourceRoot $MarketplaceRoot
+}
+
+function Test-BrowserClientProcessShimCompatible {
+  param([string]$Content)
+
+  if ($Content.Contains('node:process')) {
+    return $false
+  }
+
+  $localProxy = "  const process = processShim;`n  const global = Object.create(globalThis, { process: { value: processShim, enumerable: true } });"
+  if ($Content.Contains($localProxy)) {
+    return $true
+  }
+
+  foreach ($legacyBinding in @(
+    'globalThis.process = processShim;',
+    'globalThis.global.process = processShim;',
+    'const process = processShim;'
+  )) {
+    if ($Content.Contains($legacyBinding)) {
+      return $false
+    }
+  }
+
+  foreach ($directShimMarker in @(
+    'const processShim = {',
+    'processShim.on("beforeExit"',
+    'processShim.memoryUsage().rss',
+    'typeof processShim.versions.icu'
+  )) {
+    if (-not $Content.Contains($directShimMarker)) {
+      return $false
+    }
+  }
+
+  return $true
+}
+
+function Patch-ChromeWindowsRegistryParsing {
+  param([string]$ChromePluginRoot)
+
+  $genericOld = 'if (match && match[1] === label) return stripRegistryString(match[2]);'
+  $genericNew = 'if (match && (valueName == null || match[1] === label)) return stripRegistryString(match[2]);'
+  foreach ($relativePath in @('scripts\open-chrome-window.js', 'scripts\installed-browsers.js')) {
+    $path = Join-Path $ChromePluginRoot $relativePath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+      throw "missing Chrome registry helper: $path"
+    }
+    $content = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))
+    if ($content.Contains($genericNew)) {
+      continue
+    }
+    if (-not $content.Contains($genericOld)) {
+      throw "Chrome registry parser anchor not found: $path"
+    }
+    Write-Utf8NoBom $path ($content.Replace($genericOld, $genericNew))
+  }
+
+  $nativeHostPath = Join-Path $ChromePluginRoot 'scripts\check-native-host-manifest.js'
+  $nativeOld = 'if (match && match[1] === valueName) return stripRegistryString(match[2]);'
+  $nativeNew = 'if (match && (valueName === "(Default)" || match[1] === valueName)) return stripRegistryString(match[2]);'
+  if (-not (Test-Path -LiteralPath $nativeHostPath -PathType Leaf)) {
+    throw "missing Chrome native-host registry helper: $nativeHostPath"
+  }
+  $nativeContent = [System.IO.File]::ReadAllText($nativeHostPath, [System.Text.UTF8Encoding]::new($false))
+  if (-not $nativeContent.Contains($nativeNew)) {
+    if (-not $nativeContent.Contains($nativeOld)) {
+      throw "Chrome native-host registry parser anchor not found: $nativeHostPath"
+    }
+    Write-Utf8NoBom $nativeHostPath ($nativeContent.Replace($nativeOld, $nativeNew))
+  }
+
+  $browserClientPath = Join-Path $ChromePluginRoot 'scripts\browser-client.mjs'
+  if (-not (Test-Path -LiteralPath $browserClientPath -PathType Leaf)) {
+    throw "missing Chrome browser client: $browserClientPath"
+  }
+  $browserClientContent = [System.IO.File]::ReadAllText($browserClientPath, [System.Text.UTF8Encoding]::new($false))
+  $browserClientNew = "  const process = processShim;`n  const global = Object.create(globalThis, { process: { value: processShim, enumerable: true } });"
+  $browserClientNext = $browserClientContent
+
+  $nodeProcessEnvPattern = 'import\{env as (?<name>[$A-Za-z_][$\w]*)\}from"node:process";'
+  $nodeProcessEnvMatch = [regex]::Match($browserClientNext, $nodeProcessEnvPattern)
+  if ($nodeProcessEnvMatch.Success) {
+    $envBinding = $nodeProcessEnvMatch.Groups['name'].Value
+    $browserClientNext = $browserClientNext.Remove($nodeProcessEnvMatch.Index, $nodeProcessEnvMatch.Length).Insert(
+      $nodeProcessEnvMatch.Index,
+      "const $envBinding=processShim.env;"
+    )
+  }
+
+  if (-not (Test-BrowserClientProcessShimCompatible $browserClientNext) -and -not $browserClientNext.Contains($browserClientNew)) {
+    $browserClientOld = "  globalThis.process = processShim;`n  globalThis.global = globalThis.global ?? globalThis;`n  globalThis.global.process = processShim;"
+    $browserClientIntermediate = "  const process = processShim;`n  const global = globalThis;"
+    $browserClientIntermediate2 = "  const process = processShim;`n  const global = Object.assign(Object.create(globalThis), { process: processShim });"
+    $browserClientAnchor = if ($browserClientNext.Contains($browserClientOld)) { $browserClientOld } elseif ($browserClientNext.Contains($browserClientIntermediate)) { $browserClientIntermediate } elseif ($browserClientNext.Contains($browserClientIntermediate2)) { $browserClientIntermediate2 } else { $null }
+    if ($null -eq $browserClientAnchor) {
+      throw "Chrome browser client process shim anchor not found: $browserClientPath"
+    }
+    $browserClientNext = $browserClientNext.Replace($browserClientAnchor, $browserClientNew)
+  }
+  if (-not (Test-BrowserClientProcessShimCompatible $browserClientNext)) {
+    throw "Chrome browser client has an unsupported process dependency: $browserClientPath"
+  }
+  if ($browserClientNext -cne $browserClientContent) {
+    Write-Utf8NoBom $browserClientPath $browserClientNext
+  }
+
+  Write-Log 'patched Chrome registry parsing and browser runtime process shim compatibility'
 }
 
 function Test-BundledMarketplaceMirror {
@@ -1177,7 +1636,8 @@ function Test-CodexConfig {
     if ($content -notmatch '(?ms)^\[windows\]\s*\r?\n(?:(?!^\[).)*sandbox\s*=\s*[''"]unelevated[''"]') {
       throw 'config.toml is missing windows.sandbox=unelevated'
     }
-    if ($content -match '(?m)^\s*SKY_CUA_NATIVE_PIPE(?:_DIRECTORY)?\s*=') {
+    $pipeState = Get-ComputerUsePipeConfigState $ConfigPath
+    if ($pipeState.Present -and -not $pipeState.Active) {
       throw 'config.toml contains stale SKY_CUA_NATIVE_PIPE environment override'
     }
     Write-Log 'warning: python not found; config source path was not semantically validated'
@@ -1210,7 +1670,9 @@ if not isinstance(plugin, dict):
 elif plugin.get("enabled") is not True:
     errors.append('plugins."computer-use@openai-bundled".enabled must be true')
 
-for plugin_id in ("browser@openai-bundled", "chrome@openai-bundled"):
+required_plugin_ids = ["browser@openai-bundled", "chrome@openai-bundled"]
+
+for plugin_id in required_plugin_ids:
     plugin = plugins.get(plugin_id)
     if not isinstance(plugin, dict):
         errors.append(f'missing [plugins."{plugin_id}"]')
@@ -1225,9 +1687,15 @@ elif windows.get("sandbox") != "unelevated":
 
 node_repl_env = data.get("mcp_servers", {}).get("node_repl", {}).get("env", {})
 if isinstance(node_repl_env, dict):
-    for key in ("SKY_CUA_NATIVE_PIPE", "SKY_CUA_NATIVE_PIPE_DIRECTORY"):
-        if key in node_repl_env:
-            errors.append(f"remove stale mcp_servers.node_repl.env.{key}")
+    pipe_enabled = node_repl_env.get("SKY_CUA_NATIVE_PIPE")
+    pipe_directory = node_repl_env.get("SKY_CUA_NATIVE_PIPE_DIRECTORY")
+    if pipe_enabled is not None or pipe_directory is not None:
+        if str(pipe_enabled) != "1":
+            errors.append("mcp_servers.node_repl.env.SKY_CUA_NATIVE_PIPE must be 1")
+        if not isinstance(pipe_directory, str) or not pipe_directory.startswith(r"\\.\pipe\codex-computer-use-"):
+            errors.append("mcp_servers.node_repl.env.SKY_CUA_NATIVE_PIPE_DIRECTORY is not a Codex Computer Use pipe")
+        elif not pathlib.Path(pipe_directory).exists():
+            errors.append("mcp_servers.node_repl.env.SKY_CUA_NATIVE_PIPE_DIRECTORY is stale")
 
 if errors:
     for error in errors:
@@ -1247,7 +1715,10 @@ if errors:
 }
 
 function Test-HelperTransport {
-  param([string]$HelperTransportPath)
+  param(
+    [string]$HelperTransportPath,
+    [string]$HelperCommandPath
+  )
 
   $node = Get-Command node.exe -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $node) {
@@ -1263,19 +1734,27 @@ if (typeof mod.WindowsHelperTransport !== "function") {
   throw new Error("WindowsHelperTransport export is missing");
 }
 
-const transport = new mod.WindowsHelperTransport();
+const helperCommand = process.argv[3];
+const transport = helperCommand
+  ? new mod.WindowsHelperTransport({ helperCommand })
+  : new mod.WindowsHelperTransport();
 try {
-  const info = await transport.request("screenInfo", {});
-  if (!info || typeof info.width !== "number" || typeof info.height !== "number" || info.width <= 0 || info.height <= 0) {
-    throw new Error(`invalid screenInfo response: ${JSON.stringify(info)}`);
+  let result;
+  let method;
+  try {
+    method = "list_windows";
+    result = await transport.request(method, {});
+  } catch (error) {
+    if (!/unsupported.*method/i.test(String(error?.message ?? error))) {
+      throw error;
+    }
+    method = "screenInfo";
+    result = await transport.request(method, {});
   }
-
-  const screenshot = await transport.request("screenshot", {});
-  if (!screenshot || screenshot.mimeType !== "image/png" || typeof screenshot.data !== "string" || screenshot.data.length < 100) {
-    throw new Error("invalid screenshot response");
+  if (result == null || typeof result !== "object") {
+    throw new Error(`invalid ${method} response: ${JSON.stringify(result)}`);
   }
-
-  console.log(JSON.stringify({ ok: true, width: info.width, height: info.height, screenshotBytesApprox: Math.floor(screenshot.data.length * 3 / 4) }));
+  console.log(JSON.stringify({ ok: true, method, resultType: Array.isArray(result) ? "array" : "object" }));
 } finally {
   if (typeof transport.close === "function") {
     await transport.close();
@@ -1285,7 +1764,7 @@ try {
   $temp = Join-Path $env:TEMP ('codex-computer-use-verify-' + [guid]::NewGuid().ToString('N') + '.mjs')
   try {
     Write-Utf8NoBom $temp $script
-    $output = & $node.Source $temp $HelperTransportPath
+    $output = & $node.Source $temp $HelperTransportPath $HelperCommandPath
     if ($LASTEXITCODE -ne 0) {
       throw "Computer Use helper transport verification failed for $HelperTransportPath"
     }
@@ -1368,9 +1847,154 @@ console.log(JSON.stringify({ ok: true, exports: Object.keys(mod).sort() }));
   }
 }
 
+function Test-ComputerUseRuntimeImport {
+  param([string]$SkyRoot)
+
+  $node = Get-Command node.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $node) {
+    throw 'node.exe not found; cannot verify the independent Computer Use runtime import'
+  }
+
+  $entryPath = Join-Path $SkyRoot 'dist\project\cua\sky_js\src\index.js'
+  if (-not (Test-Path -LiteralPath $entryPath -PathType Leaf)) {
+    throw "independent Computer Use runtime entry is missing: $entryPath"
+  }
+
+  $script = @'
+globalThis.nodeRepl = {
+  config: {},
+  nativePipe: {},
+  env: {
+    NODE_REPL_NODE_MODULE_DIRS:
+      process.env.NODE_REPL_NODE_MODULE_DIRS ?? process.env.NODE_PATH ?? "",
+  },
+  notify: () => {},
+};
+const mod = await import(process.argv[2]);
+if (typeof mod.sky !== "object" || mod.sky === null) {
+  throw new Error("sky export is missing");
+}
+if (typeof mod.sky.list_windows !== "function") {
+  throw new Error("sky.list_windows export is missing");
+}
+const windows = await mod.sky.list_windows();
+if (!Array.isArray(windows)) {
+  throw new Error(`sky.list_windows returned ${typeof windows}`);
+}
+console.log(JSON.stringify({
+  ok: true,
+  exports: Object.keys(mod).sort(),
+  method: "list_windows",
+  resultType: "array",
+  count: windows.length,
+}));
+'@
+  $entryUri = ([Uri]$entryPath).AbsoluteUri
+  $temp = Join-Path $env:TEMP ('codex-computer-use-runtime-import-' + [guid]::NewGuid().ToString('N') + '.mjs')
+  try {
+    Write-Utf8NoBom $temp $script
+    $output = & $node.Source $temp $entryUri
+    if ($LASTEXITCODE -ne 0) {
+      throw "independent Computer Use runtime import verification failed for $entryPath"
+    }
+    if ($output) {
+      Write-Log "runtime import ok: $output"
+    }
+  } finally {
+    Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Test-OfficialComputerUseCache {
+  param(
+    [string]$CodexHomeResolved,
+    [string]$InstalledMarketplaceRoot
+  )
+
+  $sourceRoot = Join-Path $InstalledMarketplaceRoot 'plugins\computer-use'
+  $version = Get-PluginVersion $sourceRoot
+  $cacheVersionRoot = Join-Path $CodexHomeResolved "plugins\cache\openai-bundled\computer-use\$version"
+  $sourceClientPath = Join-Path $sourceRoot 'scripts\computer-use-client.mjs'
+  $cachedClientPath = Join-Path $cacheVersionRoot 'scripts\computer-use-client.mjs'
+  $requiredCachePaths = @(
+    (Join-Path $cacheVersionRoot '.codex-plugin\plugin.json')
+  )
+  if (Test-Path -LiteralPath $sourceClientPath -PathType Leaf) {
+    $requiredCachePaths += $cachedClientPath
+  }
+  foreach ($path in $requiredCachePaths) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+      throw "official Computer Use cache is incomplete: $path"
+    }
+  }
+
+  $mismatches = @()
+  foreach ($sourceFile in @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File)) {
+    $relativePath = $sourceFile.FullName.Substring($sourceRoot.Length).TrimStart('\')
+    $cacheFile = Join-Path $cacheVersionRoot $relativePath
+    if (-not (Test-Path -LiteralPath $cacheFile -PathType Leaf)) {
+      $mismatches += "missing:$relativePath"
+      continue
+    }
+    $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash
+    $cacheHash = (Get-FileHash -LiteralPath $cacheFile -Algorithm SHA256).Hash
+    if ($sourceHash -ne $cacheHash) {
+      $mismatches += "changed:$relativePath"
+    }
+  }
+  if ($mismatches.Count -gt 0) {
+    throw "official Computer Use cache differs from the installed package: $($mismatches -join ', ')"
+  }
+
+  $runtimeSkyRoot = Get-CuaSkyRuntimeRoot
+  $runtimeRequired = @(
+    (Join-Path $runtimeSkyRoot 'package.json'),
+    (Join-Path $runtimeSkyRoot 'dist\project\cua\sky_js\src\index.js')
+  )
+  if (Test-Path -LiteralPath $sourceClientPath -PathType Leaf) {
+    $runtimeRequired += @(
+      (Join-Path $runtimeSkyRoot 'bin\windows\codex-computer-use.exe'),
+      (Join-Path $runtimeSkyRoot 'dist\project\cua\sky_js\src\targets\windows\internal\computer_use_client_base.js'),
+      (Join-Path $runtimeSkyRoot 'dist\project\cua\sky_js\src\targets\windows\internal\helper_transport.js')
+    )
+  }
+  foreach ($path in $runtimeRequired) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+      throw "official Computer Use runtime is incomplete: $path"
+    }
+  }
+
+  if (Test-Path -LiteralPath $sourceClientPath -PathType Leaf) {
+    $helperCommandPath = Join-Path $runtimeSkyRoot 'bin\windows\codex-computer-use.exe'
+    $helperTransportPath = Join-Path $runtimeSkyRoot 'dist\project\cua\sky_js\src\targets\windows\internal\helper_transport.js'
+    Test-ComputerUseClientImport $cachedClientPath
+    Test-HelperTransport $helperTransportPath $helperCommandPath
+  } else {
+    Test-ComputerUseRuntimeImport $runtimeSkyRoot
+  }
+
+  $stableMarketplaceRoot = Get-StableBundledMarketplaceRoot $codexHomeResolved
+  $installedChromeRoot = Join-Path $InstalledMarketplaceRoot 'plugins\chrome'
+  $chromeVersion = Get-PluginVersion $installedChromeRoot
+  $chromeBrowserClientPaths = @(
+    (Join-Path $stableMarketplaceRoot 'plugins\chrome\scripts\browser-client.mjs'),
+    (Join-Path $codexHomeResolved "plugins\cache\openai-bundled\chrome\$chromeVersion\scripts\browser-client.mjs")
+  )
+  foreach ($browserClientPath in $chromeBrowserClientPaths) {
+    if (-not (Test-Path -LiteralPath $browserClientPath -PathType Leaf)) {
+      throw "Chrome browser client is missing: $browserClientPath"
+    }
+    $browserClientContent = [System.IO.File]::ReadAllText($browserClientPath, [System.Text.UTF8Encoding]::new($false))
+    if (-not (Test-BrowserClientProcessShimCompatible $browserClientContent)) {
+      throw "Chrome browser client process shim compatibility is missing or unrecognized: $browserClientPath"
+    }
+  }
+  Write-Log "official lightweight cache verification ok: computer-use@$version / runtime=$runtimeSkyRoot"
+}
+
 function Install-ComputerUse {
   $codexHomeResolved = Resolve-OrCreateDirectory $CodexHome
-  $marketplaceRoot = Join-Path $codexHomeResolved '.tmp\bundled-marketplaces\openai-bundled'
+  $marketplaceRoot = Get-StableBundledMarketplaceRoot $codexHomeResolved
   $pluginSourceRoot = Join-Path $marketplaceRoot 'plugins\computer-use'
   $cacheRoot = Join-Path $codexHomeResolved 'plugins\cache\openai-bundled\computer-use'
   $latestPath = Join-Path $cacheRoot 'latest'
@@ -1381,17 +2005,37 @@ function Install-ComputerUse {
   Assert-UnderPath $latestPath $cacheRoot
 
   Remove-StaleChromeNativeHostEntries
-  Sync-BundledMarketplaceFromInstalledApp $marketplaceRoot
+  $installedMarketplaceRoot = Get-InstalledBundledMarketplaceRoot
+  Sync-BundledMarketplaceFromInstalledApp $marketplaceRoot $installedMarketplaceRoot
+  Patch-ChromeWindowsRegistryParsing (Join-Path $marketplaceRoot 'plugins\chrome')
   Write-PluginTree $pluginSourceRoot
   Update-BundledMarketplaceManifest $marketplaceRoot
   Update-CodexConfig $marketplaceRoot
   Enable-UserEnvironment
 
-  $computerUseCacheRoot = Sync-OpenAiBundledPluginCache $marketplaceRoot 'computer-use'
-  $browserCacheRoot = Sync-OpenAiBundledPluginCache $marketplaceRoot 'browser'
-  $chromeCacheRoot = Sync-OpenAiBundledPluginCache $marketplaceRoot 'chrome'
+  $computerUseCacheRoot = Sync-OpenAiBundledPluginCache $installedMarketplaceRoot 'computer-use'
+  Write-PluginTree $computerUseCacheRoot
+  $browserCacheRoot = Sync-OpenAiBundledPluginCache $installedMarketplaceRoot 'browser'
+  $chromeCacheRoot = Sync-OpenAiBundledPluginCache $installedMarketplaceRoot 'chrome'
+  Patch-ChromeWindowsRegistryParsing $chromeCacheRoot
+  $sitesInstalled = Test-BundledMarketplacePluginInstalledWithCodexCli 'sites'
+  if ($sitesInstalled -and (Test-BundledMarketplacePluginAvailable $installedMarketplaceRoot 'sites')) {
+    $sitesCacheRoot = Sync-OpenAiBundledPluginCache $installedMarketplaceRoot 'sites'
+    Write-Log "refreshed existing optional plugin cache: $sitesCacheRoot"
+  }
 
   Update-ChromeNativeMessagingManifest $chromeCacheRoot
+
+  # Desktop can reconcile the mutable mirror while caches are being copied.
+  # Re-merge shipped descriptors immediately before final verification.
+  Update-BundledMarketplaceManifest $marketplaceRoot
+  Update-CodexConfig $marketplaceRoot
+
+  # A cache plus a hand-written enabled entry is not an installed plugin to the
+  # current CLI. Browser is part of this repair; unrelated optional plugins keep
+  # their existing installed/enabled state.
+  Install-BundledMarketplacePluginWithCodexCli 'browser'
+  Update-CodexConfig $marketplaceRoot
 
   Write-Log "installed marketplace plugin: $pluginSourceRoot"
   Write-Log "installed cached plugin: $computerUseCacheRoot"
@@ -1400,19 +2044,58 @@ function Install-ComputerUse {
 
 function Test-ComputerUse {
   $codexHomeResolved = Resolve-ExistingDirectory $CodexHome
-  $marketplaceRoot = Join-Path $codexHomeResolved '.tmp\bundled-marketplaces\openai-bundled'
+  $installedMarketplaceRoot = Get-InstalledBundledMarketplaceRoot
+  if ($VerifyAllBundledPluginsAvailable) {
+    $stableMarketplaceRoot = Get-StableBundledMarketplaceRoot $codexHomeResolved
+    Test-AllBundledMarketplacePluginsAvailableWithCodexCli $stableMarketplaceRoot $installedMarketplaceRoot
+  }
+  $officialCacheLatest = Join-Path $codexHomeResolved 'plugins\cache\openai-bundled\computer-use\latest'
+  $legacyLatestMarkers = @(
+    (Join-Path $officialCacheLatest '.codex-plugin\plugin.json'),
+    (Join-Path $officialCacheLatest 'node_modules\@oai\sky\package.json')
+  )
+  $hasLegacyLatestLayout = $true
+  foreach ($marker in $legacyLatestMarkers) {
+    if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) {
+      $hasLegacyLatestLayout = $false
+      break
+    }
+  }
+  if (-not $hasLegacyLatestLayout) {
+    # Current Codex builds can install a lightweight versioned plugin cache and
+    # keep @oai/sky in the independent cua_node runtime. In that supported
+    # layout `latest` can be absent or stale and has no usable node_modules.
+    Test-OfficialComputerUseCache $codexHomeResolved $installedMarketplaceRoot
+    Write-Log 'verification ok'
+    return
+  }
+
+  $marketplaceRoot = Get-StableBundledMarketplaceRoot $codexHomeResolved
   $manifestPath = Join-Path $marketplaceRoot '.agents\plugins\marketplace.json'
   $cacheLatest = Join-Path $codexHomeResolved 'plugins\cache\openai-bundled\computer-use\latest'
   $browserPluginRoot = Join-Path $marketplaceRoot 'plugins\browser'
   $chromePluginRoot = Join-Path $marketplaceRoot 'plugins\chrome'
+  $sitesPluginRoot = Join-Path $marketplaceRoot 'plugins\sites'
+  $sitesInstalled = (Test-BundledMarketplacePluginAvailable $marketplaceRoot 'sites') -and
+    (Test-BundledMarketplacePluginInstalledWithCodexCli 'sites')
   $browserVersion = Get-PluginVersion $browserPluginRoot
   $chromeVersion = Get-PluginVersion $chromePluginRoot
   $browserCacheLatest = Join-Path $codexHomeResolved 'plugins\cache\openai-bundled\browser\latest'
   $chromeCacheLatest = Join-Path $codexHomeResolved 'plugins\cache\openai-bundled\chrome\latest'
   $browserCacheVersionRoot = Join-Path $codexHomeResolved "plugins\cache\openai-bundled\browser\$browserVersion"
   $chromeCacheVersionRoot = Join-Path $codexHomeResolved "plugins\cache\openai-bundled\chrome\$chromeVersion"
+  $sitesCacheLatest = $null
+  $sitesCacheVersionRoot = $null
+  if ($sitesInstalled) {
+    $sitesVersion = Get-PluginVersion $sitesPluginRoot
+    $sitesCacheLatest = Join-Path $codexHomeResolved 'plugins\cache\openai-bundled\sites\latest'
+    $sitesCacheVersionRoot = Join-Path $codexHomeResolved "plugins\cache\openai-bundled\sites\$sitesVersion"
+  }
   $chromeNativeManifest = Join-Path $env:LOCALAPPDATA 'OpenAI\extension\com.openai.codexextension.json'
   $chromeHostPath = Join-Path $chromeCacheVersionRoot 'extension-host\windows\x64\extension-host.exe'
+  $chromeLatestHostPath = Join-Path $chromeCacheLatest 'extension-host\windows\x64\extension-host.exe'
+  $marketplaceBrowserClientPath = Join-Path $chromePluginRoot 'scripts\browser-client.mjs'
+  $cachedBrowserClientPath = Join-Path $chromeCacheVersionRoot 'scripts\browser-client.mjs'
   $computerUseClientPath = Join-Path $cacheLatest 'scripts\computer-use-client.mjs'
   $computerUseBasePath = Join-Path $cacheLatest 'node_modules\@oai\sky\dist\project\cua\sky_js\src\targets\windows\internal\computer_use_client_base.js'
   $helperTransportPath = Join-Path $cacheLatest 'node_modules\@oai\sky\dist\project\cua\sky_js\src\targets\windows\internal\helper_transport.js'
@@ -1427,15 +2110,47 @@ function Test-ComputerUse {
     (Join-Path $browserCacheVersionRoot '.codex-plugin\plugin.json'),
     (Join-Path $chromeCacheVersionRoot '.codex-plugin\plugin.json'),
     $chromeHostPath,
+    $marketplaceBrowserClientPath,
+    $cachedBrowserClientPath,
     (Join-Path $cacheLatest 'node_modules\@oai\sky\package.json'),
     (Join-Path $cacheLatest 'node_modules\@oai\sky\bin\windows\codex-computer-use.exe'),
     $computerUseBasePath,
     $helperTransportPath
   )
+  if ($sitesInstalled) {
+    $required += @(
+      (Join-Path $sitesPluginRoot '.codex-plugin\plugin.json'),
+      (Join-Path $sitesCacheVersionRoot '.codex-plugin\plugin.json'),
+      $sitesCacheLatest
+    )
+  }
 
   foreach ($path in $required) {
     if (-not (Test-Path -LiteralPath $path)) {
       throw "missing required Computer Use path: $path"
+    }
+  }
+
+  foreach ($browserClientPath in @($marketplaceBrowserClientPath, $cachedBrowserClientPath)) {
+    $browserClientContent = [System.IO.File]::ReadAllText($browserClientPath, [System.Text.UTF8Encoding]::new($false))
+    if (-not (Test-BrowserClientProcessShimCompatible $browserClientContent)) {
+      throw "Chrome browser client process shim compatibility is missing or unrecognized: $browserClientPath"
+    }
+  }
+
+  $cachedChromeScriptRoot = Join-Path $chromeCacheVersionRoot 'scripts'
+  $chromeParserChecks = @(
+    [pscustomobject]@{ Path = (Join-Path $cachedChromeScriptRoot 'open-chrome-window.js'); Marker = 'valueName == null || match[1] === label' },
+    [pscustomobject]@{ Path = (Join-Path $cachedChromeScriptRoot 'installed-browsers.js'); Marker = 'valueName == null || match[1] === label' },
+    [pscustomobject]@{ Path = (Join-Path $cachedChromeScriptRoot 'check-native-host-manifest.js'); Marker = 'valueName === "(Default)" || match[1] === valueName' }
+  )
+  foreach ($check in $chromeParserChecks) {
+    if (-not (Test-Path -LiteralPath $check.Path -PathType Leaf)) {
+      throw "missing Chrome registry helper: $($check.Path)"
+    }
+    $content = [System.IO.File]::ReadAllText($check.Path, [System.Text.UTF8Encoding]::new($false))
+    if (-not $content.Contains($check.Marker)) {
+      throw "Chrome localized registry parsing patch is missing: $($check.Path)"
     }
   }
 
@@ -1444,8 +2159,11 @@ function Test-ComputerUse {
     if (Test-Path -LiteralPath $optionalLatestPath) {
       $latestPathsToCheck += $optionalLatestPath
     } else {
-      Write-Log "warning: bundled plugin latest junction not present; using versioned cache path: $optionalLatestPath"
+      Write-Log "bundled plugin latest junction not present; verified versioned cache fallback: $optionalLatestPath"
     }
+  }
+  if ($sitesInstalled) {
+    $latestPathsToCheck += $sitesCacheLatest
   }
 
   foreach ($latestPath in $latestPathsToCheck) {
@@ -1461,7 +2179,11 @@ function Test-ComputerUse {
 
   if (Test-Path -LiteralPath $chromeNativeManifest -PathType Leaf) {
     $nativeManifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $chromeNativeManifest | ConvertFrom-Json
-    if ([string]$nativeManifest.path -ne $chromeHostPath) {
+    $nativeHostPath = [string]$nativeManifest.path
+    if (-not (Test-Path -LiteralPath $nativeHostPath -PathType Leaf)) {
+      throw "Chrome native messaging manifest points at a missing host: $chromeNativeManifest"
+    }
+    if ($nativeHostPath -ine $chromeHostPath -and $nativeHostPath -ine $chromeLatestHostPath) {
       throw "Chrome native messaging manifest does not point at stable cache path: $chromeNativeManifest"
     }
   }
@@ -1480,6 +2202,15 @@ function Test-ComputerUse {
   $userEnv = [Environment]::GetEnvironmentVariable('CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE', 'User')
   if ($userEnv -ne '1') {
     throw 'CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE is not enabled for the current user'
+  }
+
+  $detectedChromeUserDataDirectory = Get-ChromeUserDataDirectoryOverride
+  if (-not $detectedChromeUserDataDirectory) {
+    throw 'Chrome user data directory could not be detected'
+  }
+  $userChromeUserDataDirectory = [Environment]::GetEnvironmentVariable('CODEX_CHROME_USER_DATA_DIR', 'User')
+  if ($userChromeUserDataDirectory -ine $detectedChromeUserDataDirectory) {
+    throw "CODEX_CHROME_USER_DATA_DIR does not match the detected Chrome profile root: $detectedChromeUserDataDirectory"
   }
 
   Test-CodexConfig (Join-Path $codexHomeResolved 'config.toml') $marketplaceRoot

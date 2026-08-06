@@ -50,7 +50,7 @@
 诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
 
 - 上游来源：[chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)
-- 当前同步基线：上游 `main` 提交 [`4a0b0df`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/4a0b0dfd3bf996340d1342e138a09c2757be8a84)
+- 当前同步基线：上游 `main` 提交 [`5a48446`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/5a484467c15df2055f9fc1828b349cde31160a1b)
 - 本目录是上游内容在 `vv-skills` 中的已审核镜像，不替代或冒充上游仓库。
 - `vv-skills` 保留本机验证后的安全调整：Provider 历史等数据层修复必须由用户手动关闭和重新打开 Codex，不自动停止或拉起应用。
 
@@ -75,7 +75,7 @@
 将 PDF、DOCX、URL、Markdown 等资料转换为可编辑的 PowerPoint，支持原生形状、图表、表格、模板、演讲者备注、动画和音频旁白工作流。
 
 - 上游来源：[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)
-- 当前镜像基线：上游 `main` 提交 [`619a954`](https://github.com/hugohe3/ppt-master/commit/619a954695d866dde970552db9fb1a6640c643c8)
+- 当前镜像基线：上游 `main` 提交 [`4343bd8b`](https://github.com/hugohe3/ppt-master/commit/4343bd8bfc91e79dfb9680681a378476cc38a280)
 - 本目录镜像上游的 `skills/ppt-master/` 可安装 skill，并附带上游 MIT `LICENSE`；不复制网站、示例演示文稿和项目工作区。
 - Python 3.10+ 依赖记录在 `ppt-master/requirements.txt`，应安装到实际执行 skill 脚本的 Python 解释器。
 

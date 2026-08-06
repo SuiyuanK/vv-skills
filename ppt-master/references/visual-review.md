@@ -1,6 +1,6 @@
 # Visual Review Rubric
 
-> Per-page visual self-check rubric for slide SVGs. Read by the subagents spawned during the `visual-review` workflow. Companion to the [`visual-review` workflow](../workflows/visual-review.md) and the [`visual_review.py`](../scripts/visual_review.py) renderer.
+> Per-page visual self-check rubric for slide SVGs. Read by the subagents spawned during the `visual-review` stage. Companion to the [`visual-review` stage](../workflows/stages/visual-review.md) and the [`visual_review.py`](../scripts/visual_review.py) renderer.
 
 ## §0 Prerequisites
 
@@ -12,9 +12,9 @@ Executor finishes page → svg_quality_checker.py passes → visual_review.py re
 
 If the static checker has not been run or has failed, the subagent must abort with status `prereq_failed` and not start the rubric. Topics already enforced by the static checker (do **not** re-check here):
 
-- font-size ramp drift (`RAMP_MIN_RATIO=0.5` / `MAX=5.0`)
+- font-size anchor drift (more than `2px` from every declared role anchor)
 - id uniqueness, XML well-formed
-- spec_lock drift (colors / fonts / canvas)
+- canvas/structural typography validation and informational spec-lock anchor comparison (contextual colors/fonts are allowed)
 - animation_config compliance
 
 ## §0.1 Subagent inputs
@@ -25,9 +25,12 @@ Each review subagent processes a **batch** of pages (see §6.1 for batch sizing)
 2. **Path to this rubric file**
 3. **`<project>/design_spec.md`** (read-only) — §IX outline is the source of truth for "what should this page deliver"
 4. **`<project>/spec_lock.md`** (read-only) — brand-locked values
-5. **`<project>/.review/`** (writable) — where backups and findings JSON go
+5. **Style Review Focus excerpt** (conditional, read-only) — supplied by the orchestrator only when `<project>/templates/design_spec.md` contains an active Style segment; it retains the source path and exact §VII wording
+6. **`<project>/.review/`** (writable) — where backups and findings JSON go
 
-The subagent reads inputs 2–4 **once** at the start of its turn, then iterates over the page batch sequentially (one page at a time): apply the rubric → write `<project>/.review/<page>.json` → move on. This is the core token-saving move — three fixed documents are read N/K times instead of N times.
+The subagent reads inputs 2–5 **once** at the start of its turn (input 5 may be absent), then iterates over the page batch sequentially (one page at a time): apply the rubric → apply any Style supplement → write `<project>/.review/<page>.json` → move on. This is the core token-saving move — fixed context is read N/K times instead of N times.
+
+Style Review Focus is supplemental acceptance context, not a second rubric. It cannot create new Hard rules, weaken §§1–3, or authorize content, identity, or structural edits. Record a clearly unmet focus item as `rule: "STYLE"`: apply a fix only when the existing rubric already permits that atomic edit; otherwise add a `needs_human_items` entry with a concise suggested fix.
 
 ## §1 Hard rules (fix every hit)
 
@@ -40,7 +43,7 @@ The subagent reads inputs 2–4 **once** at the start of its turn, then iterates
 | ~~H5~~ | Font-ramp drift | *covered by `svg_quality_checker.py` — see §0 prerequisites* | n/a (do not re-check) |
 | H6 | Element collision | rect/circle/path bboxes overlap with z-order violating semantics | open spacing |
 | H7 | Anchored element displaced | page number / header / footer covered, missing, or out of canvas | restore to anchor position |
-| H8 | Image rendering broken | `<image>` empty / broken-image / severe distortion | fix `href`, adjust `preserveAspectRatio`, add `no-crop` if face/data is cropped |
+| H8 | Image rendering broken | `<image>` empty / broken-image / severe distortion | fix `href`; for `adaptive`, choose `meet` or a safer crop; a new complete-display requirement returns to §VIII `Crop Policy` and lock projection |
 | H9 | Missing key element | element required by `design_spec §IX` outline is absent from rendered slide | recreate from spec |
 
 Detection order (run sequentially, do not parallelize within a single subagent):
@@ -85,7 +88,7 @@ Hard boundary, equal weight to §1.
 
 - **Brand decisions** — color tokens, font families, geometry style (decided by `spec_lock.md` / brand directory)
 - **Layout restructure** — do not change column counts, replace chart types, add/remove sections
-- **Content** — do not add or remove copy; only adjust position, font-size (within ramp), spacing, letter-spacing, alignment, scrim
+- **Content** — do not add or remove copy; only adjust position, font-size (within the mapped role's anchor `±2px`), spacing, letter-spacing, alignment, scrim
 - **Other files** — never edit `design_spec.md` / `spec_lock.md` / `animations.json` / `image_prompts.json` / `images/` / other pages' SVGs
 - **Atomicity** — one edit per fix, no bulk multi-element replacements
 
@@ -188,7 +191,7 @@ Each subagent writes exactly one file to `<project>/.review/<page>.json`:
 
 ## §6 Dispatch & messaging contract
 
-This rubric is consumed by subagents spawned via the `visual-review` workflow. Mandatory dispatch invariants:
+This rubric is consumed by subagents spawned via the `visual-review` stage. Mandatory dispatch invariants:
 
 ### §6.1 Orchestrator → subagent (batched dispatch)
 

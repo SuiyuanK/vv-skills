@@ -27,13 +27,26 @@ import os
 import re
 import sys
 import tempfile
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import unquote, urlsplit, urlunsplit
 from xml.etree import ElementTree as ET
 
+from compact_svg_coordinates import compact_svg_tree, format_coordinate
 from console_encoding import configure_utf8_stdio
+from native_payloads import (
+    PAYLOAD_STORE_RELATIVE_PATH,
+    NativePayloadError,
+    NativePayloadStats,
+    build_native_attribute_records,
+    collect_native_attribute_record_keys,
+    externalize_native_attribute_records,
+    externalize_native_payloads,
+    hydrate_native_payload_refs,
+    serialize_native_payload_store,
+)
 from pptx_shapes import svg_preset_preview_fingerprint
 from svg_authoring_view import (
     AUTHORING_MANIFEST_NAME,
@@ -46,6 +59,10 @@ from svg_to_pptx.pptx_package.template_structure import (
     TemplateStructureError,
     parse_template_slides,
 )
+from template_text_slots import (
+    analyze_template_text_slots,
+    text_slot_integrity_sha256,
+)
 
 configure_utf8_stdio()
 
@@ -54,6 +71,10 @@ XLINK_NS = "http://www.w3.org/1999/xlink"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
 NATIVE_STRUCTURE_SCHEMA = "ppt-master.native-structure.v1"
 VECTOR_INVENTORY_SCHEMA = "vector_asset_inventory.v1"
+TEMPLATE_EXECUTION_MANIFEST_NAME = "template_execution_manifest.json"
+TEMPLATE_EXECUTION_MANIFEST_SCHEMA = "ppt-master.template-execution-manifest.v1"
+TEMPLATE_TEXT_SLOTS_DIR = "template_execution"
+TEMPLATE_TEXT_SLOTS_SCHEMA = "ppt-master.template-text-slots.v2-min"
 IMPORTED_ICON_NAMESPACE = "imported"
 TRANSPARENT_PIXEL_DATA_URI = (
     "data:image/png;base64,"
@@ -109,6 +130,15 @@ _AGGREGATE_GROUP_ATTRIBUTES = frozenset({
 _URL_REFERENCE_RE = re.compile(r"url\(\s*(['\"]?)#([^)'\"\s]+)\1\s*\)")
 _CSS_ID_RE = re.compile(r"#([A-Za-z_][A-Za-z0-9_.:-]*)")
 _SAFE_KEY_RE = re.compile(r"[^A-Za-z0-9_.-]+")
+_TRANSFORM_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+_AXIS_REFLECTION_RE = re.compile(
+    rf"^\s*translate\(\s*({_TRANSFORM_NUMBER})[\s,]+"
+    rf"({_TRANSFORM_NUMBER})\s*\)\s*"
+    rf"scale\(\s*({_TRANSFORM_NUMBER})[\s,]+"
+    rf"({_TRANSFORM_NUMBER})\s*\)\s*"
+    rf"translate\(\s*({_TRANSFORM_NUMBER})[\s,]+"
+    rf"({_TRANSFORM_NUMBER})\s*\)\s*$"
+)
 
 
 class MirrorMaterializationError(RuntimeError):
@@ -155,12 +185,14 @@ class RestorationStats:
     fallback_refs: int = 0
     structural_refs: int = 0
     detached_connector_endpoints: int = 0
+    upright_text_compensations: int = 0
 
     def merge(self, other: "RestorationStats") -> None:
         self.rehydrated_refs += other.rehydrated_refs
         self.fallback_refs += other.fallback_refs
         self.structural_refs += other.structural_refs
         self.detached_connector_endpoints += other.detached_connector_endpoints
+        self.upright_text_compensations += other.upright_text_compensations
 
     def as_dict(self) -> dict[str, int]:
         return {
@@ -168,6 +200,7 @@ class RestorationStats:
             "fallback_refs": self.fallback_refs,
             "structural_refs": self.structural_refs,
             "detached_connector_endpoints": self.detached_connector_endpoints,
+            "upright_text_compensations": self.upright_text_compensations,
         }
 
 
@@ -177,8 +210,208 @@ class MaterializedFile:
     payload: bytes
 
 
+def _json_bytes(payload: dict[str, object]) -> bytes:
+    return (
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    ).encode("utf-8")
+
+
+def _compact_json_bytes(payload: dict[str, object]) -> bytes:
+    return (
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+
+
+def _template_execution_manifest_files(
+    materialized_roots: list[tuple[Path, ET.Element]],
+    source_import: dict[str, object] | None,
+) -> list[MaterializedFile]:
+    """Serialize one compact roster plus per-prototype text-slot sidecars."""
+    templates: list[dict[str, object]] = []
+    files: list[MaterializedFile] = []
+    for relative_path, root in sorted(
+        materialized_roots,
+        key=lambda item: item[0].as_posix(),
+    ):
+        prototype = relative_path.name
+        try:
+            analyzed_slots = analyze_template_text_slots(root)
+        except ValueError as exc:
+            raise MirrorMaterializationError(
+                f"Cannot project text slots for {prototype}: {exc}"
+            ) from exc
+        text_slots = [slot.model_payload() for slot in analyzed_slots]
+        editable_text_slot_count = sum(slot.editable for slot in analyzed_slots)
+        text_slots_path = (
+            Path("templates")
+            / TEMPLATE_TEXT_SLOTS_DIR
+            / f"{relative_path.stem}.text-slots.json"
+        )
+        files.append(MaterializedFile(
+            text_slots_path,
+            _compact_json_bytes({
+                "schema": TEMPLATE_TEXT_SLOTS_SCHEMA,
+                "prototype": prototype,
+                "text_slot_count": len(text_slots),
+                "tool_integrity_sha256": text_slot_integrity_sha256(analyzed_slots),
+                "text_slots": text_slots,
+            }),
+        ))
+        templates.append({
+            "prototype": prototype,
+            "page_type": relative_path.stem.split("_", 1)[-1],
+            "viewBox": root.get("viewBox"),
+            "master": root.get("data-pptx-master"),
+            "layout": root.get("data-pptx-layout"),
+            "layout_name": root.get("data-pptx-layout-name"),
+            "text_slot_count": len(text_slots),
+            "editable_text_slot_count": editable_text_slot_count,
+            "text_slots_path": text_slots_path.relative_to(
+                Path("templates")
+            ).as_posix(),
+        })
+    payload = {
+        "schema": TEMPLATE_EXECUTION_MANIFEST_SCHEMA,
+        "replication_mode": "mirror",
+        "template_root": ".",
+        "template_count": len(templates),
+        "text_slots_schema": TEMPLATE_TEXT_SLOTS_SCHEMA,
+        "execution_policy": (
+            "This manifest and its text_slots_path records are derived tool "
+            "metadata, not page-authoring inputs. Retain the complete project "
+            "Design Spec and lock once per valid uncompacted execution context; "
+            "use page-context only for on-demand diagnostics or telemetry. "
+            "Read the selected complete prototype once per valid context and "
+            "again only after a known change or context invalidation. Choose "
+            "semantic replacements and edit only existing "
+            "visible text values; structured export validates text/tspan "
+            "topology and attributes against the prototype."
+        ),
+        "source_import": source_import or {
+            "warning_count": 0,
+            "by_code": {},
+        },
+        "templates": templates,
+    }
+    files.append(MaterializedFile(
+        Path("templates") / TEMPLATE_EXECUTION_MANIFEST_NAME,
+        _json_bytes(payload),
+    ))
+    return files
+
+
+def _source_import_summary(import_workspace: Path) -> dict[str, object] | None:
+    """Summarize source-owned tolerant-import diagnostics by stable code."""
+    report_path = import_workspace / "conversion-report.json"
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, json.JSONDecodeError) as exc:
+        raise MirrorMaterializationError(
+            f"Cannot read source conversion report {report_path}: {exc}"
+        ) from exc
+    diagnostics = report.get("diagnostics")
+    if not isinstance(diagnostics, list):
+        raise MirrorMaterializationError(
+            f"Source conversion report has no diagnostics array: {report_path}"
+        )
+    by_code: Counter[str] = Counter()
+    samples: dict[str, str] = {}
+    for item in diagnostics:
+        if not isinstance(item, dict):
+            continue
+        severity = str(item.get("severity") or "warning").lower()
+        if severity != "warning":
+            continue
+        code = str(item.get("code") or "unknown")
+        by_code[code] += 1
+        message = item.get("message")
+        if code not in samples and isinstance(message, str) and message:
+            samples[code] = message
+    return {
+        "warning_count": sum(by_code.values()),
+        "by_code": dict(sorted(by_code.items())),
+        "samples": dict(sorted(samples.items())),
+    }
+
+
 def _local_name(name: object) -> str:
     return name.rsplit("}", 1)[-1] if isinstance(name, str) else ""
+
+
+def _axis_reflection_transform(value: str | None) -> str | None:
+    """Return one exact importer axis-reflection transform when valid."""
+    if not value:
+        return None
+    match = _AXIS_REFLECTION_RE.fullmatch(value)
+    if match is None:
+        return None
+    cx, cy, scale_x, scale_y, offset_x, offset_y = (
+        float(token) for token in match.groups()
+    )
+    if not (
+        math.isclose(abs(scale_x), 1.0, abs_tol=1e-9)
+        and math.isclose(abs(scale_y), 1.0, abs_tol=1e-9)
+        and (scale_x < 0 or scale_y < 0)
+        and math.isclose(offset_x, -cx, abs_tol=1e-7)
+        and math.isclose(offset_y, -cy, abs_tol=1e-7)
+    ):
+        return None
+    return value.strip()
+
+
+def _compensate_reflected_group_text(root: ET.Element) -> int:
+    """Keep browser-visible text upright inside imported flipped groups."""
+    parent_by_child = {
+        child: parent
+        for parent in root.iter()
+        for child in parent
+    }
+    reflected_groups: list[tuple[int, ET.Element, str]] = []
+    for element in root.iter():
+        if _local_name(element.tag) != "g":
+            continue
+        transform = _axis_reflection_transform(element.get("transform"))
+        if transform is None:
+            continue
+        depth = 0
+        current = element
+        while current in parent_by_child:
+            depth += 1
+            current = parent_by_child[current]
+        reflected_groups.append((depth, element, transform))
+
+    wrapped = 0
+    for _depth, group, transform in sorted(
+        reflected_groups,
+        key=lambda item: item[0],
+        reverse=True,
+    ):
+        text_elements = [
+            element
+            for element in group.iter()
+            if _local_name(element.tag) == "text"
+        ]
+        for text in text_elements:
+            current_parents = {
+                child: parent
+                for parent in group.iter()
+                for child in parent
+            }
+            parent = current_parents.get(text)
+            if parent is None:
+                continue
+            position = list(parent).index(text)
+            parent.remove(text)
+            wrapper = ET.Element(
+                f"{{{SVG_NS}}}g",
+                {"transform": transform},
+            )
+            wrapper.append(text)
+            parent.insert(position, wrapper)
+            wrapped += 1
+    return wrapped
 
 
 def _sha256_bytes(payload: bytes) -> str:
@@ -1410,7 +1643,7 @@ def _copy_text_carrier(source: ET.Element | None) -> ET.Element | None:
                         tspan.attrib.pop("x", None)
                     elif child_index == 0 and text_y is not None and previous_y is not None:
                         tspan.set("x", text.get("x", texts[0].get("x", "0")))
-                        tspan.set("dy", _format_number(text_y - previous_y))
+                        tspan.set("dy", format_coordinate(text_y - previous_y))
                     if text_index > 0 and child_index == 0:
                         tspan.set("data-paragraph-soft-break", "0")
                     carrier.append(tspan)
@@ -1419,7 +1652,7 @@ def _copy_text_carrier(source: ET.Element | None) -> ET.Element | None:
                 attrs: dict[str, str] = {}
                 if not first_output and text_y is not None and previous_y is not None:
                     attrs["x"] = text.get("x", texts[0].get("x", "0"))
-                    attrs["dy"] = _format_number(text_y - previous_y)
+                    attrs["dy"] = format_coordinate(text_y - previous_y)
                 if text_index > 0:
                     attrs["data-paragraph-soft-break"] = "0"
                 tspan = ET.SubElement(carrier, f"{{{SVG_NS}}}tspan", attrs)
@@ -1433,9 +1666,9 @@ def _copy_text_carrier(source: ET.Element | None) -> ET.Element | None:
     if source_frame is not None:
         carrier.set(
             "data-pptx-frame",
-            " ".join(_format_number(value) for value in source_frame),
+            " ".join(format_coordinate(value) for value in source_frame),
         )
-    carrier.set("data-pptx-placeholder-carrier", "true")
+    carrier.set("data-pptx-carrier", "true")
     return carrier
 
 
@@ -1584,17 +1817,14 @@ def _remap_placeholder_decorations(
     translate_x = to_x - from_x * scale_x
     translate_y = to_y - from_y * scale_y
     frame_transform = "matrix({})".format(
-        " ".join(
-            _format_number(value)
-            for value in (
-                scale_x,
-                0.0,
-                0.0,
-                scale_y,
-                translate_x,
-                translate_y,
-            )
-        )
+        " ".join((
+            _format_number(scale_x),
+            "0",
+            "0",
+            _format_number(scale_y),
+            format_coordinate(translate_x),
+            format_coordinate(translate_y),
+        ))
     )
     for decoration in decorations:
         existing = (decoration.get("transform") or "").strip()
@@ -1696,11 +1926,11 @@ def _blank_text_carrier(
         carrier = ET.Element(
             f"{{{SVG_NS}}}text",
             {
-                "x": _format_number(x),
-                "y": _format_number(y + min(height, 24)),
+                "x": format_coordinate(x),
+                "y": format_coordinate(y + min(height, 24)),
                 "font-size": "18",
                 "fill": "#000000",
-                "data-pptx-placeholder-carrier": "true",
+                "data-pptx-carrier": "true",
             },
         )
     carrier.text = None
@@ -1709,9 +1939,9 @@ def _blank_text_carrier(
     if carrier.get("data-pptx-frame") is None:
         carrier.set(
             "data-pptx-frame",
-            " ".join(_format_number(value) for value in plan.bounds),
+            " ".join(format_coordinate(value) for value in plan.bounds),
         )
-    carrier.set("data-pptx-placeholder-carrier", "true")
+    carrier.set("data-pptx-carrier", "true")
     return carrier
 
 
@@ -1720,13 +1950,13 @@ def _blank_image_carrier(plan: SlotPlan) -> ET.Element:
     return ET.Element(
         f"{{{SVG_NS}}}image",
         {
-            "x": _format_number(x),
-            "y": _format_number(y),
-            "width": _format_number(width),
-            "height": _format_number(height),
+            "x": format_coordinate(x),
+            "y": format_coordinate(y),
+            "width": format_coordinate(width),
+            "height": format_coordinate(height),
             "href": TRANSPARENT_PIXEL_DATA_URI,
             "preserveAspectRatio": "none",
-            "data-pptx-placeholder-carrier": "true",
+            "data-pptx-carrier": "true",
         },
     )
 
@@ -1757,13 +1987,13 @@ def _slot_wrapper(
         {
             "id": plan.slot_id,
             "data-pptx-placeholder": plan.semantic_role,
-            "data-pptx-placeholder-bounds": " ".join(
-                _format_number(item) for item in plan.bounds
+            "data-pptx-bounds": " ".join(
+                format_coordinate(item) for item in plan.bounds
             ),
         },
     )
     if plan.idx is not None:
-        wrapper.set("data-pptx-placeholder-idx", str(plan.idx))
+        wrapper.set("data-pptx-idx", str(plan.idx))
 
     extras: list[ET.Element] = []
     if plan.semantic_role in {
@@ -1783,7 +2013,7 @@ def _slot_wrapper(
             master_guide,
         )
         for extra in extras:
-            extra.attrib.pop("data-pptx-placeholder-carrier", None)
+            extra.attrib.pop("data-pptx-carrier", None)
         wrapper.append(carrier)
         return wrapper, extras
 
@@ -1802,7 +2032,7 @@ def _slot_wrapper(
             raise MirrorMaterializationError(
                 f"Object slot {plan.slot_id!r} has no visible proxy content"
             )
-        wrapper.set("data-pptx-placeholder-binding", "proxy")
+        wrapper.set("data-pptx-binding", "proxy")
         for child in visible:
             wrapper.append(child)
         return wrapper, extras
@@ -1839,7 +2069,7 @@ def _slot_wrapper(
             raise MirrorMaterializationError(
                 f"Slot {plan.slot_id!r} {plan.semantic_role} carrier lacks native marker"
             )
-    carrier.set("data-pptx-placeholder-carrier", "true")
+    carrier.set("data-pptx-carrier", "true")
     wrapper.append(carrier)
     return wrapper, extras
 
@@ -1938,9 +2168,11 @@ def _compose_template(
         f"{{{SVG_NS}}}svg",
         {
             "version": "1.1",
-            "width": _format_number(width),
-            "height": _format_number(height),
-            "viewBox": f"0 0 {_format_number(width)} {_format_number(height)}",
+            "width": format_coordinate(width),
+            "height": format_coordinate(height),
+            "viewBox": (
+                f"0 0 {format_coordinate(width)} {format_coordinate(height)}"
+            ),
             "data-pptx-master": str(master["key"]),
             "data-pptx-master-name": str(master["name"]),
             "data-pptx-layout": str(layout["key"]),
@@ -2483,6 +2715,9 @@ def materialize_mirror_template(
 
     asset_sources: dict[Path, Path] = {}
     files: list[MaterializedFile] = []
+    output_roots: list[tuple[Path, ET.Element]] = []
+    native_payloads: dict[str, bytes] = {}
+    native_payload_stats = NativePayloadStats()
     for relative_path, root in materialized_roots:
         final_path = template_workspace / relative_path
         _rewrite_packaged_assets(
@@ -2493,8 +2728,20 @@ def materialize_mirror_template(
             asset_sources=asset_sources,
         )
         total_stats.detached_connector_endpoints += _sanitize_connector_references(root)
+        total_stats.upright_text_compensations += (
+            _compensate_reflected_group_text(root)
+        )
+        compact_svg_tree(root, compact_native_frames=False)
         _refresh_preset_preview_hashes(root)
-        files.append(MaterializedFile(relative_path, _serialize_svg(root)))
+        try:
+            native_payload_stats.merge(
+                externalize_native_payloads(root, native_payloads)
+            )
+        except NativePayloadError as exc:
+            raise MirrorMaterializationError(
+                f"Cannot externalize native payloads in {relative_path}: {exc}"
+            ) from exc
+        output_roots.append((relative_path, root))
 
     for icon in sorted(referenced_icons):
         record = vector_assets[icon]
@@ -2515,11 +2762,62 @@ def materialize_mirror_template(
         total_stats.detached_connector_endpoints += _sanitize_connector_references(
             icon_root
         )
+        compact_svg_tree(icon_root, compact_native_frames=False)
         _refresh_preset_preview_hashes(icon_root)
-        files.append(MaterializedFile(relative_path, _serialize_svg(icon_root)))
+        try:
+            native_payload_stats.merge(
+                externalize_native_payloads(icon_root, native_payloads)
+            )
+        except NativePayloadError as exc:
+            raise MirrorMaterializationError(
+                f"Cannot externalize native payloads in {relative_path}: {exc}"
+            ) from exc
+        output_roots.append((relative_path, icon_root))
+
+    native_record_keys: set[str] = set()
+    try:
+        for _relative_path, root in output_roots:
+            native_record_keys.update(
+                collect_native_attribute_record_keys(root)
+            )
+        native_record_ids, native_records = build_native_attribute_records(
+            native_record_keys
+        )
+        for _relative_path, root in output_roots:
+            native_payload_stats.merge(
+                externalize_native_attribute_records(root, native_record_ids)
+            )
+    except NativePayloadError as exc:
+        raise MirrorMaterializationError(
+            f"Cannot externalize native attribute records: {exc}"
+        ) from exc
+
+    for relative_path, root in output_roots:
+        files.append(MaterializedFile(relative_path, _serialize_svg(root)))
+    execution_manifest_path = Path("templates") / TEMPLATE_EXECUTION_MANIFEST_NAME
+    files.extend(
+        _template_execution_manifest_files(
+            materialized_roots,
+            _source_import_summary(import_workspace),
+        )
+    )
 
     for relative_target, source in sorted(asset_sources.items()):
         files.append(MaterializedFile(relative_target, source.read_bytes()))
+    payload_store: bytes | None = None
+    if native_payloads or native_records:
+        try:
+            payload_store = serialize_native_payload_store(
+                native_payloads,
+                native_records,
+            )
+        except NativePayloadError as exc:
+            raise MirrorMaterializationError(
+                f"Cannot serialize native payload store: {exc}"
+            ) from exc
+        files.append(
+            MaterializedFile(PAYLOAD_STORE_RELATIVE_PATH, payload_store)
+        )
     relative_files = [item.relative_path for item in files]
     if len(relative_files) != len(set(relative_files)):
         raise MirrorMaterializationError("Materializer produced duplicate output paths")
@@ -2548,7 +2846,15 @@ def materialize_mirror_template(
             ) from exc
         for relative in relative_files:
             if relative.suffix.lower() == ".svg":
-                _ensure_no_source_refs(staged_root / relative)
+                staged_svg = staged_root / relative
+                try:
+                    hydrate_native_payload_refs(_parse_svg(staged_svg), staged_svg)
+                except NativePayloadError as exc:
+                    raise MirrorMaterializationError(
+                        f"Materialized native payload reference is invalid: "
+                        f"{relative}: {exc}"
+                    ) from exc
+                _ensure_no_source_refs(staged_svg)
         _publish_files(
             template_workspace,
             staged_root,
@@ -2565,9 +2871,23 @@ def materialize_mirror_template(
         "layout_count": len(layouts),
         "unused_layout_count": len(unused_layouts),
         "template_svg_count": len(materialized_roots),
+        "template_execution_manifest": execution_manifest_path.as_posix(),
+        "template_text_slot_manifest_count": len(materialized_roots),
         "imported_vector_count": len(referenced_icons),
         "packaged_asset_count": len(asset_sources),
         "restoration": total_stats.as_dict(),
+        "native_payloads": {
+            **native_payload_stats.as_dict(),
+            "unique_count": len(native_payloads),
+            "unique_record_count": len(native_records),
+            "unique_raw_bytes": sum(len(payload) for payload in native_payloads.values()),
+            "store_bytes": len(payload_store or b""),
+            "store_path": (
+                PAYLOAD_STORE_RELATIVE_PATH.as_posix()
+                if payload_store is not None
+                else None
+            ),
+        },
         "files": [
             item.relative_path.as_posix()
             for item in sorted(files, key=lambda item: item.relative_path.as_posix())

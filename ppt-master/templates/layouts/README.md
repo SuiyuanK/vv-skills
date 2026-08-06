@@ -1,49 +1,78 @@
 # Layout Templates
 
 **Layout = a structure-only reusable template bundle.** It owns canvas,
-Master/Layout structure, page types, slot geometry, and the SVG roster. It does
-not own color, typography, logo, voice, or icon style. Those identity decisions
-come from an explicit brand/deck source or from the Strategist confirmation
-stage.
+Master/Layout structure, page types, slot geometry, semantic text roles,
+alignment/wrapping/capacity behavior, and the SVG roster. It does not own
+brand color, typeface/weight identity, the final resolved type scale, logo,
+voice, or icon style. Those identity decisions come from an explicit
+brand/deck source or from the Strategist confirmation stage.
 
-Neutral colors and safe fonts may appear in SVG prototypes so the structure is
-reviewable. They are preview paint, not a locked identity segment. Non-mirror
-projects repaint and retype the selected structure from the project lock.
+A layout may describe the content shapes and delivery conditions its geometry
+can support. It must not own a communication objective, audience outcome,
+scenario-specific narrative sequence, fixed boilerplate, or example content
+that downstream generation is expected to preserve. Those application rules
+belong to a Deck. A structurally useful “board update” page can remain a
+Layout; a board-update sequence with required decision, risk, and action roles
+is a Deck.
+
+Neutral colors, safe fonts, and provisional sizes may appear in SVG prototypes
+so the structure is reviewable. They are preview values, not a locked identity
+segment or final type scale. The reusable rule is the role hierarchy and its
+spatial behavior. When the workspace is used, Strategist inspects the actual
+prototypes and current content, decides how much structure to reuse, and writes
+the internal exporter plan automatically.
 
 | Axis | Layout behavior |
 |---|---|
 | Template kind | `layout`: structure only |
-| Creation mode | `standard` / `fidelity` author a new system; `mirror` restores the source graph |
-| Downstream adherence | Strategist selects `strict` or `adaptive` when the package is used |
-| PPTX structure | Always `structured`; `flat` is reserved for free design and brand-only routes |
+| Internal creation strategy | AI derives `standard` / `fidelity` for a new system or `mirror` for validated source-package materialization; the field is tool provenance, not a user choice |
+| Application planning | Strategist automatically decides literal, structural, or style-only use and derives any strict/adaptive exporter value |
+| PPTX structure | The workspace is `structured`; the derived application plan decides whether generated pages compile its structure or use it only as visual reference |
 
 The discovery source of truth is [`layouts_index.json`](./layouts_index.json)
 (`layout_id → { summary, canvas_format, page_count, page_types }`). This README
-defines the kind and intentionally does not enumerate installed layouts. See
-[`docs/zh/templates-architecture.md`](../../../../docs/zh/templates-architecture.md)
-for the complete data model.
+defines the kind and intentionally does not enumerate installed layouts. The
+shared kind and workspace model lives in the parent
+[`README.md`](../README.md).
+
+Layout mirror has one additional eligibility rule: the validated source
+contract must already be brand-neutral and application-neutral. A source
+outside that boundary can become a Layout only through `standard` or
+`fidelity`, which deliberately authors a new neutral system. If its identity or
+application rules must remain literal, create a Deck instead. Removing either
+kind of rule is never a mirror operation.
 
 ---
 
-## Trigger and identity boundary
+## Selection and identity boundary
 
-Selection is opt-in through an explicit workspace-root path such as
-`skills/ppt-master/templates/layouts/<layout_id>/`. Supplying a bare ID or
-reading the discovery index does not trigger template use. A layout path alone
-locks structure while identity remains a downstream decision. Combined with a
-brand or deck, the layout replaces the complete structure segment.
-
-Current packages resolve `templates/design_spec.md`; compatible legacy-flat
-roots may resolve `design_spec.md` directly. See [`SKILL.md`](../../SKILL.md)
-Step 3.
+Selection follows the parent README's Default Stage-1
+[`generate-pptx`](../../workflows/generate-pptx.md) template-choice contract.
+Its Layout choices come only from `layouts_index.json`; no
+directory scan or bare-ID/style-phrase match is allowed. A supplied exact root
+appears in the same selector, defaults Stage 1 to template mode, and preselects
+that specific candidate only when it is the sole supplied root. Registered
+exact roots are `library`; other exact roots remain `explicit`.
+Choosing and confirming an entry runs the conditional
+[`apply-template-workspace`](../../workflows/stages/apply-template-workspace.md)
+stage, which owns path normalization, compatibility checks, installation, and
+fusion after Stage 1 and before Stage 2. Template-aware reading begins in final Stage 2 from the
+installed project-local copy.
+Quick applies a supplied exact Layout root directly and otherwise uses free
+design. It uses installed prototypes as flat authoring inputs; reusable
+native Master/Layout compilation remains a default lock-backed capability.
+This file owns the Layout schema and its identity/application boundary. Chat
+discovery reads the same index and returns exact roots; a bare ID never resolves
+implicitly.
 
 ---
 
 ## `design_spec.md` contract
 
 The spec stores portable structural metadata plus rules unique to this layout.
-It omits the deck-only Template Overview and every identity section. The
-frontmatter `summary` carries the concise selection context.
+It omits the deck-only Template Overview/application contract and every
+identity section. The frontmatter `summary` carries the concise selection
+context.
 
 ```markdown
 ---
@@ -68,10 +97,16 @@ page_types: [cover, toc, chapter, content, ending]
 ## VII. Placeholder Overrides      # omit when none
 ```
 
+`replication_mode` records how the workspace was produced. Create Template
+derives it from the natural-language brief and source evidence; users do not
+need to select or understand this field.
+
 `Signature Design Elements` describes only reusable structure: grids, zones,
-image behavior, density rhythm, and slot conventions. It must not introduce a
-brand palette or typography system. `Page Roster` lists every SVG with its
-Layout key, PowerPoint picker name, intended content, and slot behavior.
+image behavior, density rhythm, semantic text roles, alignment/wrapping/
+capacity behavior, and slot conventions. It must not introduce a brand
+palette, typeface identity, final type scale, communication objective, or
+required narrative sequence. `Page Roster` lists every SVG with its Layout
+key, PowerPoint picker name, supported content shape, and slot behavior.
 
 ---
 
@@ -90,11 +125,11 @@ vocabulary overrides declares a `placeholders:` map in frontmatter. Full rules:
 [`template-designer.md`](../../references/template-designer.md#4-placeholder-reference-canonical-convention-overridable-per-template).
 
 `standard` and `fidelity` author new SVGs and a new Master/Layout/slot system.
-`mirror` preserves source identities, parentage, assignments, placeholder
-facts, and supported visuals without semantic synthesis. Legacy semantic
-contracts must run
-[`restore-pptx-structure`](../../workflows/restore-pptx-structure.md); a flat
-directory shape alone is not a legacy signal.
+`mirror` preserves existing source identities, parentage, assignments,
+placeholder facts, and supported visuals in a new workspace without semantic
+synthesis. Legacy semantic contracts are not upgraded in place; create a new
+workspace through [`create-template`](../../workflows/create-template.md). A
+flat directory shape alone is not a legacy signal.
 
 ---
 
@@ -115,10 +150,13 @@ updates the index. Project scope uses an initialized `projects/<name>/`
 workspace and does not register globally. Empty optional directories are
 omitted.
 
-1. Run [`workflows/create-template.md`](../../workflows/create-template.md) and explicitly choose structure-only output.
+1. Enter [`workflows/create-template.md`](../../workflows/create-template.md), which dispatches structure-only output to [`create-layout.md`](../../workflows/create-template/create-layout.md).
 2. Validate with `svg_quality_checker.py --template-mode`.
 3. Run `template_preview_pptx.py` when review is requested and always when the roster declares multiple Masters.
 4. In library scope, register with `register_template.py <id> --kind layout`.
 
 General SVG/PPT rules remain authoritative in
-[`shared-standards.md`](../../references/shared-standards.md).
+[`shared-standards-core.md`](../../references/shared-standards-core.md) and
+[`pptx-structure-interface.md`](../../references/pptx-structure-interface.md).
+See [`styles/`](../styles/) when reusable method and visual direction should be
+combined with this structure without becoming identity truth.

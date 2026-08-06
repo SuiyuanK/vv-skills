@@ -9,6 +9,7 @@ param(
   [switch]$KeepBuild,
   [switch]$SkipMarketplace,
   [switch]$SkipComputerUse,
+  [switch]$VerifyAllBundledPluginsAvailable,
   [switch]$RegisterMarketplaceOnly,
   [switch]$ForceRebuild,
   [string]$OutputRoot,
@@ -259,7 +260,8 @@ function Repair-KnownLocalMarketplaceLayouts {
 function Invoke-ComputerUseInstaller {
   param(
     [string]$Stage,
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+    [switch]$VerifyAllBundledPluginsAvailable
   )
 
   if (-not (Test-Path -LiteralPath $ComputerUseScript)) {
@@ -271,6 +273,9 @@ function Invoke-ComputerUseInstaller {
   if ($VerifyOnly) {
     $args += '-VerifyOnly'
     $mode = 'verify/repair'
+  }
+  if ($VerifyAllBundledPluginsAvailable) {
+    $args += '-VerifyAllBundledPluginsAvailable'
   }
 
   Write-Log "Computer Use ${mode}: $Stage"
@@ -330,7 +335,7 @@ function Register-LocalMarketplace {
 }
 
 function Show-Status {
-  $pkg = Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue | Select-Object -First 1
+  $pkg = Get-InstalledCodexPackage
   if ($pkg) {
     Write-Log "package: $($pkg.PackageFullName)"
     Write-Log "signature: $($pkg.SignatureKind)"
@@ -350,6 +355,59 @@ function Show-Status {
   Write-Log "computer-use user env: $(if ($userEnv) { $userEnv } else { '<missing>' })"
 }
 
+function Get-InstalledCodexPackage {
+  $package = Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue |
+    Sort-Object Version -Descending |
+    Select-Object -First 1
+  return $package
+}
+
+function Test-CodexPatchInstallResult {
+  param(
+    [object]$SourcePackage,
+    [object]$FinalPackage
+  )
+
+  if (-not $SourcePackage) {
+    return [pscustomobject]@{
+      Success = $false
+      Retryable = $false
+      Reason = 'source OpenAI.Codex package was not found'
+    }
+  }
+  if (-not $FinalPackage) {
+    return [pscustomobject]@{
+      Success = $false
+      Retryable = $false
+      Reason = 'OpenAI.Codex package is missing after repair'
+    }
+  }
+
+  $sourceVersion = [string]$SourcePackage.Version
+  $finalVersion = [string]$FinalPackage.Version
+  $signatureKind = [string]$FinalPackage.SignatureKind
+  if ($finalVersion -ne $sourceVersion) {
+    return [pscustomobject]@{
+      Success = $false
+      Retryable = $signatureKind -eq 'Store'
+      Reason = "Codex package changed during repair: source=$sourceVersion final=$finalVersion signature=$signatureKind"
+    }
+  }
+  if ($signatureKind -ne 'Developer') {
+    return [pscustomobject]@{
+      Success = $false
+      Retryable = $signatureKind -eq 'Store'
+      Reason = "Codex repair did not leave a Developer-signed package: version=$finalVersion signature=$signatureKind"
+    }
+  }
+
+  return [pscustomobject]@{
+    Success = $true
+    Retryable = $false
+    Reason = "version=$finalVersion signature=$signatureKind"
+  }
+}
+
 if (-not $SkipMarketplace) {
   Repair-KnownLocalMarketplaceLayouts @(
     $MarketplacePath,
@@ -360,9 +418,9 @@ if (-not $SkipMarketplace) {
 
 if (-not $SkipComputerUse) {
   if ($DryRun) {
-    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX dry run' -VerifyOnly
+    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX dry run' -VerifyOnly -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
   } else {
-    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX patch'
+    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX patch' -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
   }
 }
 
@@ -405,23 +463,88 @@ if (-not [string]::IsNullOrWhiteSpace($OutputRoot)) {
   $patchArgs += $OutputRoot
 }
 
-Invoke-Checked 'powershell' (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PatchScript) + $patchArgs) 'Codex MSIX patch failed'
+$maxPatchAttempts = if ($DryRun) { 1 } else { 2 }
+$successfulSourcePackage = $null
+for ($patchAttempt = 1; $patchAttempt -le $maxPatchAttempts; $patchAttempt++) {
+  $sourcePackage = Get-InstalledCodexPackage
+  if (-not $sourcePackage) {
+    throw 'OpenAI.Codex package is not installed; cannot start MSIX repair'
+  }
+  Write-Log "patch attempt $patchAttempt/$maxPatchAttempts source package: $($sourcePackage.PackageFullName) signature=$($sourcePackage.SignatureKind)"
 
-if (-not $SkipMarketplace) {
-  Register-LocalMarketplace $MarketplacePath
+  try {
+    Invoke-Checked 'powershell' (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PatchScript) + $patchArgs) 'Codex MSIX patch failed'
+  } catch {
+    $patchError = $_
+    if (-not $DryRun) {
+      $failedPackage = Get-InstalledCodexPackage
+      $failedInstallResult = Test-CodexPatchInstallResult $sourcePackage $failedPackage
+      $storeReplacementDetected = (
+        $failedPackage -and
+        [string]$failedPackage.SignatureKind -eq 'Store' -and
+        (
+          [string]$failedPackage.Version -ne [string]$sourcePackage.Version -or
+          [string]$sourcePackage.SignatureKind -ne 'Store'
+        )
+      )
+      if ($storeReplacementDetected -and $patchAttempt -lt $maxPatchAttempts) {
+        Write-Log "warning: patch subprocess failed while $($failedInstallResult.Reason)"
+        Write-Log 'warning: Store update or package replacement detected during repair; retrying once against the current package'
+        continue
+      }
+    }
+    throw $patchError
+  }
+
+  if (-not $SkipMarketplace) {
+    Register-LocalMarketplace $MarketplacePath
+  }
+
+  if (-not $SkipComputerUse) {
+    if ($DryRun) {
+      Invoke-ComputerUseInstaller -Stage 'post-dry-run final verification' -VerifyOnly -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
+    } else {
+      Invoke-ComputerUseInstaller -Stage 'post-patch refresh after Codex startup' -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
+      Invoke-ComputerUseInstaller -Stage 'post-patch final verification' -VerifyOnly -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
+    }
+  }
+
+  if ($DryRun) {
+    $successfulSourcePackage = $sourcePackage
+    break
+  }
+
+  $finalPackage = Get-InstalledCodexPackage
+  $installResult = Test-CodexPatchInstallResult $sourcePackage $finalPackage
+  if ($installResult.Success) {
+    Write-Log "patch install verification ok: $($installResult.Reason)"
+    $successfulSourcePackage = $sourcePackage
+    break
+  }
+
+  if ($installResult.Retryable -and $patchAttempt -lt $maxPatchAttempts) {
+    Write-Log "warning: $($installResult.Reason)"
+    Write-Log 'warning: Store update or package replacement detected during repair; retrying once against the current package'
+    continue
+  }
+
+  throw $installResult.Reason
 }
 
-if (-not $SkipComputerUse) {
-  if ($DryRun) {
-    Invoke-ComputerUseInstaller -Stage 'post-dry-run final verification' -VerifyOnly
-  } else {
-    Invoke-ComputerUseInstaller -Stage 'post-patch refresh after Codex startup'
-    Invoke-ComputerUseInstaller -Stage 'post-patch final verification' -VerifyOnly
-  }
+if (-not $successfulSourcePackage) {
+  throw 'Codex MSIX repair did not complete successfully'
 }
 
 if ($InstallModelInstructionsFile) {
   Invoke-Checked 'powershell' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ModelInstructionsScript, '-PromptDestination', $ModelInstructionsDestination, '-VerifyOnly') 'model instructions file verification failed'
+}
+
+if (-not $DryRun) {
+  $finalPackage = Get-InstalledCodexPackage
+  $finalInstallResult = Test-CodexPatchInstallResult $successfulSourcePackage $finalPackage
+  if (-not $finalInstallResult.Success) {
+    throw "final Codex package verification failed: $($finalInstallResult.Reason)"
+  }
 }
 
 Show-Status

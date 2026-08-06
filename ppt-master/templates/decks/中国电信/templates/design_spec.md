@@ -2,7 +2,7 @@
 deck_id: 中国电信
 kind: deck
 category: brand
-summary: 中国电信政企数字化、转型规划与内部汇报的克制红灰品牌模板。
+summary: 中国电信政企数字化方案、转型规划与内部评审，用于说明方案并对齐决策和下一步；采用克制的红灰品牌视觉。
 keywords: [中国电信, 政企, 数字化, 企业汇报]
 primary_color: "#C00000"
 canvas_format: ppt169
@@ -21,7 +21,13 @@ page_count: 5
 
 ## I. Template Overview
 
-- 适用于政企数字化方案、转型规划、内部评审和客户汇报。
+| Application context | Definition |
+| --- | --- |
+| Recurring presentation family | 政企数字化方案、转型规划、内部评审和客户汇报 |
+| Intended audiences and outcomes | 面向政企客户决策者、项目干系人与内部评审者；帮助受众理解背景与方案、形成判断，并明确下一步 |
+| Delivery and reading assumptions | 以会议讲解为主，同时需要会后流转和复核；页面应保留关键结论与必要证据，不依赖口头说明才能辨认主题 |
+| Representative narrative/page roles | 当前原型覆盖封面、目录、章节、开放内容和结束语；具体选页、重复、顺序与内容处理由当前项目的 Strategist 根据材料决定 |
+
 - 视觉基调为白底、通信红结构条、银灰内容承载区与少量城市线稿，强调权威、清晰和克制。
 - 结构上分为两个可复用 Master 家族：China Telecom Brand 服务封面、章节与收尾，China Telecom Content 服务目录与正文；它们按视觉体系分工，不是按单个 Layout 拆分出的重复 Master。
 

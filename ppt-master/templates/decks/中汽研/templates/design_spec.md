@@ -2,7 +2,7 @@
 deck_id: 中汽研
 kind: deck
 category: brand
-summary: 中汽研认证展示、技术交流与业务来访场景的深蓝专业模板。
+summary: 中汽研认证展示、评测汇报与技术交流，用于建立可信理解并推进评审或合作；采用专业的深蓝工程视觉。
 keywords: [中汽研, 认证, 评测, 技术交流]
 primary_color: "#004098"
 canvas_format: ppt169
@@ -21,7 +21,13 @@ page_count: 5
 
 ## I. Template Overview
 
-- 适用于产品认证展示、评测汇报、技术推广和业务来访。
+| Application context | Definition |
+| --- | --- |
+| Recurring presentation family | 产品认证展示、评测汇报、技术推广和业务来访 |
+| Intended audiences and outcomes | 面向客户、技术评审者、合作伙伴与来访团队；帮助受众理解认证或评测能力、信任证据，并推进评审、交流或合作下一步 |
+| Delivery and reading assumptions | 以现场讲解和技术交流为主，同时允许会后独立阅读；页面需保留关键结论、证据标签与必要上下文 |
+| Representative narrative/page roles | 当前原型覆盖封面、目录、章节、开放内容和结束语；具体选页、重复、顺序与内容处理由当前项目的 Strategist 根据材料决定 |
+
 - 视觉以中汽研深蓝、白底内容页、方形章节编号和简洁网格为识别核心，强调专业、可信和工程秩序。
 - 结构上分为两个可复用 Master 家族：CATARC Dark 服务封面、章节与收尾，CATARC Light 服务目录与正文；它们按深浅视觉体系分工，不是按单个 Layout 拆分出的重复 Master。
 

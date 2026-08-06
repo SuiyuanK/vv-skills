@@ -26,12 +26,14 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from native_payloads import NativePayloadError, hydrate_native_payload_refs
 from pptx_to_svg.preset_authoring import (
     authored_preset_encoding,
     validate_authored_preset_group,
 )
 
 from ..drawingml.utils import (
+    is_picture_effect_carrier,
     parse_project_geometry_length,
     project_geometry_length_errors,
 )
@@ -54,10 +56,9 @@ _STRUCTURE_ATTRS = frozenset({
     "data-pptx-show-inherited-shapes",
     "data-pptx-show-master-shapes",
     "data-pptx-placeholder",
-    "data-pptx-placeholder-binding",
-    "data-pptx-placeholder-bounds",
-    "data-pptx-placeholder-carrier",
-    "data-pptx-placeholder-idx",
+    "data-pptx-binding",
+    "data-pptx-carrier",
+    "data-pptx-idx",
     "data-pptx-editable",
 })
 _FLAT_FORBIDDEN_STRUCTURE_ATTRS = frozenset(
@@ -119,6 +120,7 @@ _LOCK_ROW_RE = re.compile(r"^-\s+([^:]+?)\s*:\s*(.*?)\s*$")
 _LOCK_PAGE_RE = re.compile(r"^P(\d+)$")
 PPTX_STRUCTURE_MODES = frozenset({"structured", "preserve", "flat"})
 TEMPLATE_ADHERENCE_MODES = frozenset({"strict", "adaptive"})
+TEMPLATE_REUSE_SCOPES = frozenset({"mirror", "layout", "style"})
 PLACEHOLDER_BINDING_MODES = frozenset({"carrier", "proxy"})
 _TEMPLATE_SKIN_ATTRS = frozenset({
     "color",
@@ -208,6 +210,7 @@ class PptxStructureLock:
     """Optional project-level PPTX structure export policy."""
 
     mode: str
+    template_reuse_scope: str | None = None
     template_adherence: str | None = None
     masters: tuple[PptxMasterReference, ...] = ()
     layout_definitions: tuple[PptxLayoutDefinition, ...] = ()
@@ -395,6 +398,13 @@ def template_placeholder_bindings(
 
 def _local_tag(elem: ET.Element) -> str:
     return elem.tag.rsplit("}", 1)[-1] if isinstance(elem.tag, str) else ""
+
+
+def _parse_svg_root(svg_path: Path) -> ET.Element:
+    """Parse one SVG and hydrate compact native metadata in memory."""
+    root = ET.parse(svg_path).getroot()
+    hydrate_native_payload_refs(root, svg_path)
+    return root
 
 
 def _is_authored_preset_atom(elem: ET.Element) -> bool:
@@ -645,6 +655,41 @@ def load_pptx_structure_lock(project_path: Path) -> PptxStructureLock | None:
             "spec_lock.md template_adherence is allowed only in structured or "
             "preserve mode"
         )
+
+    reuse_scope_rows = [
+        value.strip().lower()
+        for key, value in structure_rows
+        if key == "template_reuse_scope"
+    ]
+    if len(reuse_scope_rows) > 1:
+        raise TemplateStructureError(
+            "spec_lock.md pptx_structure allows at most one "
+            "'- template_reuse_scope:' row"
+        )
+    template_reuse_scope = reuse_scope_rows[0] if reuse_scope_rows else None
+    if (
+        template_reuse_scope
+        and template_reuse_scope not in TEMPLATE_REUSE_SCOPES
+    ):
+        allowed = ", ".join(sorted(TEMPLATE_REUSE_SCOPES))
+        raise TemplateStructureError(
+            "spec_lock.md pptx_structure.template_reuse_scope must be one of: "
+            f"{allowed}"
+        )
+    if mode == "preserve" and template_reuse_scope:
+        raise TemplateStructureError(
+            "spec_lock.md preserve mode does not use template_reuse_scope; "
+            "the source PPTX structure is already authoritative"
+        )
+    if mode == "flat" and template_reuse_scope not in {None, "style"}:
+        raise TemplateStructureError(
+            "spec_lock.md flat mode permits only template_reuse_scope: style"
+        )
+    if mode == "structured" and template_reuse_scope == "style":
+        raise TemplateStructureError(
+            "spec_lock.md template_reuse_scope: style requires mode: flat and "
+            "must omit structured template mappings"
+        )
     if any(key == "layout_strategy" for key, _value in structure_rows):
         raise TemplateStructureError(
             "spec_lock.md pptx_structure.layout_strategy is obsolete; SVG pages "
@@ -756,6 +801,39 @@ def load_pptx_structure_lock(project_path: Path) -> PptxStructureLock | None:
     if prototypes and not template_adherence:
         raise TemplateStructureError(
             "spec_lock.md page_layouts requires template_adherence: strict or adaptive"
+        )
+    if template_reuse_scope in {"mirror", "layout"} and not prototypes:
+        raise TemplateStructureError(
+            "spec_lock.md template_reuse_scope mirror/layout requires one "
+            "page_layouts row per page"
+        )
+    if template_reuse_scope == "style" and prototypes:
+        raise TemplateStructureError(
+            "spec_lock.md template_reuse_scope: style must omit page_layouts"
+        )
+    if template_reuse_scope == "mirror":
+        non_mirror = sorted({
+            reference.template_basename
+            for reference in prototypes
+            if reference.replication_mode != "mirror"
+        })
+        if non_mirror:
+            raise TemplateStructureError(
+                "spec_lock.md template_reuse_scope: mirror requires a mirror "
+                "template workspace; non-mirror prototype(s): "
+                + ", ".join(non_mirror)
+            )
+    if mode == "structured" and template_reuse_scope is None and prototypes:
+        # Backward compatibility: projects created before the explicit reuse
+        # axis inherit their former behavior. Mirror workspaces stay literal;
+        # standard/fidelity workspaces remain structural layout references.
+        template_reuse_scope = (
+            "mirror"
+            if all(
+                reference.replication_mode == "mirror"
+                for reference in prototypes
+            )
+            else "layout"
         )
 
     layout_definitions: list[PptxLayoutDefinition] = []
@@ -914,6 +992,7 @@ def load_pptx_structure_lock(project_path: Path) -> PptxStructureLock | None:
             )
     return PptxStructureLock(
         mode=mode,
+        template_reuse_scope=template_reuse_scope,
         template_adherence=template_adherence,
         masters=tuple(masters),
         layout_definitions=tuple(layout_definitions),
@@ -1103,7 +1182,7 @@ def _parse_placeholder_bounds(
     parts = [part for part in re.split(r"[\s,]+", raw.strip()) if part]
     if len(parts) != 4:
         raise TemplateStructureError(
-            f"{svg_path.name}: {element_id} data-pptx-placeholder-bounds must be "
+            f"{svg_path.name}: {element_id} data-pptx-bounds must be "
             "'x y width height'"
         )
     try:
@@ -1134,13 +1213,13 @@ def _parse_placeholder_idx(
     value = raw.strip()
     if not value or not value.isdigit():
         raise TemplateStructureError(
-            f"{svg_path.name}: {element_id} data-pptx-placeholder-idx must be "
+            f"{svg_path.name}: {element_id} data-pptx-idx must be "
             "a non-negative integer"
         )
     parsed = int(value)
     if parsed > OOXML_UINT32_MAX:
         raise TemplateStructureError(
-            f"{svg_path.name}: {element_id} data-pptx-placeholder-idx must be "
+            f"{svg_path.name}: {element_id} data-pptx-idx must be "
             f"at most {OOXML_UINT32_MAX}"
         )
     return parsed
@@ -1159,15 +1238,21 @@ def _validate_placeholder_carrier(
             f"{svg_path.name}: {element_id} placeholder '{placeholder}' must be "
             "carried by one direct <text> child"
         )
-    if placeholder == "picture" and tag not in {"image", "svg"}:
+    picture_carrier = (
+        tag in {"image", "svg"}
+        or (tag == "g" and is_picture_effect_carrier(carrier))
+    )
+    if placeholder == "picture" and not picture_carrier:
         raise TemplateStructureError(
             f"{svg_path.name}: {element_id} picture placeholder must be declared "
-            "with one direct <image> or crop <svg> carrier"
+            "with one direct <image>, crop <svg>, or exact clipped-picture "
+            "effect carrier"
         )
-    if placeholder == "media" and tag not in {"image", "svg"}:
+    if placeholder == "media" and not picture_carrier:
         raise TemplateStructureError(
             f"{svg_path.name}: {element_id} media placeholder must be declared "
-            "with one direct <image> or crop <svg> carrier"
+            "with one direct <image>, crop <svg>, or exact clipped-picture "
+            "effect carrier"
         )
     if (
         placeholder == "object"
@@ -1223,8 +1308,8 @@ def parse_template_slide(
 ) -> TemplateSlideSpec:
     """Parse one SVG's explicit template layout and structure elements."""
     try:
-        root = ET.parse(svg_path).getroot()
-    except (OSError, ET.ParseError) as exc:
+        root = _parse_svg_root(svg_path)
+    except (OSError, ET.ParseError, NativePayloadError) as exc:
         raise TemplateStructureError(
             f"{svg_path.name}: unable to parse SVG structure metadata: {exc}"
         ) from exc
@@ -1358,10 +1443,10 @@ def parse_template_slide(
         placeholder = (
             (placeholder_raw or "").strip().lower() or None
         )
-        bounds_raw = elem.get("data-pptx-placeholder-bounds")
-        placeholder_idx_raw = elem.get("data-pptx-placeholder-idx")
-        binding_raw = elem.get("data-pptx-placeholder-binding")
-        carrier_raw = elem.get("data-pptx-placeholder-carrier")
+        bounds_raw = elem.get("data-pptx-bounds")
+        placeholder_idx_raw = elem.get("data-pptx-idx")
+        binding_raw = elem.get("data-pptx-binding")
+        carrier_raw = elem.get("data-pptx-carrier")
         editable_raw = elem.get("data-pptx-editable")
         is_background = _is_full_canvas_solid_rect(elem, canvas)
         effective_layer = layer or ("slide" if is_background else None)
@@ -1412,15 +1497,11 @@ def parse_template_slide(
             and layer in {"master", "layout"}
             and tag == "g"
             and not _is_authored_preset_atom(elem)
+            and not is_picture_effect_carrier(elem)
         ):
             raise TemplateStructureError(
                 f"{svg_path.name}: {element_id or tag} is a <g> on the {layer} "
                 "layer; Master/Layout fixed elements must be root-level atoms"
-            )
-        if bounds_raw is not None and not placeholder:
-            raise TemplateStructureError(
-                f"{svg_path.name}: {element_id or tag} has placeholder bounds without "
-                "data-pptx-placeholder"
             )
         if placeholder_idx_raw is not None and not placeholder:
             raise TemplateStructureError(
@@ -1435,7 +1516,7 @@ def parse_template_slide(
         if carrier_raw is not None:
             raise TemplateStructureError(
                 f"{svg_path.name}: {element_id or tag} declares "
-                "data-pptx-placeholder-carrier on a root child; the marker belongs "
+                "data-pptx-carrier on a root child; the marker belongs "
                 "on the direct child inside a placeholder <g>"
             )
         if (effective_layer or placeholder) and not element_id:
@@ -1466,14 +1547,14 @@ def parse_template_slide(
         last_order_rank = order_rank
 
         placeholder_bounds = _parse_placeholder_bounds(
-            bounds_raw,
+            bounds_raw if placeholder else None,
             svg_path=svg_path,
             element_id=element_id or tag,
         )
         if structured and placeholder and placeholder_bounds is None:
             raise TemplateStructureError(
                 f"{svg_path.name}: Layout placeholder {element_id!r} requires "
-                "explicit data-pptx-placeholder-bounds; define the "
+                "explicit data-pptx-bounds; define the "
                 "reusable frame from the design zone, not the current text bounds"
             )
         placeholder_idx = _parse_placeholder_idx(
@@ -1505,7 +1586,7 @@ def parse_template_slide(
             if binding_raw is not None and not binding_raw.strip():
                 raise TemplateStructureError(
                     f"{svg_path.name}: placeholder {element_id!r} has an empty "
-                    "data-pptx-placeholder-binding"
+                    "data-pptx-binding"
                 )
             if placeholder_binding not in PLACEHOLDER_BINDING_MODES:
                 allowed = ", ".join(sorted(PLACEHOLDER_BINDING_MODES))
@@ -1519,13 +1600,13 @@ def parse_template_slide(
             carrier_children = [
                 child
                 for child in visual_children
-                if (child.get("data-pptx-placeholder-carrier") or "")
+                if (child.get("data-pptx-carrier") or "")
                 .strip()
                 .lower()
                 == "true"
             ]
             for child in elem:
-                marker = child.get("data-pptx-placeholder-carrier")
+                marker = child.get("data-pptx-carrier")
                 if marker is not None and marker.strip().lower() != "true":
                     raise TemplateStructureError(
                         f"{svg_path.name}: placeholder {element_id!r} carrier marker "
@@ -1534,7 +1615,7 @@ def parse_template_slide(
                 illegal_child_attrs = [
                     attr
                     for attr in _structure_attrs(child)
-                    if attr != "data-pptx-placeholder-carrier"
+                    if attr != "data-pptx-carrier"
                 ]
                 if illegal_child_attrs:
                     raise TemplateStructureError(
@@ -1571,7 +1652,7 @@ def parse_template_slide(
                 if len(visual_children) != 1 or len(carrier_children) != 1:
                     composite_hint = (
                         " For composite object content, declare "
-                        "data-pptx-placeholder-binding='proxy' in the prototype "
+                        "data-pptx-binding='proxy' in the prototype "
                         "and page, or create an adaptive Layout; never add a tiny "
                         "or transparent dummy carrier."
                         if placeholder == "object" else ""
@@ -1579,7 +1660,7 @@ def parse_template_slide(
                     raise TemplateStructureError(
                         f"{svg_path.name}: carrier placeholder {element_id!r} must "
                         "contain exactly one visual direct child and mark it "
-                        "data-pptx-placeholder-carrier='true'."
+                        "data-pptx-carrier='true'."
                         f"{composite_hint}"
                     )
                 carrier = carrier_children[0]
@@ -1737,8 +1818,8 @@ def parse_optional_layout_slides(
     has_structure_metadata = False
     for svg_path in svg_files:
         try:
-            root = ET.parse(svg_path).getroot()
-        except (OSError, ET.ParseError) as exc:
+            root = _parse_svg_root(svg_path)
+        except (OSError, ET.ParseError, NativePayloadError) as exc:
             raise TemplateStructureError(
                 f"{svg_path.name}: unable to inspect SVG Layout metadata: {exc}"
             ) from exc
@@ -1805,8 +1886,8 @@ def flat_structure_metadata_errors(svg_files: list[Path]) -> list[str]:
     errors: list[str] = []
     for svg_path in svg_files:
         try:
-            root = ET.parse(svg_path).getroot()
-        except (OSError, ET.ParseError) as exc:
+            root = _parse_svg_root(svg_path)
+        except (OSError, ET.ParseError, NativePayloadError) as exc:
             errors.append(
                 f"{svg_path.name}: unable to inspect flat-mode metadata: {exc}"
             )
@@ -1904,6 +1985,167 @@ def structured_layout_definition_files(
         )
     _validate_template_slide_contracts(combined_specs)
     return definition_files
+
+
+def template_prototype_lock_errors(
+    structure_lock: PptxStructureLock,
+) -> list[str]:
+    """Validate selected input prototypes before generated pages exist.
+
+    ``page_layouts`` records authoring-input provenance. Strict execution keeps
+    that prototype's Layout identity, while adaptive execution may declare a
+    new Layout under the same Master. Final generated SVGs remain subject to
+    :func:`template_lock_errors` and :func:`template_prototype_errors`.
+    """
+    if structure_lock.mode != "structured":
+        return []
+
+    errors: list[str] = []
+    specs: list[TemplateSlideSpec] = []
+    for prototype in structure_lock.prototypes:
+        try:
+            specs.append(
+                parse_template_slide(prototype.svg_path, prototype.slide_num)
+            )
+        except TemplateStructureError as exc:
+            errors.append(str(exc))
+    if errors:
+        return list(dict.fromkeys(errors))
+
+    try:
+        _validate_template_slide_contracts(specs)
+    except TemplateStructureError as exc:
+        errors.append(str(exc))
+
+    assignments = {
+        reference.slide_num: reference
+        for reference in structure_lock.layouts
+    }
+    definitions = {
+        definition.layout_key: definition
+        for definition in structure_lock.layout_definitions
+    }
+    master_names = {
+        master.master_key: master.master_name
+        for master in structure_lock.masters
+    }
+    prototype_pages = {spec.slide_num for spec in specs}
+    assignment_pages = set(assignments)
+    missing_assignments = sorted(prototype_pages - assignment_pages)
+    missing_prototypes = sorted(assignment_pages - prototype_pages)
+    if missing_assignments:
+        errors.append(
+            "spec_lock.md page_pptx_layouts is missing generated page(s): "
+            + ", ".join(
+                f"P{slide_num:02d}" for slide_num in missing_assignments
+            )
+        )
+    if missing_prototypes:
+        errors.append(
+            "spec_lock.md page_layouts is missing generated page(s): "
+            + ", ".join(f"P{slide_num:02d}" for slide_num in missing_prototypes)
+        )
+
+    adherence = structure_lock.template_adherence or "strict"
+    for spec in specs:
+        assignment = assignments.get(spec.slide_num)
+        if assignment is None:
+            continue
+        definition = definitions.get(assignment.layout_key)
+        if definition is None:
+            errors.append(
+                f"spec_lock.md P{spec.slide_num:02d} references undeclared "
+                f"Layout {assignment.layout_key!r}"
+            )
+            continue
+        expected_master_name = master_names.get(definition.master_key)
+        if (
+            spec.master_key != definition.master_key
+            or spec.master_name != expected_master_name
+        ):
+            errors.append(
+                f"{spec.svg_path.name}: input prototype Master "
+                f"{spec.master_key!r} / {spec.master_name!r} does not match "
+                f"assigned Layout {definition.layout_key!r} Master "
+                f"{definition.master_key!r} / {expected_master_name!r}"
+            )
+
+        reuses_input_layout = spec.layout_key == definition.layout_key
+        must_match_layout = (
+            adherence == "strict"
+            or reuses_input_layout
+            or definition.prototype_svg_path is not None
+        )
+        if must_match_layout and (
+            spec.layout_key != definition.layout_key
+            or spec.layout_name != definition.layout_name
+        ):
+            errors.append(
+                f"{spec.svg_path.name}: input prototype Layout "
+                f"{spec.layout_key!r} / {spec.layout_name!r} does not match "
+                f"assigned Layout {definition.layout_key!r} / "
+                f"{definition.layout_name!r}"
+            )
+        elif (
+            adherence == "adaptive"
+            and not reuses_input_layout
+            and spec.layout_name == definition.layout_name
+        ):
+            errors.append(
+                f"{spec.svg_path.name}: adaptive output Layout "
+                f"{definition.layout_key!r} must use a new picker name instead "
+                f"of input prototype name {spec.layout_name!r}"
+            )
+
+    definition_specs = list(specs)
+    next_slide_num = max(prototype_pages, default=0) + 1
+    for definition in structure_lock.layout_definitions:
+        if definition.prototype_slide_num is not None:
+            source_assignment = assignments.get(definition.prototype_slide_num)
+            if source_assignment is None:
+                errors.append(
+                    f"spec_lock.md Layout {definition.layout_key!r} uses missing "
+                    f"prototype page P{definition.prototype_slide_num:02d}"
+                )
+            elif source_assignment.layout_key != definition.layout_key:
+                errors.append(
+                    f"spec_lock.md Layout {definition.layout_key!r} uses "
+                    f"P{definition.prototype_slide_num:02d}, but that page is "
+                    f"assigned to Layout {source_assignment.layout_key!r}"
+                )
+            continue
+        if definition.prototype_svg_path is None:
+            errors.append(
+                f"spec_lock.md Layout {definition.layout_key!r} has no prototype"
+            )
+            continue
+        try:
+            definition_spec = parse_template_slide(
+                definition.prototype_svg_path,
+                next_slide_num,
+            )
+            next_slide_num += 1
+        except TemplateStructureError as exc:
+            errors.append(str(exc))
+            continue
+        definition_specs.append(definition_spec)
+        expected_master_name = master_names.get(definition.master_key)
+        if (
+            definition_spec.layout_key != definition.layout_key
+            or definition_spec.layout_name != definition.layout_name
+            or definition_spec.master_key != definition.master_key
+            or definition_spec.master_name != expected_master_name
+        ):
+            errors.append(
+                f"spec_lock.md Layout {definition.layout_key!r} definition does "
+                f"not match prototype {definition_spec.svg_path.name} root identity"
+            )
+
+    try:
+        _validate_template_slide_contracts(definition_specs)
+    except TemplateStructureError as exc:
+        errors.append(str(exc))
+    return list(dict.fromkeys(errors))
 
 
 def template_lock_errors(
@@ -2356,9 +2598,9 @@ def _structure_subtree_signature(
 ) -> tuple[tuple[str, tuple[object, ...]], ...]:
     """Read structural or literal-visual signatures for direct SVG children."""
     try:
-        root = ET.parse(svg_path).getroot()
+        root = _parse_svg_root(svg_path)
         materialize_inline_geometry_properties(root)
-    except (OSError, ET.ParseError, GeometryStyleError) as exc:
+    except (OSError, ET.ParseError, NativePayloadError, GeometryStyleError) as exc:
         raise TemplateStructureError(
             f"{svg_path.name}: unable to compare template prototype structure: {exc}"
         ) from exc
@@ -2401,8 +2643,8 @@ def _structure_subtree_signature(
 def _mirror_ordinary_slide_ids(spec: TemplateSlideSpec) -> set[str]:
     """Return stable ids that are ordinary Slide content in one mirror page."""
     try:
-        root = ET.parse(spec.svg_path).getroot()
-    except (OSError, ET.ParseError) as exc:
+        root = _parse_svg_root(spec.svg_path)
+    except (OSError, ET.ParseError, NativePayloadError) as exc:
         raise TemplateStructureError(
             f"{spec.svg_path.name}: unable to inspect mirror page ownership: {exc}"
         ) from exc
@@ -2435,9 +2677,9 @@ def _mirror_slide_local_signature(
     evolved Layout identity to the same stable SVG id.
     """
     try:
-        root = ET.parse(spec.svg_path).getroot()
+        root = _parse_svg_root(spec.svg_path)
         materialize_inline_geometry_properties(root)
-    except (OSError, ET.ParseError, GeometryStyleError) as exc:
+    except (OSError, ET.ParseError, NativePayloadError, GeometryStyleError) as exc:
         raise TemplateStructureError(
             f"{spec.svg_path.name}: unable to compare mirror page visuals: {exc}"
         ) from exc
@@ -2507,6 +2749,205 @@ def _layout_contract_difference(
     return "; ".join(details)
 
 
+def _mirror_comparable_attributes(
+    element: ET.Element,
+    svg_path: Path,
+    *,
+    ignore_structure_attrs: bool,
+) -> dict[str, str]:
+    """Return literal mirror attributes using the validator's normalization."""
+    return {
+        name: _signature_attr_value(
+            name,
+            value,
+            svg_path=svg_path,
+            asset_identity=True,
+        )
+        for name, value in element.attrib.items()
+        if not (
+            ignore_structure_attrs
+            and name.rsplit("}", 1)[-1] in _STRUCTURE_ATTRS
+        )
+    }
+
+
+def _mirror_node_label(element: ET.Element, index: int) -> str:
+    """Return a compact stable-enough path segment for one SVG node."""
+    tag = _local_tag(element)
+    element_id = (element.get("id") or "").strip()
+    return f"{tag}#{element_id}" if element_id else f"{tag}[{index}]"
+
+
+def _mirror_element_difference(
+    expected: ET.Element,
+    actual: ET.Element,
+    *,
+    expected_svg: Path,
+    actual_svg: Path,
+    path: str,
+    ignore_structure_attrs: bool,
+) -> str | None:
+    """Describe the first literal mirror subtree difference."""
+    expected_tag = _local_tag(expected)
+    actual_tag = _local_tag(actual)
+    if expected_tag != actual_tag:
+        return f"{path}: expected <{expected_tag}>, found <{actual_tag}>"
+
+    expected_attrs = _mirror_comparable_attributes(
+        expected,
+        expected_svg,
+        ignore_structure_attrs=ignore_structure_attrs,
+    )
+    actual_attrs = _mirror_comparable_attributes(
+        actual,
+        actual_svg,
+        ignore_structure_attrs=ignore_structure_attrs,
+    )
+    if expected_attrs != actual_attrs:
+        for name in sorted(set(expected_attrs) | set(actual_attrs)):
+            expected_value = expected_attrs.get(name)
+            actual_value = actual_attrs.get(name)
+            if expected_value != actual_value:
+                return (
+                    f"{path}: attribute {name.rsplit('}', 1)[-1]!r} expected "
+                    f"{expected_value!r}, found {actual_value!r}"
+                )
+
+    expected_children = list(expected)
+    actual_children = list(actual)
+    if len(expected_children) != len(actual_children):
+        expected_tspans = sum(
+            _local_tag(child) == "tspan" for child in expected_children
+        )
+        actual_tspans = sum(
+            _local_tag(child) == "tspan" for child in actual_children
+        )
+        if expected_tspans != actual_tspans:
+            return (
+                f"{path}: expected {expected_tspans} direct <tspan> child(ren), "
+                f"found {actual_tspans}; mirror text node count/order must stay "
+                "unchanged"
+            )
+        return (
+            f"{path}: expected {len(expected_children)} child node(s), found "
+            f"{len(actual_children)}"
+        )
+
+    for index, (expected_child, actual_child) in enumerate(
+        zip(expected_children, actual_children),
+        start=1,
+    ):
+        child_path = f"{path}/{_mirror_node_label(expected_child, index)}"
+        difference = _mirror_element_difference(
+            expected_child,
+            actual_child,
+            expected_svg=expected_svg,
+            actual_svg=actual_svg,
+            path=child_path,
+            ignore_structure_attrs=ignore_structure_attrs,
+        )
+        if difference:
+            return difference
+    return None
+
+
+def _mirror_slide_local_difference(
+    expected_spec: TemplateSlideSpec,
+    actual_spec: TemplateSlideSpec,
+    protected_ids: set[str],
+) -> str | None:
+    """Describe the first Slide-local mirror difference."""
+    expected_root = _parse_svg_root(expected_spec.svg_path)
+    actual_root = _parse_svg_root(actual_spec.svg_path)
+    materialize_inline_geometry_properties(expected_root)
+    materialize_inline_geometry_properties(actual_root)
+
+    def selected(root: ET.Element) -> list[ET.Element]:
+        output: list[ET.Element] = []
+        for child in root:
+            if _local_tag(child) in _NON_VISUAL_TAGS:
+                continue
+            element_id = (child.get("id") or "").strip()
+            if element_id and element_id not in protected_ids:
+                continue
+            output.append(child)
+        return output
+
+    expected_children = selected(expected_root)
+    actual_children = selected(actual_root)
+    if len(expected_children) != len(actual_children):
+        return (
+            f"svg: expected {len(expected_children)} Slide-local top-level "
+            f"element(s), found {len(actual_children)}"
+        )
+    for index, (expected, actual) in enumerate(
+        zip(expected_children, actual_children),
+        start=1,
+    ):
+        difference = _mirror_element_difference(
+            expected,
+            actual,
+            expected_svg=expected_spec.svg_path,
+            actual_svg=actual_spec.svg_path,
+            path=f"svg/{_mirror_node_label(expected, index)}",
+            ignore_structure_attrs=True,
+        )
+        if difference:
+            return difference
+    if _scope_visual_resources_signature(
+        expected_root,
+        tuple(expected_children),
+        expected_spec.svg_path,
+    ) != _scope_visual_resources_signature(
+        actual_root,
+        tuple(actual_children),
+        actual_spec.svg_path,
+    ):
+        return "svg: referenced defs, CSS, root styling, or asset identity differs"
+    return None
+
+
+def _mirror_structure_difference(
+    expected_spec: TemplateSlideSpec,
+    actual_spec: TemplateSlideSpec,
+    elements: tuple[TemplateElementSpec, ...],
+) -> str | None:
+    """Describe the first mirror difference in named structural elements."""
+    expected_root = _parse_svg_root(expected_spec.svg_path)
+    actual_root = _parse_svg_root(actual_spec.svg_path)
+    materialize_inline_geometry_properties(expected_root)
+    materialize_inline_geometry_properties(actual_root)
+    expected_by_id = {
+        (child.get("id") or "").strip(): child
+        for child in expected_root
+        if (child.get("id") or "").strip()
+    }
+    actual_by_id = {
+        (child.get("id") or "").strip(): child
+        for child in actual_root
+        if (child.get("id") or "").strip()
+    }
+    for item in elements:
+        expected = expected_by_id.get(item.element_id)
+        actual = actual_by_id.get(item.element_id)
+        if expected is None or actual is None:
+            return (
+                f"svg/{item.element_id}: expected direct structural element is "
+                "missing from one side"
+            )
+        difference = _mirror_element_difference(
+            expected,
+            actual,
+            expected_svg=expected_spec.svg_path,
+            actual_svg=actual_spec.svg_path,
+            path=f"svg/{_mirror_node_label(expected, 1)}",
+            ignore_structure_attrs=False,
+        )
+        if difference:
+            return difference
+    return None
+
+
 def template_prototype_errors(
     specs: list[TemplateSlideSpec],
     structure_lock: PptxStructureLock,
@@ -2551,7 +2992,11 @@ def template_prototype_errors(
             continue
 
         try:
-            literal_visual = reference.replication_mode == "mirror"
+            literal_visual = (
+                structure_lock.template_reuse_scope == "mirror"
+                if structure_lock.template_reuse_scope is not None
+                else reference.replication_mode == "mirror"
+            )
             expected_master_structure = _structure_subtree_signature(
                 prototype.svg_path,
                 prototype.master_elements,
@@ -2576,11 +3021,24 @@ def template_prototype_errors(
             )
             or actual_master_structure != expected_master_structure
         ):
+            master_difference = (
+                _mirror_structure_difference(
+                    prototype,
+                    spec,
+                    prototype.master_elements,
+                )
+                if literal_visual
+                else None
+            )
             errors.append(
                 f"{spec.svg_path.name}: template Master structure differs "
                 f"from prototype {reference.svg_path.name}; strict and adaptive "
                 "routes must retain its ids, topology, geometry, and content"
                 + (" including mirror visual styling" if literal_visual else "")
+                + (
+                    f"; first difference: {master_difference}"
+                    if master_difference else ""
+                )
             )
 
         if literal_visual:
@@ -2601,11 +3059,17 @@ def template_prototype_errors(
                 errors.append(str(exc))
                 continue
             if actual_slide_visual != expected_slide_visual:
+                difference = _mirror_slide_local_difference(
+                    prototype,
+                    spec,
+                    protected_slide_ids,
+                )
                 errors.append(
                     f"{spec.svg_path.name}: mirror Slide-local non-text visuals "
                     f"differ from prototype {reference.svg_path.name}; preserve "
                     "grouping, geometry, paint, effects, and referenced asset "
                     "identity, changing only visible text content"
+                    + (f"; first difference: {difference}" if difference else "")
                 )
 
         try:
@@ -2693,7 +3157,7 @@ def template_prototype_errors(
             if adherence == "strict":
                 errors.append(
                     f"{reference.svg_path.name}: deferred strict template "
-                    "authoring requires explicit data-pptx-placeholder-bounds "
+                    "authoring requires explicit data-pptx-bounds "
                     "on every prototype placeholder; missing: "
                     + ", ".join(missing_bounds)
                 )
@@ -2748,10 +3212,16 @@ def template_prototype_errors(
                     "contract; assign a new key and name"
                 )
         if literal_visual and not placeholder_visual_same:
+            difference = _mirror_structure_difference(
+                prototype,
+                spec,
+                prototype.placeholders,
+            )
             errors.append(
                 f"{spec.svg_path.name}: mirror placeholder geometry or visual "
                 f"styling differs from prototype {reference.svg_path.name}; "
                 "only visible text content may change under the reused Layout"
+                + (f"; first difference: {difference}" if difference else "")
             )
         if not layout_contract_same:
             qualifier = "mirror visual/structural" if literal_visual else "structural"
@@ -2759,6 +3229,14 @@ def template_prototype_errors(
                 spec.layout_elements,
                 prototype.layout_elements,
             )
+            if literal_visual:
+                literal_difference = _mirror_structure_difference(
+                    prototype,
+                    spec,
+                    prototype.layout_elements,
+                )
+                if literal_difference:
+                    difference += f"; first difference: {literal_difference}"
             if adherence == "strict":
                 errors.append(
                     f"{spec.svg_path.name}: strict Layout {qualifier} contract "
@@ -2902,8 +3380,8 @@ def _placement_lint_errors(svg_path: Path) -> list[str]:
     template paint-order violations.
     """
     try:
-        root = ET.parse(svg_path).getroot()
-    except (OSError, ET.ParseError):
+        root = _parse_svg_root(svg_path)
+    except (OSError, ET.ParseError, NativePayloadError):
         return []
     if _local_tag(root) != "svg":
         return []
@@ -2914,7 +3392,7 @@ def _placement_lint_errors(svg_path: Path) -> list[str]:
         for slot in root
         if (slot.get("data-pptx-placeholder") or "").strip()
         for carrier in slot
-        if carrier.get("data-pptx-placeholder-carrier") is not None
+        if carrier.get("data-pptx-carrier") is not None
     }
     for elem in root.iter():
         if elem is root or elem in direct_children:
@@ -2923,7 +3401,7 @@ def _placement_lint_errors(svg_path: Path) -> list[str]:
         if elem in allowed_carriers:
             attrs = [
                 attr for attr in attrs
-                if attr != "data-pptx-placeholder-carrier"
+                if attr != "data-pptx-carrier"
             ]
         if attrs:
             element_id = elem.get("id") or _local_tag(elem) or "<unnamed>"

@@ -2,7 +2,7 @@
 """
 PPT Master - Beautify Identity Extractor
 
-Extract a source deck's visual identity as JSON for the beautify-pptx workflow:
+Extract a source deck's visual identity as JSON for the beautify-pptx profile:
 the declared `theme` (palette + major/minor fonts + master placeholder sizes,
 full bodyStyle ramp in `sizes.body_levels`) plus `observed` usage (run-level
 fonts incl. CJK `ea`, explicit point sizes, and frequent explicit fill colors)
@@ -23,7 +23,7 @@ Examples:
 Dependencies:
     None beyond the standard library (reuses scripts/pptx_to_svg/).
 
-See workflows/beautify-pptx.md for how the emitted identity is consumed.
+See workflows/profiles/beautify-pptx.md for how the emitted identity is consumed.
 """
 
 from __future__ import annotations
@@ -46,9 +46,9 @@ from pptx_to_svg.ooxml_loader import OoxmlPackage  # noqa: E402
 configure_utf8_stdio()
 
 
-def _font_pair(theme_root, font_tag: str) -> dict[str, str]:
-    """Read one <a:majorFont> / <a:minorFont> into {latin, ea} (skip empties)."""
-    out: dict[str, str] = {}
+def _font_pair(theme_root, font_tag: str) -> dict[str, object]:
+    """Read one theme font family, including explicit CJK script mappings."""
+    out: dict[str, object] = {}
     font = theme_root.find(f".//a:fontScheme/a:{font_tag}", NS)
     if font is None:
         return out
@@ -58,6 +58,14 @@ def _font_pair(theme_root, font_tag: str) -> dict[str, str]:
             face = (elem.attrib.get("typeface") or "").strip()
             if face:
                 out[key] = face
+    scripts: dict[str, str] = {}
+    for elem in font.findall("a:font", NS):
+        script = (elem.attrib.get("script") or "").strip()
+        face = (elem.attrib.get("typeface") or "").strip()
+        if script in {"Hans", "Hant", "Jpan", "Hang"} and face:
+            scripts[script] = face
+    if scripts:
+        out["scripts"] = scripts
     return out
 
 

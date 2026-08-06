@@ -1,6 +1,8 @@
 # Project Tools
 
-> Architecture rationale (why `import-sources` defaults are asymmetric for in-repo vs out-of-repo files): see [docs/technical-design.md "Project Structure & Lifecycle"](../../../../docs/technical-design.md#project-structure--lifecycle).
+> **Import boundary**: move only sources already under the repository's
+> `projects/` tree. Copy every other local path, even when `--move` is supplied.
+> Use `--copy` to preserve a projects-local source.
 
 Project tools create, validate, and inspect the standard PPT Master workspace.
 
@@ -11,26 +13,117 @@ Main entry point for project setup and validation.
 ```bash
 python3 scripts/project_manager.py init <project_name> --format ppt169
 python3 scripts/project_manager.py import-sources <project_path> <source1_or_dir> [<source2_or_dir> ...]
+python3 scripts/project_manager.py scaffold-spec <project_path>  # optional manual helper
+python3 scripts/project_manager.py scaffold-lock <project_path>  # optional manual helper
 python3 scripts/project_manager.py validate <project_path>
 python3 scripts/project_manager.py info <project_path>
+python3 scripts/project_manager.py page-context <project_path> P07 [--pretty] [--record-usage]
+python3 scripts/project_manager.py page-context-report <project_path>
 ```
 
 Notes:
-- Files outside the repo are copied into `sources/` by default
-- With `--move`, files outside the repo are moved into `sources/`
+- `init --quick-generate`: only `svg_output/`; no README
+- Files outside `projects/` are always copied into `sources/`
+- `--move` applies only to sources under the repository's `projects/` tree
+- A directly supplied supported bitmap is also copied into `images/` with a
+  collision-safe basename while its original remains archived in `sources/`
 - Directory inputs are expanded non-recursively. After Step 1 conversion,
   pass the source file/directory once when generated Markdown lives beside the
   original source. If Step 1 used `-o` to write Markdown elsewhere, pass both
   the original source path/directory and the Markdown output path/directory.
-- Files already inside the repo are moved into `sources/` by default (with a stderr
-  note), to avoid leaving unintended artifacts that could be committed by mistake.
-  Pass `--copy` to force a copy for in-repo sources instead.
+- A projects-local supplied source directory left strictly empty after import
+  (or empty from the start) is removed; every directory outside `projects/`
+  remains untouched. `--copy` never removes directories.
+- Files already under `projects/` move into `sources/` by default. Pass `--copy`
+  to preserve them in place.
 - `--move` and `--copy` are mutually exclusive.
+- Normal Generate authoring reads `templates/design_spec_reference.md`, writes
+  the complete `design_spec.md` from scratch, then reads
+  `templates/spec_lock_reference.md` and writes the complete lock projection.
+  It does not call either scaffold command.
+- Optional `scaffold-spec` creates `design_spec.md` from
+  `templates/scaffolds/design_spec.md`; `scaffold-lock` creates `spec_lock.md`
+  from `templates/scaffolds/spec_lock.md`. Both substitute project/canvas
+  metadata deterministically and refuse to overwrite an existing artifact.
+- `validate` parses the existing Markdown artifacts against
+  `templates/schemas/design_spec.schema.json` and
+  `templates/schemas/spec_lock.schema.json`. It reports missing sections and
+  fields, illegal enums, malformed page keys, and unmet conditional sections.
+  When optional custom reference lists are present, it also requires every id
+  to resolve to the matching mode, visual-style, or image-rendering catalog,
+  rejects duplicates, and rejects reference rows on non-custom selections;
+  it does not rewrite either artifact or compare their values for textual
+  equality. It also does not prove final-confirmation → Design Spec fidelity or
+  Design Spec/context → lock semantic fidelity; Generate Step 4 owns those two
+  gates before this structural validation. Validation reads the planning
+  artifacts only and never reopens `confirm_ui/result.json`; the final result is
+  consumed once into the Design Spec before validation begins. The design schema is structural lint for
+  the human-readable brief; the lock schema owns machine execution values. For
+  structured template use, strict input prototypes must match their assigned
+  Master/Layout; adaptive input prototypes retain the assigned Master while a
+  new output Layout already declared by Strategist is cross-validated after its
+  generated SVG exists. Versioned
+  Direct-authored current artifacts and optional scaffolds carry the schema
+  marker. Markerless legacy artifacts are left on
+  their prior validation path with a warning;
+  malformed or unsupported markers are errors.
 - PPTX-family inputs are enriched automatically under `analysis/` with
   per-deck `<stem>.identity.json` / `<stem>.slide_library.json` plus the shared
   multi-deck index `source_profile.json` (`decks[]`).
   Multi-deck per project: several PPTX imports each get their own `<stem>.*`
   artifacts and a `decks[]` entry; re-importing the same stem replaces its entry.
+
+### On-demand page execution view
+
+`page-context` projects `design_spec.md` and `spec_lock.md` into one compact
+current-page view on stdout. The default command is read-only; `--pretty`
+changes JSON formatting only. Before projection it revalidates the machine lock
+and selected template-root identities; design-brief values are not treated as
+a second lock. Slide headings at H3–H6 remain readable by the projector. Normal
+generation retains the complete planning artifacts once per valid execution
+context and does not invoke this command before every page; use it only for an
+explicit diagnostic, routing check, or context-usage measurement.
+
+Each invocation deliberately includes the bounded `global` anchor set as a
+cross-page continuity view, not a color/font allowlist. `lock_source` binds that projection to the current
+`spec_lock.md` SHA. `page_context` contains the current §IX brief, rhythm,
+resources, and conditional template/chart assignment. `reference_set` contains
+`kind`, scoped path, SHA, and `once-per-execution-context` policy for the
+project/template Design Specs and selected prototype/chart SVGs. The project
+Design Spec additionally carries
+`same_context_edit_policy: targeted-readback-and-rebind`: when the current main
+agent makes a bounded repair in a valid uncompacted context that preserves
+roster/order/identity/communication, it reads back only the exact changed
+fragments and validates them before continuing. Fresh, compacted, external,
+unknown, or mismatched changes require one complete Design Spec and lock read.
+
+The deprecated `--bundle` flag remains accepted as a compatibility no-op. It
+never appends a Design Spec, prototype SVG, chart SVG, manifest, or text-slot
+sidecar to stdout.
+
+The projection keeps project-specific forbidden rules; universal SVG and icon
+rules remain in the always-loaded execution core. Image rows are selected from
+the current §IX brief, explicit §VIII page assignments, and mirror prototype
+references. When those sources assign images elsewhere but not to the current
+page, the view excludes those assigned images. Any still-unassigned legacy
+image remains in a compatibility subset; `confirmed-none` is emitted only when
+all locked images have a deterministic assignment elsewhere.
+
+Mirror materialization may publish deterministic
+`ppt-master.template-text-slots.v2-min` diagnostics. They are not page-context
+or model inputs. The complete SVG remains the sole template authority; checker
+and structured export validate output attributes, text/tspan topology, and
+referenced-resource hashes against it internally.
+
+`--record-usage` writes a derived snapshot to
+`analysis/page-context/P<NN>.usage.json`. It hashes every input, measures the
+exact compact stdout, and records the reference fingerprints. `tiktoken` is
+loaded lazily with `o200k_base`; when unavailable, the command still succeeds
+and records bytes, characters, hashes, and `tokens: null`.
+`page-context-report` summarizes only fresh snapshots and identifies stale or
+token-unavailable pages plus unique referenced files. Telemetry may be partial;
+it does not measure once-loaded references, source reads, or other session
+context.
 
 Common formats:
 - `ppt169`
@@ -45,8 +138,12 @@ Examples:
 
 ```bash
 python3 scripts/project_manager.py init my_presentation --format ppt169
+python3 scripts/project_manager.py scaffold-spec projects/my_presentation_ppt169_20251116  # optional
+python3 scripts/project_manager.py scaffold-lock projects/my_presentation_ppt169_20251116  # optional
 python3 scripts/project_manager.py validate projects/my_presentation_ppt169_20251116
 python3 scripts/project_manager.py info projects/my_presentation_ppt169_20251116
+python3 scripts/project_manager.py page-context projects/my_presentation_ppt169_20251116 P07 --record-usage
+python3 scripts/project_manager.py page-context-report projects/my_presentation_ppt169_20251116
 ```
 
 ## `project_utils.py`

@@ -16,15 +16,15 @@ PPT Master uses rendering-neutral compiler hints only where ordinary SVG cannot 
 
 The completed SVG remains the full visible page. Removing the metadata must not change browser rendering. Do not copy visible text, geometry, style, or asset values into metadata.
 
-**Hard rule — route boundary**: Free-design and brand-only pages use `pptx_structure.mode: flat`, declare one canonical root `data-pptx-page-role`, and omit every Master/Layout/layer/placeholder marker in this document. Deck/layout template pages declare their final Master and Layout before drawing begins and omit `data-pptx-page-role`; the structured exporter compiles that contract and never selects, clusters, distills, or visually infers it.
+**Hard rule — route boundary**: Free-design, brand-only, and `template_reuse_scope: style` pages use `pptx_structure.mode: flat`, declare one canonical root `data-pptx-page-role`, and omit every Master/Layout/layer/placeholder marker in this document. Only deck/layout template pages whose AI-derived lock records `template_reuse_scope: mirror|layout` declare their final Master and Layout before drawing begins and omit `data-pptx-page-role`; the structured exporter compiles that contract and never selects, clusters, distills, or visually infers it.
 
-**Hard rule — specialized metadata wins**: Use Master/Layout/placeholder metadata for native structure, `data-pptx-replace-with` for optional PowerPoint-native Chart/Table replacement, and the imported/authored shape metadata defined in [`shared-standards.md`](./shared-standards.md) §§1.4–1.5. Do not duplicate those facts with `data-pptx-role`.
+**Hard rule — specialized metadata wins**: Use Master/Layout/placeholder metadata for native structure, `data-pptx-replace-with` for optional PowerPoint-native Chart/Table replacement, and the imported/authored shape metadata defined in [`shared-standards-core.md`](./shared-standards-core.md) §§1.4–1.5. Do not duplicate those facts with `data-pptx-role`.
 
 ---
 
 ## 2. Master and Layout Atoms
 
-On structured deck/layout template routes, Master and fixed Layout visuals are atomic root children:
+On structured `template_reuse_scope: mirror|layout` routes, Master and fixed Layout visuals are atomic root children:
 
 ```xml
 <svg xmlns="http://www.w3.org/2000/svg"
@@ -61,9 +61,9 @@ Use one direct root group as the authoring boundary and one compatible direct ch
 ```xml
 <g id="title-slot"
    data-pptx-placeholder="title"
-   data-pptx-placeholder-bounds="72 48 1136 72">
+   data-pptx-bounds="72 48 1136 72">
   <text id="title-carrier"
-        data-pptx-placeholder-carrier="true"
+        data-pptx-carrier="true"
         x="72" y="100">Actual title</text>
 </g>
 ```
@@ -71,12 +71,12 @@ Use one direct root group as the authoring boundary and one compatible direct ch
 | Requirement | Rule |
 |---|---|
 | Placement | The slot `<g id>` is a direct root child. Structural metadata may not be nested below it. |
-| Bounds | `data-pptx-placeholder-bounds="x y width height"` is mandatory, finite, and positive. It describes the reusable design zone, not the current glyph/content tight bounds. |
-| Carrier | The group contains exactly one compatible direct drawable child marked `data-pptx-placeholder-carrier="true"`. Export unwraps that child into the real Slide placeholder binding. |
-| Identity | `data-pptx-placeholder-idx` is optional; effective indices must be unique within one Layout. Preserve a source index when reconstructing an existing PPTX. |
+| Bounds | `data-pptx-bounds="x y width height"` is mandatory, finite, and positive. It describes the reusable design zone, not the current glyph/content tight bounds. |
+| Carrier | The group contains exactly one compatible direct drawable child marked `data-pptx-carrier="true"`. Export unwraps that child into the real Slide placeholder binding. |
+| Identity | `data-pptx-idx` is optional; effective indices must be unique within one Layout. Preserve a source index when reconstructing an existing PPTX. |
 | Fixed decoration | Reusable decoration does not belong in the slot. Author it as a root Layout atom. Page-specific labels/captions use another slot or remain Slide-local. |
 
-Canonical placeholder values are `title`, `subtitle`, `body`, `picture`, `chart`, `table`, `object`, `media`, `date`, `footer`, and `slide-number`. Carrier compatibility is defined in [`shared-standards.md`](./shared-standards.md) §7.
+Canonical placeholder values are `title`, `subtitle`, `body`, `picture`, `chart`, `table`, `object`, `media`, `date`, `footer`, and `slide-number`. Carrier compatibility is defined in [`pptx-structure-interface.md`](./pptx-structure-interface.md) §2.
 
 ### 3.2 Explicit composite proxy
 
@@ -85,8 +85,8 @@ When one reusable region is a composite object that cannot bind to one real Powe
 ```xml
 <g id="hero-composite-slot"
    data-pptx-placeholder="object"
-   data-pptx-placeholder-binding="proxy"
-   data-pptx-placeholder-bounds="544 160 664 472">
+   data-pptx-binding="proxy"
+   data-pptx-bounds="544 160 664 472">
   <rect x="544" y="160" width="664" height="472" fill="#E2E8F0"/>
   <text x="576" y="214">Visible composite content</text>
 </g>
@@ -111,17 +111,22 @@ Use `data-pptx-role` only when no specialized marker owns the behavior:
 | `header`, `footer`, `logo`, `watermark`, `chrome` | Identify Slide-local static framing without claiming Master/Layout ownership. |
 | `page-number` | Identify a Slide-local number when no `slide-number` placeholder exists. |
 
+On flat pages, a direct root background image or full-canvas scrim/decoration
+rectangle may carry the matching role and remain a primitive. Give the marked
+element a stable unique `id`; do not add a `<g>` solely to avoid an
+ungrouped-element advisory.
+
 Do not add structural roles to ordinary titles, body copy, cards, KPIs, diagrams, charts, icons, or images.
 
 ---
 
 ## 5. Validation and Migration
 
-For structured deck/layout template projects, validation rejects:
+For structured `template_reuse_scope: mirror|layout` projects, validation rejects:
 
 - a missing root Master/Layout identity or a page-to-lock mismatch;
 - a Master/Layout `<g>`, nested structure marker, missing/stale id, or inconsistent shared atom contract;
 - a slot without positive bounds, a carrier-bound slot without exactly one compatible carrier, or a proxy binding on a non-`object` slot;
 - incomplete page mappings, cross-Master Layout-key reuse, or conflicting same-key Layout contracts.
 
-Legacy structured/template SVGs using unmapped `baseline`, `preserve`, `layout_strategy: distill`, `data-pptx-layout-kind`, `distilled`, `utility`, direct atomic placeholders, or an incomplete Master identity are not a second supported structured contract. Run [`restore-pptx-structure`](../workflows/restore-pptx-structure.md) before generation or export. An explicit `mode: flat` free-design/brand-only project is current and intentionally has no Master identity. When original PPTX/native facts exist, migration restores those identities first; otherwise the main Agent explicitly derives structured template metadata. Export never performs that derivation.
+Legacy structured/template SVGs using unmapped `baseline`, `preserve`, `layout_strategy: distill`, `data-pptx-layout-kind`, `distilled`, `utility`, direct atomic placeholders, or an incomplete Master identity are not a second supported structured contract. Create a new workspace through [`create-template`](../workflows/create-template.md) before generation or export. An explicit `mode: flat` free-design/brand-only project is current and intentionally has no Master identity. Original PPTX Type A may preserve native identities that still exist in the package; legacy SVG-only Type B may guide `standard` / `fidelity` visually but does not authorize topology recovery. Export never derives, repairs, or migrates structure.

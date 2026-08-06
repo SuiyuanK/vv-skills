@@ -1,12 +1,14 @@
 ---
-description: Deterministic route selection rules for PPT Master requests
+description: Deterministic selection among PPT Master's four top-level artifact routes.
 ---
 
 # Routing Rules
 
-Route selection authority for PPT Master. Use this file before entering the main pipeline or any standalone workflow.
+Route selection authority for PPT Master. Select exactly one top-level route, then activate only the child workflows, profiles, and stages owned by that route.
 
-**Hard rule**: If this file conflicts with a route summary in `SKILL.md`, `AGENTS.md`, or a user-facing doc, this file wins for route selection. After a route is selected, the target workflow file or `SKILL.md` owns execution details.
+**Hard rule**: If this file conflicts with a route summary elsewhere in the
+Skill package or in a repository-level user-facing document, this file wins for
+route selection. After selection, the route authority owns execution.
 
 ---
 
@@ -14,79 +16,144 @@ Route selection authority for PPT Master. Use this file before entering the main
 
 | Rule | Behavior |
 |---|---|
-| Deterministic routes | Do not ask the user to choose when a request matches a defined route. Enter the route directly. |
-| Missing prerequisite | State the missing prerequisite and stop that route. Do not route around the prerequisite with an invented alternative. |
-| Ambiguous deck optimization | Ask exactly one discriminator question: preserve original page count/order and slide wording, or treat the deck as source material and restructure it? |
-| Explicit user override | Honor explicit route instructions only when the route preconditions are satisfied. |
-| Summary conflict | Use this file for route choice, then read the route's own workflow file before executing it. |
+| One artifact lifecycle | Every request enters Generate PPTX, Create Template, Fill Native PPTX, or Enhance Native PPTX |
+| Supporting documents are not top-level routes | Create Template child workflows, generation profiles, stages, and governance documents refine the selected route; never offer them as competing top-level routes |
+| Missing prerequisite | State the missing prerequisite and stop that route; do not invent an alternative |
+| Ambiguous existing-deck request | Ask one discriminator question only when needed: regenerate visible slides, fill native slide shells with new content, or preserve slides and add native behavior? |
+| Explicit user override | Honor explicit route instructions only when the route preconditions are satisfied |
 
-**Forbidden - route-choice prompts**: Do not present multiple implementation paths when this file already defines the route. Ordinary style choices and finite options belong at the next existing confirmation gate.
-
-### 1.1 SVG Page-Design Scope
-
-| Route family | SVG contract |
-|---|---|
-| Main SVG pipeline and `beautify-pptx` | Every visible output-page object is authored in the completed page SVG; templates and locks guide authoring but are not export-time visual overlays. |
-| `create-template` | Each reusable template SVG is a complete visual reference plus explicit PowerPoint structure metadata. Library and project outputs use the same routing: required `templates/`, optional `images/` / `icons/`, and optional on-demand review output under `exports/`. |
-| `template-fill-pptx` and `native-enhance-pptx` | Native PPTX editing routes. They retain their OOXML contracts and are not forced through SVG. |
-| Animation, transition, speaker-note, and narration workflows | Presentation behavior/content outside the visible page-design layer; keep their dedicated sidecars and package post-processing. |
-
-**Hard rule — no automatic structure upgrade**: Free-design and brand-only generation in the main SVG pipeline remains `pptx_structure.mode: flat` from planning through export. Repeated Slide-local objects never trigger `structured`, Master/Layout promotion, placeholder inference, or deduplication. A main-pipeline generation that requires reusable native Master/Layout/placeholder behavior must consume an explicit validated deck/layout template workspace in Step 3; when none exists, run [`create-template`](./create-template.md) first and return with its workspace root. The minimal Master plus Blank Layout emitted by flat export is PPTX package scaffolding, not an inferred design master. Raw PPTX template plus new content remains the `template-fill-pptx` route in §3.
-
-**Hard rule**: Apply SVG page-design closure only after selecting an SVG-authoring route. Do not reroute a native PPTX operation merely to make every package-level capability pass through SVG.
+**Forbidden — route-choice menus**: Do not present multiple implementation paths when the request already matches one row in §2. Ordinary design choices remain at the selected route's existing confirmation gate.
 
 ---
 
-## 2. Main Route Matrix
+## 2. Top-Level Route Matrix
 
-| Request shape | Trigger | Route | Forbidden route | Preconditions | Output contract | Stop condition |
-|---|---|---|---|---|---|---|
-| Topic only, no source facts | User supplies only a topic name or requirement and no substantive source material | [`topic-research`](./topic-research.md), then main `SKILL.md` pipeline | Direct main pipeline with invented facts | Web/source gathering is allowed or user supplies facts | Research material becomes source input for Step 1 | Stop if facts cannot be gathered and the user supplies no source |
-| Source material can be reworked into a new story | PDF/DOCX/URL/Markdown/text/conversation content, or PPTX treated as content | Main `SKILL.md` pipeline | Direct PPTX edit workflows | Source content exists or is available in conversation | `design_spec.md`, `spec_lock.md`, `svg_output/`, exported PPTX | Stop at Step gates when required artifacts are missing |
-| PPTX as re-architectable source | User allows page count/order/outline to change, or asks to split/merge/drop/reorder slides | Main `SKILL.md` pipeline with `ppt_to_md.py` plus PPTX intake | [`beautify-pptx`](./beautify-pptx.md) | PPTX source exists | Markdown content plus `analysis/source_profile.json`; Strategist may re-outline | Stop if user requires exact 1:1 page preservation |
-| Explicit template workspace path | User provides a current brand/layout/deck workspace root containing `templates/design_spec.md`, or a compatible legacy-flat root containing `design_spec.md` | Main `SKILL.md` Step 3 | Fuzzy template lookup by bare name; passing a current workspace's inner `templates/` directory instead of its root | Path resolves, frontmatter kind is valid, and every deck/layout SVG satisfies the current structured Master/Layout/slot contract | Stage `templates/` plus any existing `images/` and `icons/` into the target project peers; consume the target project's own root in place; never consume the review-only `exports/` directory | Route only a structurally legacy SVG contract to [`restore-pptx-structure`](./restore-pptx-structure.md) before Step 3; a legacy-flat directory shape alone remains compatible and does not trigger restoration |
-
----
-
-## 3. PPTX-Specific Routes
-
-| Request shape | Trigger | Route | Forbidden route | Preconditions | Output contract | Stop condition |
-|---|---|---|---|---|---|---|
-| Raw PPTX template plus new material/topic | "Use this PPT template to generate a PPTX", "fill this deck", "replace copy", native slide shell reuse | [`template-fill-pptx`](./template-fill-pptx.md) | Main SVG pipeline directly from raw PPTX template | Source PPTX plus content material or topic brief | New native PPTX in `exports/`, cloned/patched by OOXML | Stop if user instead wants a reusable template package |
-| Existing PPTX, preserve page split and wording | "Beautify", "re-layout", "make more professional" with same slide count/order and verbatim text | [`beautify-pptx`](./beautify-pptx.md) | Main pipeline if page count/order changes | Single source PPTX | Regenerated deck through SVG pipeline, one source slide to one output slide | Stop if user asks to split/merge/drop/reorder |
-| Finished PPTX, native enhancement only | Add notes, recorded narration, auto-advance, transitions, or stable-layout metadata | [`native-enhance-pptx`](./native-enhance-pptx.md) | SVG regeneration | Finished PPTX exists; content/layout should stay stable | Patched PPTX through direct OOXML | Stop if user asks for visual redesign |
-| PPTX/reference design should become a reusable template | "Create a template", "make reusable", "build template from this deck/design", including a template for one named initialized project | [`create-template`](./create-template.md) | `template-fill-pptx` one-off fill | PPTX/design reference exists, or the user gives an explicit template-creation brief; project output additionally requires an initialized target project | Both scopes produce one workspace with required `templates/`, optional `images/` / `icons/`, and optional on-demand `exports/<id>_template_preview.pptx`; library root is `skills/ppt-master/templates/<kind>/<id>/`, project root is `projects/<name>/`; only library scope is registered | Return the exact workspace root for main Step 3; the target project's own root may resume in place after validation |
-
-**Hard rule**: Raw PPTX template plus "generate PPTX" routes to `template-fill-pptx` by default. A raw PPTX is not a Step 3 template until `create-template` has produced a reusable template directory.
-
-**Hard rule**: Beautify is strictly 1:1. Any page count or page order change is re-architecture and therefore the main pipeline, not beautify.
-
----
-
-## 4. Optional and Post-Route Workflows
-
-| Request shape | Trigger | Route | Preconditions | Output contract | Stop condition |
+| Route | Request shape | Authority | Preconditions | Mutation model | Output contract |
 |---|---|---|---|---|---|
-| Brand identity setup | Brand asset, brand site URL, branded PPTX/PDF, or explicit brand setup request | [`create-brand`](./create-brand.md) | Brand source exists or can be inspected | Complete identity-only workspace under `templates/brands/<id>/` | Stop if no brand source or brand intent exists |
-| Continue a split-mode project | "Continue generating `projects/<name>`" after the planning session | [`resume-execute`](./resume-execute.md) | Project has planning-session artifacts | Execution-session SVG generation and export | Stop if required planning artifacts are missing |
-| Refine spec before generation | User explicitly asks to refine/review/revise the spec before SVG work, or confirms `refine_spec: true` | [`refine-spec`](./refine-spec.md) | Strategist confirmation stage completed | Revised `design_spec.md` and `spec_lock.md` before Step 5/6 | Stop until user approves the refined spec |
-| Restore legacy PowerPoint structure | Existing structured/template SVGs use unmapped `baseline`, `preserve`, `layout_strategy: distill`, `data-pptx-layout-kind`, `distilled`/`utility`, direct atomic placeholders, or an incomplete root Master identity | [`restore-pptx-structure`](./restore-pptx-structure.md) before generation/export or before Step 3 template consumption | Legacy structured SVG project/package exists; original PPTX/native facts are used when available; an explicit `mode: flat` free-design/brand-only project and a flat package directory are not triggers | Current structured SVG contract plus unique `pptx_masters` / `pptx_layouts` definitions and complete `page_pptx_layouts` assignments | Stop if structure cannot be restored without an explicit design decision |
-| Data chart calibration | Generated deck contains data charts | [`verify-charts`](./verify-charts.md) between Step 6 and Step 7 | SVG pages exist | Calibrated chart coordinates before export | Stop on chart geometry errors until fixed |
-| Object-level animation tuning | User asks for animation order, timing, effects, or object reveal behavior | [`customize-animations`](./customize-animations.md) | SVG groups / exported context exist | `animations.json` or validated animation config | Stop if requested target objects cannot be identified |
-| Live preview / element selection / annotations | User mentions live preview, preview, visual check in browser, clicking/selecting an element, or applying browser annotations | [`live-preview`](./live-preview.md) | Project exists; for annotation apply, generated SVGs exist | Running preview service or applied annotations plus re-export | Stop only if project path or SVGs are missing |
-| Visual review | User explicitly asks for per-page visual self-check or visual rubric | [`visual-review`](./visual-review.md) between Step 6 and Step 7 | SVG pages exist | Visual review findings and fixes before post-processing | Do not run without explicit user request |
-| Recorded narration / video export | User asks for narration, voiceover, or video-style export | [`generate-audio`](./generate-audio.md) after post-processing | Notes and exported deck exist | Audio files and optional narration-embedded PPTX | Stop for the workflow's single backend/voice confirmation |
+| Generate PPTX | Create a new presentation; regenerate an existing deck visually; use source material or a topic; optionally select a registered library template or supply an explicit workspace | [`generate-pptx`](./generate-pptx.md) | Source facts exist or research can gather them; explicit quick intent activates its profile | Author new SVG pages and export a new PPTX | Default: spec, lock, SVG, validation, and PPTX; Quick: optional source/resource artifacts, no spec/lock, SVG, and one PPTX |
+| Create Template | Create a reusable brand/style/layout/deck template from one or more PPTX/SVG files, images/PDFs, direct or file-based text, documents/websites, brand assets, or a mixed reference bundle | [`create-template`](./create-template.md) | A reusable-template request exists; reference material is optional, and project scope additionally requires an initialized target project | Author a new portable workspace; never modify any reference file in place | Workspace with required `templates/`, optional `images/` / `icons/`, and optional review `exports/` |
+| Fill Native PPTX | Use a raw PPTX's native slide shells and replace/fill content | [`template-fill-pptx`](./template-fill-pptx.md) | Source PPTX plus new material/topic | Clone and patch PPTX through OOXML; no SVG pipeline | New filled PPTX in project `exports/` |
+| Enhance Native PPTX | Keep a finished PPTX's visible slides stable while adding notes, audio, timings, or transitions | [`native-enhance-pptx`](./native-enhance-pptx.md) | Finished source PPTX exists | Append/update scoped OOXML parts; no slide regeneration | New enhanced PPTX in project `exports/` |
 
 ---
 
-## 5. Template Name Boundary
+## 3. Generate PPTX Profiles and Stages
 
-| User input | Route behavior |
+| Request condition | Generate-route behavior |
 |---|---|
-| Explicit current brand/layout/deck workspace root containing `templates/design_spec.md` | Enter main Step 3 template option; use the workspace root, not its inner `templates/` directory |
-| Explicit legacy-flat root containing `design_spec.md` | Enter main Step 3 through the compatibility reader; flat packaging alone does not require structure restoration |
-| Bare template name, brand name, style label, or vague "use a template" | Do not trigger Step 3; treat as style input for Strategist confirmation stage |
-| User asks "what templates exist?" | Answer as Q&A by listing indexed paths; do not advance the pipeline |
-| Raw `.pptx` called a template | Route by §3, usually `template-fill-pptx`; never treat it as a Step 3 template path |
+| Explicit quick/fast, skip-strategy, or direct SVG-to-PPTX intent | Activate [`quick-generate`](./profiles/quick-generate.md): prepare sources/resources as needed, let the current agent decide without interaction, directly apply at most one exact workspace root per kind supplied for this run, otherwise use free design, omit Strategist/Confirm UI/spec/lock, hand-author SVG, run the lockless final checker, and export the final PPTX |
+| Topic only, or supplied sources leave planning-critical factual gaps | Run [`topic-research`](./stages/topic-research.md) inside the selected Generate profile's source preparation: immediately for topic-only input, or after conversion and reading for source-backed input; research only the identified gaps |
+| Existing PPTX may be split, merged, dropped, reordered, or re-outlined | Treat the PPTX as source content through [`generate-pptx`](./generate-pptx.md) Step 1 and its PPTX intake; continue the default pipeline unless explicit Quick Generate intent selected that profile |
+| Existing PPTX must preserve wording, page count, and page order 1:1 | Activate the [`beautify-pptx`](./profiles/beautify-pptx.md) profile inside the main pipeline |
+| Default Generate reaches planning | Step 3 prepares template candidates without interaction. Stage 1 then confirms the communication contract and free-design/template choice together; only a confirmed non-free choice runs [`apply-template-workspace`](./stages/apply-template-workspace.md) before Stage 2 |
+| Explicit current brand/style/layout/deck workspace root | Default Generate preserves the exact path as a Stage-1 template candidate; Quick Generate validates and installs it directly without Steps 3–4 or Confirm UI. Classify it as `library` only when its normalized root exactly matches a registered index entry; otherwise retain `explicit`. Consume the workspace root, never only its inner `templates/` directory |
+| Split-mode project resumes in a fresh chat | Run [`resume-execute`](./stages/resume-execute.md) inside the active Generate route |
+| Existing generated project needs a deck-wide `colors.*` or universal `typography.font_family` substitution | Stay in Generate; load [`update_spec.py`](../scripts/docs/update_spec.md), honor its supported-key boundary, then rerun the final quality gate and Step 7 export |
+| User explicitly requests spec refinement | Run [`refine-spec`](./stages/refine-spec.md) after Design Spec Gate 1 and before lock Gate 2 |
+| Data charts exist | Run [`verify-charts`](./stages/verify-charts.md) before export |
+| User explicitly requests visual review | Run [`visual-review`](./stages/visual-review.md) before post-processing |
+| User requests preview, selection, or annotation application | Use the default Generate pipeline and run [`live-preview`](./stages/live-preview.md) at the stage defined there; explicit Quick + preview intent falls back to default rather than dropping preview |
+| User requests page transitions, auto-advance, or deck-wide animation settings without page-specific motion planning or an existing `animations.json` | Load [`animations`](../references/animations.md) and apply its export-level contract |
+| `<project_path>/animations.json` already exists, the user explicitly requests per-slide/object-level animation control, or the effective Custom Animations outcome in `design_spec.md §I` is enabled | Run [`customize-animations`](./stages/customize-animations.md) after the final SVG quality gate and any enabled speaker-note pass, before Generate Step 7. A §IX `Motion suggestion` informs an active pass but never triggers it alone |
+| Generate PPTX receives an explicit narration request or has effective Narration Audio enabled in `design_spec.md §I`; Enhance Native PPTX has a confirmed `audio.enabled: true` module | Run [`generate-audio`](./stages/generate-audio.md) after the owning route's notes/export readiness; Generate audio implies effective Speaker Notes enabled |
 
-**Forbidden - fuzzy resolution**: Do not resolve bare names to local template directories on the user's behalf. The user must provide the path that enters Step 3. For every current template kind, that path is the workspace root.
+**Hard rule — profile, not fifth route**: The 1:1 beautify behavior uses the same Strategist → Executor → SVG export lifecycle as Generate PPTX. It changes content/page invariants; it does not define a separate artifact lifecycle.
+
+**Hard rule — direct-generation profile, not a fifth route**: `quick-generate`
+stays inside Generate PPTX but owns an explicit SVG → PPTX short circuit. Page
+count alone never activates or blocks it. Conversion, bounded research, and
+project-local resources remain available. Package capabilities may be requested
+or agent-selected. Quick may consume exact Brand/Style/Layout/Deck workspaces as
+flat authoring inputs; compiling reusable Master/Layout/placeholder structure
+still requires the default lock-backed Generate pipeline.
+
+---
+
+## 4. Template and Master/Layout Boundary
+
+**Hard rule — no direct structure grafting**: An existing PPTX or SVG is never upgraded in place by adding Master/Layout/placeholder structure. If reusable native structure is required:
+
+1. Run [`create-template`](./create-template.md) to produce a separate validated workspace.
+2. Pass that workspace root to [`generate-pptx`](./generate-pptx.md) as a Stage-1 template candidate.
+3. Author new structured SVG pages whose Master/Layout contract exists from their first generated draft.
+4. Export a new PPTX from those pages.
+
+When a PPTX already contains native Master/Layout parts, `create-template` mirror may read and preserve those existing package facts in the new workspace. It does not infer missing historical intent. An incomplete or legacy SVG package may guide `standard` / `fidelity` visually, but it is not mutated into a structured template and cannot claim source-topology recovery.
+
+**Hard rule — no automatic structure upgrade**: Free-design, brand-only, and style-only generation remains `pptx_structure.mode: flat`. Repeated Slide-local objects never trigger `structured`, Master/Layout promotion, placeholder inference, or deduplication. The minimal Master plus Blank Layout emitted by flat export is package scaffolding, not an inferred reusable design master.
+
+| Input | Route behavior |
+|---|---|
+| Raw PPTX called a template + new content | Fill Native PPTX unless the user explicitly asks for a reusable template workspace |
+| Any supported reference bundle or direct-text brief + reusable template request | Create Template |
+| Current template workspace root + content | [`generate-pptx`](./generate-pptx.md) Stage-1 template choice |
+| Legacy-flat Brand/Layout/Deck root satisfying its current kind contract; Layout/Deck also require current structured SVGs | [`apply-template-workspace`](./stages/apply-template-workspace.md) compatibility reader; Style has no flat form |
+| Semantic-legacy or incomplete structured package | Create a new workspace through Create Template; do not migrate in place |
+| Request to add a master directly to an existing PPTX/SVG | Unsupported; explain the Create Template → Generate PPTX lifecycle |
+
+---
+
+## 5. Create Template Child Workflows
+
+| Selected kind | Behavior |
+|---|---|
+| `brand` | Dispatch to [`create-brand`](./create-template/create-brand.md); write identity only and no SVG roster |
+| `style` | Dispatch to [`create-style`](./create-template/create-style.md); write reusable communication method and design direction only, with no SVG roster or native structure |
+| `layout` | Dispatch to [`create-layout`](./create-template/create-layout.md); author brand-neutral, application-neutral structure and an SVG roster |
+| `deck` | Dispatch to [`create-deck`](./create-template/create-deck.md); author descriptive recurring-application context with integrated identity, structure, and an SVG roster |
+
+Create Template remains the fixed route name and owns the shared contract. These four documents are mutually exclusive child workflows, not additional top-level routes.
+
+**Hard rule — classify reusable rules, not source completeness**: A complete
+PPTX does not automatically select Deck. Use Brand when only identity is
+stable; use Style when reusable communication method and design direction
+should travel without identity truth, page prototypes, or native
+structure; use Layout when structure is brand-neutral and the communication
+application stays downstream-defined; use Deck when structure carries identity
+or reusable scenario/content semantics.
+
+---
+
+## 6. Native and Shared Post-Processing Boundary
+
+| Artifact state | Narration route |
+|---|---|
+| Main-generated project with notes and exported deck | Shared [`generate-audio`](./stages/generate-audio.md) stage |
+| Arbitrary finished PPTX that must preserve visible slides | Enhance Native PPTX; its narration module invokes the same shared audio-stage rules |
+
+Object animation for generated SVG projects uses the animation stage. Native PPTX routes preserve existing object-animation fingerprints and do not silently claim an animation-editing capability.
+
+---
+
+## 7. Template Selection Boundary
+
+| User input | Behavior |
+|---|---|
+| Default Generate | Step 3 prepares candidates only; Stage 1 confirms one communication contract plus either free design or template use in the same interaction |
+| Explicit current workspace root containing `templates/design_spec.md` | Preserve it as a Stage-1 candidate and initialize template mode; preselect that specific candidate only when it is the sole supplied root. An exact registered-root match may be displayed as `library` |
+| No exact workspace root and no explicit template intent | Initialize Stage 1 to free design; the user may switch to template mode and select an indexed workspace |
+| Explicit template intent or any exact workspace root | Initialize Stage 1 to template mode; exactly one root may be preselected, while multiple roots remain unselected candidates |
+| Bare template/brand name or style label without an explicit template-use request | Do not resolve it to a local path or preselect a template; treat it as a style brief. An explicit request to use templates still initializes template mode, but leaves the specific candidate for the user to choose |
+| “What templates exist?” in chat | List indexed workspace paths; Stage 1 still requires an explicit free-design/template choice |
+
+The default UI and chat discovery read only these indexes. Never scan the
+corresponding directories to construct or supplement the catalog:
+
+| Kind | Discovery index |
+|---|---|
+| Brand | [`brands_index.json`](../templates/brands/brands_index.json) |
+| Style | [`styles_index.json`](../templates/styles/styles_index.json) |
+| Layout | [`layouts_index.json`](../templates/layouts/layouts_index.json) |
+| Deck | [`decks_index.json`](../templates/decks/decks_index.json) |
+
+**Hard rule — one Stage-1 confirmation, delayed template reading**: Author the
+communication recommendation without reading candidate workspaces. Stage 1
+confirms that contract and the template/free-design choice together. Only then
+validate/install selected roots and complete the handoff. Stage 2 waits for that
+handoff, reads only the installed project-local state, and decides how to apply
+it; it never reselects a template.
+
+**Forbidden — fuzzy resolution**: Never resolve a bare name to a local template
+directory on the user's behalf. A library choice comes from an index-derived
+root; an unregistered workspace requires an explicit root, including the exact
+validated workspace handed off by Create Template in the current conversation.
