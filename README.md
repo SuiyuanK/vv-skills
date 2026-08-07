@@ -34,6 +34,19 @@
 - `scripts/vivado_fix_ncurses.sh`：幂等修复脚本，复制库到三个产品的 `lib/lnx64.o/` 根级 + 安装器目录根级（防重装卡死），并在器件列表缺失时自动重新生成。
 - `references/diagnosis.md`：完整排查过程记录（症状、根因、诊断命令、验证方法）。
 
+### `synopsys-license-server`
+
+诊断并修复 Synopsys（VCS/Verdi/DC 等）license 配置已写入 `.zshrc`/`.bashrc`，但 `lmstat` 报 `Cannot connect to license server system. (-15,570:115 "Operation now in progress")` 的问题，并为 license 服务配置 systemd 开机自启。
+
+三层根因：
+
+- **端口不一致**：`SNPSLMD_LICENSE_FILE` 里的端口（如 `27080`）与 license 文件 `SERVER` 行端口（`27000`）对不上 → 客户端连不到服务器。
+- **`/usr/tmp` 缺失**：`lmgrd` 把运行临时目录硬编码为 `/usr/tmp/.flexlm`（无环境变量可改，`/usr` 不可写），缺它就报 `Can't make directory /usr/tmp/.flexlm` 并退出。需 `sudo mkdir -p /usr/tmp && sudo chmod 1777 /usr/tmp`。
+- **lmgrd 默认 daemonize 与 systemd `Type=simple` 冲突**：需给 `lmgrd` 加 `-z` 前台运行、配合 `Type=simple`，systemd 才能正确跟踪。
+
+- `scripts/setup_synopsys_license.sh`：幂等脚本，校验 hostid、检查 `/usr/tmp`、核对端口、生成并启用 systemd 用户服务（`-z` + `Type=simple`）+ `enable-linger` 开机自启，最后用 `lmstat` 验证。
+- `references/diagnosis.md`：完整排查过程记录。
+
 ### `linux-ext4-superblock-recovery`
 
 安全诊断和恢复无法启动或无法识别的 EXT4 文件系统，覆盖 dracut UUID 超时、超级块校验失败、备用超级块验证，以及 DiskGenius 修改卷标后未同步更新 `metadata_csum` 的实证案例。
@@ -91,6 +104,7 @@ Copy-Item -Recurse .\linux-ext4-superblock-recovery "$env:USERPROFILE\.codex\ski
 Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
 Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
 Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"
+Copy-Item -Recurse .\synopsys-license-server "$env:USERPROFILE\.codex\skills\synopsys-license-server"
 ```
 
 安装 `ppt-master` 的 Python 依赖：
