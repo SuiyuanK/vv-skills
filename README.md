@@ -34,6 +34,18 @@
 - `scripts/vivado_fix_ncurses.sh`：幂等修复脚本，复制库到三个产品的 `lib/lnx64.o/` 根级 + 安装器目录根级（防重装卡死），并在器件列表缺失时自动重新生成。
 - `references/diagnosis.md`：完整排查过程记录（症状、根因、诊断命令、验证方法）。
 
+### `spyglass-x2025-linux7-ubuntu26-fix`
+
+诊断并事务化适配 Synopsys SpyGlass X-2025.06 在 x86_64 Ubuntu 26.04 / Linux kernel 7 上的平台分类、发行版白名单、Bash/dash wrapper 和产品替换 allocator 兼容问题。
+
+主要安全边界：
+
+- 仅接受 X-2025.06 的已知结构；任一缺失、重复、冲突或未知锚点都会在写入前停止。
+- `scripts/spyglass_compat.py` 固定执行 `diagnose` → 显式授权 `apply` → normal-mode `verify`，并只通过动态 hash manifest 回滚；不自动 sudo。
+- 只把 Linux 7 映射到既有 `Linux4` runtime，不使用全局 `SKIP_PLATFORM_CHECK`、不伪造发行版、不修改 shell rc、不生成缺失的 Library Compiler payload。
+- 备份、staging、manifest 与验证日志只写调用工作区的 `./tmp/spyglass-x2025-linux7-ubuntu26-fix/`。
+- `references/diagnosis.md` 记录分层根因与实际验证；`references/patch-matrix.md` 记录逐文件准入和拒绝规则。
+
 ### `synopsys-license-server`
 
 诊断并修复 Synopsys（VCS/Verdi/DC 等）license 配置已写入 `.zshrc`/`.bashrc`，但 `lmstat` 报 `Cannot connect to license server system. (-15,570:115 "Operation now in progress")` 的问题，并为 license 服务配置 systemd 开机自启。
@@ -105,6 +117,7 @@ Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\ski
 Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
 Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"
 Copy-Item -Recurse .\synopsys-license-server "$env:USERPROFILE\.codex\skills\synopsys-license-server"
+Copy-Item -Recurse .\spyglass-x2025-linux7-ubuntu26-fix "$env:USERPROFILE\.codex\skills\spyglass-x2025-linux7-ubuntu26-fix"
 ```
 
 安装 `ppt-master` 的 Python 依赖：
