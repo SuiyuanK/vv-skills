@@ -1,10 +1,2 @@
 __pycache__/
-*.py[cod]
-*.log
-*.tmp
-.DS_Store
-Thumbs.db
-.codex/vvwork/
-.env
-.env.*
-!.env.example
+ppt-master/.venv/*
