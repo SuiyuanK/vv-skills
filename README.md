@@ -34,30 +34,38 @@
 - `scripts/vivado_fix_ncurses.sh`：幂等修复脚本，复制库到三个产品的 `lib/lnx64.o/` 根级 + 安装器目录根级（防重装卡死），并在器件列表缺失时自动重新生成。
 - `references/diagnosis.md`：完整排查过程记录（症状、根因、诊断命令、验证方法）。
 
-### `spyglass-x2025-linux7-ubuntu26-fix`
+### `synopsys-eda-fix`
 
-诊断并事务化适配 Synopsys SpyGlass X-2025.06 在 x86_64 Ubuntu 26.04 / Linux kernel 7 上的平台分类、发行版白名单、Bash/dash wrapper 和产品替换 allocator 兼容问题。
+诊断并修复 Synopsys X-2025.06 EDA 工具在 Linux Mint 22.3（Ubuntu 24.04 基础、glibc 2.39）与 Linux kernel 7.0.0 上的兼容问题，覆盖 VCS、Verdi、Design Compiler、Library Compiler、SpyGlass 和 SCL 2025.03。
+
+主要修复范围：
+
+- 处理 Synopsys vendor scripts 的 `/bin/sh`/Bash 不兼容和 `csh` 前置依赖。
+- 为 VCS 链接补充 `--no-as-needed`，修复 `vfs_fopen`、`snps_mem_*` 等 undefined reference。
+- 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
+- 为 Library Compiler 在 glibc 2.39 上的退出阶段崩溃提供结果校验与包装脚本。
+- 覆盖 Verdi supplementary post-install 失败以及 FlexLM `lmgrd`/`snpslmd` 的 `/usr/tmp`、CRLF、端口和 systemd 配置问题。
+- 严格限定已验证的系统和产品版本；其他发行版、内核或 Synopsys 版本不得直接套用。
+
+### `qqmusic-linux-fix`
+
+诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04、x86_64、Linux kernel 7 环境中启动闪退的问题。
 
 主要安全边界：
 
-- 仅接受 X-2025.06 的已知结构；任一缺失、重复、冲突或未知锚点都会在写入前停止。
-- `scripts/spyglass_compat.py` 固定执行 `diagnose` → 显式授权 `apply` → normal-mode `verify`，并只通过动态 hash manifest 回滚；不自动 sudo。
-- 只把 Linux 7 映射到既有 `Linux4` runtime，不使用全局 `SKIP_PLATFORM_CHECK`、不伪造发行版、不修改 shell rc、不生成缺失的 Library Compiler payload。
-- 备份、staging、manifest 与验证日志只写调用工作区的 `./tmp/spyglass-x2025-linux7-ubuntu26-fix/`。
-- `references/diagnosis.md` 记录分层根因与实际验证；`references/patch-matrix.md` 记录逐文件准入和拒绝规则。
+- 先通过终端输出区分动态库缺失与 GPU compositor 崩溃，只对已确认的图形栈问题应用启动参数。
+- 逐项验证 `--disable-gpu-sandbox` 等候选参数，不把登录或网络告警误判为闪退根因。
+- 优先创建用户级 `.desktop` 覆盖，不直接修改系统启动器，使修复可回滚并避免被软件包更新覆盖。
 
-### `synopsys-license-server`
+### `nemo-cinnamon-ghostty`
 
-诊断并修复 Synopsys（VCS/Verdi/DC 等）license 配置已写入 `.zshrc`/`.bashrc`，但 `lmstat` 报 `Cannot connect to license server system. (-15,570:115 "Operation now in progress")` 的问题，并为 license 服务配置 systemd 开机自启。
+诊断并修复 Cinnamon/Nemo 的“在终端中打开”被现有 Ghostty 窗口工作目录覆盖的问题。
 
-三层根因：
+主要安全边界：
 
-- **端口不一致**：`SNPSLMD_LICENSE_FILE` 里的端口（如 `27080`）与 license 文件 `SERVER` 行端口（`27000`）对不上 → 客户端连不到服务器。
-- **`/usr/tmp` 缺失**：`lmgrd` 把运行临时目录硬编码为 `/usr/tmp/.flexlm`（无环境变量可改，`/usr` 不可写），缺它就报 `Can't make directory /usr/tmp/.flexlm` 并退出。需 `sudo mkdir -p /usr/tmp && sudo chmod 1777 /usr/tmp`。
-- **lmgrd 默认 daemonize 与 systemd `Type=simple` 冲突**：需给 `lmgrd` 加 `-z` 前台运行、配合 `Type=simple`，systemd 才能正确跟踪。
-
-- `scripts/setup_synopsys_license.sh`：幂等脚本，校验 hostid、检查 `/usr/tmp`、核对端口、生成并启用 systemd 用户服务（`-z` + `Type=simple`）+ `enable-linger` 开机自启，最后用 `lmstat` 验证。
-- `references/diagnosis.md`：完整排查过程记录。
+- 先核对 Cinnamon terminal 设置、Ghostty single-instance 行为和 wrapper 目标，不把 `xdg-terminal-exec` 的结果直接当作修复依据。
+- 仅在目标文件不存在或内容已知时创建、替换用户级 wrapper，并在写入前展示内容、备份与回滚方案。
+- wrapper 显式保留 Nemo 传入的当前目录并禁用 Ghostty GTK single-instance；不修改系统 desktop 文件，也不转发不兼容的 `exec-arg`。
 
 ### `linux-ext4-superblock-recovery`
 
@@ -112,12 +120,13 @@
 Copy-Item -Recurse .\codex-history-recovery "$env:USERPROFILE\.codex\skills\codex-history-recovery"
 Copy-Item -Recurse .\windows-vivado-clean-uninstall "$env:USERPROFILE\.codex\skills\windows-vivado-clean-uninstall"
 Copy-Item -Recurse .\vivado-ubuntu26-ncurses-fix "$env:USERPROFILE\.codex\skills\vivado-ubuntu26-ncurses-fix"
+Copy-Item -Recurse .\synopsys-eda-fix "$env:USERPROFILE\.codex\skills\synopsys-eda-fix"
+Copy-Item -Recurse .\qqmusic-linux-fix "$env:USERPROFILE\.codex\skills\qqmusic-linux-fix"
+Copy-Item -Recurse .\nemo-cinnamon-ghostty "$env:USERPROFILE\.codex\skills\nemo-cinnamon-ghostty"
 Copy-Item -Recurse .\linux-ext4-superblock-recovery "$env:USERPROFILE\.codex\skills\linux-ext4-superblock-recovery"
 Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
 Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
 Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"
-Copy-Item -Recurse .\synopsys-license-server "$env:USERPROFILE\.codex\skills\synopsys-license-server"
-Copy-Item -Recurse .\spyglass-x2025-linux7-ubuntu26-fix "$env:USERPROFILE\.codex\skills\spyglass-x2025-linux7-ubuntu26-fix"
 ```
 
 安装 `ppt-master` 的 Python 依赖：
