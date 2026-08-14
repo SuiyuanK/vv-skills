@@ -22,8 +22,8 @@ Examples:
         --pptx exports/demo.pptx --video exports/demo.mp4 --force
 
 Dependencies:
-    ffprobe for animation-window validation. Optional exported-video calibration
-    additionally requires ffmpeg and numpy.
+    ffprobe for animation-window validation. Optional exported-video timeline
+    calibration additionally requires ffmpeg and numpy.
 """
 
 from __future__ import annotations
@@ -57,7 +57,12 @@ from pptx_animations import (  # noqa: E402
     normalize_animation_effect,
     normalize_animation_trigger,
 )
-from pptx_transitions import read_slide_transition_xml  # noqa: E402
+from pptx_transitions import (  # noqa: E402
+    DEFAULT_TRANSITION_DURATION,
+    normalize_transition_effect_request,
+    read_slide_transition_xml,
+    validate_seconds,
+)
 from svg_to_pptx.animation_config import (  # noqa: E402
     animation_group_effect_entries,
     scan_project_targets,
@@ -66,8 +71,11 @@ from svg_to_pptx.animation_config import (  # noqa: E402
     validate_transition_config,
 )
 from svg_to_pptx.pptx_package.narration import (  # noqa: E402
+    DEFAULT_NARRATION_START_FLOOR,
     NARRATION_EXTENSIONS,
+    narration_lead_in_seconds,
     probe_audio_duration,
+    read_narration_start_delay_xml,
 )
 
 configure_utf8_stdio()
@@ -119,6 +127,7 @@ class AnimationGroupState:
     source_index: int
     duration_ms: int
     original_delay_ms: int
+    trigger: str
 
 
 @dataclass(frozen=True)
@@ -155,6 +164,40 @@ class SubtitleMergeResult:
     minimum_video_adjustment_ms: int | None = None
     maximum_video_adjustment_ms: int | None = None
     minimum_video_correlation: float | None = None
+
+
+@dataclass(frozen=True)
+class PowerPointTiming:
+    """One slide's transition, narration, and advance timing in milliseconds."""
+
+    transition_ms: int
+    narration_delay_ms: int
+    advance_ms: int
+
+
+@dataclass(frozen=True)
+class VideoSlideTiming:
+    """One slide mapped from the PPTX clock to an exported-video clock."""
+
+    slide_name: str
+    transition_ms: int
+    narration_delay_ms: int
+    advance_ms: int
+    powerpoint_slide_start_ms: int
+    powerpoint_narration_start_ms: int
+    video_slide_start_ms: int
+    video_narration_start_ms: int
+    adjustment_ms: int
+    correlation: float
+    audio_path: Path
+
+
+@dataclass(frozen=True)
+class VideoTimelineCalibration:
+    """Page-level calibration between one narrated PPTX and exported video."""
+
+    slides: tuple[VideoSlideTiming, ...]
+    powerpoint_timeline_ms: int
 
 
 def _timestamp_to_ms(value: str) -> int:
@@ -301,9 +344,20 @@ def _subtitle_fingerprint(slide_names: list[str], subtitle_dir: Path) -> str:
     return digest.hexdigest()
 
 
+def _finite_non_negative_seconds(value: object, field: str) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or value < 0
+    ):
+        raise ValueError(f'{field} must be a finite non-negative number')
+    return float(value)
+
+
 def _load_timing_plan(
     path: Path,
-) -> tuple[str, float, dict[str, list[TimingPlanEntry]]]:
+) -> tuple[str, float, float | None, dict[str, list[TimingPlanEntry]]]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError(f"Narration timing plan must be a JSON object: {path}")
@@ -311,6 +365,7 @@ def _load_timing_plan(
         "version",
         "srt_sha256",
         "narration_padding",
+        "narration_start_floor",
         "slides",
     }
     if unknown_top:
@@ -331,17 +386,18 @@ def _load_timing_plan(
             'Narration timing plan field "srt_sha256" must be a lowercase '
             "SHA-256 digest of the ordered page-local SRT files"
         )
-    narration_padding = raw.get("narration_padding")
-    if (
-        isinstance(narration_padding, bool)
-        or not isinstance(narration_padding, (int, float))
-        or not math.isfinite(float(narration_padding))
-        or narration_padding < 0
-    ):
-        raise ValueError(
-            'Narration timing plan field "narration_padding" must be a '
-            "finite non-negative number"
+    narration_padding = _finite_non_negative_seconds(
+        raw.get("narration_padding"),
+        'Narration timing plan field "narration_padding"',
+    )
+    narration_start_floor = (
+        _finite_non_negative_seconds(
+            raw["narration_start_floor"],
+            'Narration timing plan field "narration_start_floor"',
         )
+        if "narration_start_floor" in raw
+        else None
+    )
     slides = raw.get("slides")
     if not isinstance(slides, dict):
         raise ValueError('Narration timing plan field "slides" must be an object')
@@ -397,7 +453,7 @@ def _load_timing_plan(
             entries.append(TimingPlanEntry(group_id, cue_number))
             seen_groups.add(group_id)
         result[slide_name] = entries
-    return srt_sha256, float(narration_padding), result
+    return srt_sha256, narration_padding, narration_start_floor, result
 
 
 def _load_canonical_animation_config(path: Path) -> dict[str, Any]:
@@ -495,6 +551,58 @@ def _animation_scope(
     if not isinstance(value, dict):
         raise ValueError(f'{label} field "animation" must be an object')
     return value
+
+
+def _transition_scope(
+    scope: dict[str, Any],
+    *,
+    label: str,
+) -> dict[str, Any]:
+    value = scope.get("transition", {})
+    if not isinstance(value, dict):
+        raise ValueError(f'{label} field "transition" must be an object')
+    return value
+
+
+def _effective_transition_duration_ms(
+    config: dict[str, Any],
+    slide_cfg: dict[str, Any],
+) -> int:
+    """Resolve the destination slide's effective transition duration."""
+    defaults = config.get("defaults", {})
+    if not isinstance(defaults, dict):
+        raise ValueError('Canonical animations.json field "defaults" must be an object')
+    default_transition = _transition_scope(
+        defaults,
+        label="Canonical animations.json defaults",
+    )
+    default_effect, _default_options = normalize_transition_effect_request(
+        default_transition.get("effect", "fade"),
+        default_transition.get("effect_options"),
+    )
+    default_duration = validate_seconds(
+        default_transition.get("duration", DEFAULT_TRANSITION_DURATION),
+        "canonical transition duration",
+        allow_zero=default_effect is None,
+    )
+
+    slide_transition = _transition_scope(
+        slide_cfg,
+        label="Canonical animations.json slide",
+    )
+    if "effect" in slide_transition:
+        effect, _effect_options = normalize_transition_effect_request(
+            slide_transition["effect"],
+            slide_transition.get("effect_options"),
+        )
+    else:
+        effect = default_effect
+    duration = validate_seconds(
+        slide_transition.get("duration", default_duration),
+        "canonical slide transition duration",
+        allow_zero=effect is None,
+    )
+    return 0 if effect is None else round(duration * 1000)
 
 
 def _effective_slide_animation(
@@ -928,6 +1036,7 @@ def _resolve_animation_groups(
                 source_index=source_index,
                 duration_ms=playback_duration_ms,
                 original_delay_ms=original_delay_ms,
+                trigger=effect_trigger,
             )
         )
     return states, use_svg
@@ -963,10 +1072,17 @@ def rebuild_animations(
     output_path: Path,
     narration_padding: float,
     force: bool,
+    narration_start_floor: float = DEFAULT_NARRATION_START_FLOOR,
 ) -> AnimationBuildResult:
     """Derive narration timing without modifying the canonical animation file."""
-    if not math.isfinite(narration_padding) or narration_padding < 0:
-        raise ValueError("Narration padding must be finite and non-negative")
+    narration_padding = _finite_non_negative_seconds(
+        narration_padding,
+        "Narration padding",
+    )
+    narration_start_floor = _finite_non_negative_seconds(
+        narration_start_floor,
+        "Narration start floor",
+    )
     _reject_output_alias(
         output_path,
         [canonical_path, plan_path],
@@ -983,9 +1099,12 @@ def rebuild_animations(
 
     timing_plan: dict[str, list[TimingPlanEntry]] | None = None
     if plan_path.is_file():
-        expected_srt_sha256, planned_padding, loaded_plan = _load_timing_plan(
-            plan_path
-        )
+        (
+            expected_srt_sha256,
+            planned_padding,
+            planned_start_floor,
+            loaded_plan,
+        ) = _load_timing_plan(plan_path)
         if not math.isclose(
             narration_padding,
             planned_padding,
@@ -995,6 +1114,16 @@ def rebuild_animations(
             raise ValueError(
                 "Narration padding differs from the timing plan: "
                 f"plan={planned_padding}, command={narration_padding}"
+            )
+        if planned_start_floor is not None and not math.isclose(
+            narration_start_floor,
+            planned_start_floor,
+            rel_tol=0,
+            abs_tol=1e-9,
+        ):
+            raise ValueError(
+                "Narration start floor differs from the timing plan: "
+                f"plan={planned_start_floor}, command={narration_start_floor}"
             )
         current_srt_sha256 = _subtitle_fingerprint(slide_names, subtitle_dir)
         if current_srt_sha256 != expected_srt_sha256:
@@ -1049,6 +1178,17 @@ def rebuild_animations(
                 f'Derived animation slide "{slide_name}" must be an object'
             )
         settings = _effective_slide_animation(canonical, canonical_slide)
+        transition_duration_ms = _effective_transition_duration_ms(
+            canonical,
+            canonical_slide,
+        )
+        narration_lead_in_ms = round(
+            narration_lead_in_seconds(
+                transition_duration_ms / 1000,
+                start_floor=narration_start_floor,
+            )
+            * 1000
+        )
         plan_entries = timing_plan.get(slide_name) if timing_plan else None
         states, used_svg = _resolve_animation_groups(
             project_path,
@@ -1103,7 +1243,11 @@ def rebuild_animations(
                 f'Derived animation slide "{slide_name}" groups must be an object'
             )
 
-        previous_end_ms = 0
+        # Start modes are row-relative; slide completion spans overlapping rows.
+        previous_start_ms = 0
+        previous_row_end_ms = 0
+        timeline_end_ms = 0
+        has_previous_row = False
         referenced_cues: set[int] = set()
         seen_groups: set[str] = set()
         for state in states:
@@ -1114,24 +1258,33 @@ def rebuild_animations(
                 if first_group_effect
                 else None
             )
+            if not has_previous_row:
+                sequence_base_ms = 0
+            elif state.trigger == "with-previous":
+                sequence_base_ms = previous_start_ms
+            else:
+                sequence_base_ms = previous_row_end_ms
             if cue_number is None:
                 if first_group_effect:
                     fallback_count += 1
                 delay_ms = state.original_delay_ms
-                actual_start_ms = previous_end_ms + delay_ms
+                actual_start_ms = sequence_base_ms + delay_ms
             else:
                 anchored_count += 1
                 referenced_cues.add(cue_number)
-                desired_start_ms = cues[cue_number - 1].start_ms
-                actual_start_ms = max(desired_start_ms, previous_end_ms)
-                delay_ms = actual_start_ms - previous_end_ms
+                cue_start_ms = cues[cue_number - 1].start_ms
+                desired_start_ms = narration_lead_in_ms + cue_start_ms
+                actual_start_ms = max(desired_start_ms, sequence_base_ms)
+                delay_ms = actual_start_ms - sequence_base_ms
                 drift_ms = actual_start_ms - desired_start_ms
                 if drift_ms > 500:
                     drift_warnings.append(
                         f"{slide_name}/{state.group_id}: cue {cue_number} "
-                        f"starts at {_seconds_from_ms(desired_start_ms):.3f}s, "
+                        f"starts at {_seconds_from_ms(cue_start_ms):.3f}s after "
+                        f"a {_seconds_from_ms(narration_lead_in_ms):.3f}s lead-in; "
                         f"animation starts at {_seconds_from_ms(actual_start_ms):.3f}s "
-                        f"(after-previous drift {_seconds_from_ms(drift_ms):.3f}s)"
+                        f"({state.trigger} drift "
+                        f"{_seconds_from_ms(drift_ms):.3f}s)"
                     )
 
             group_value = groups_value.setdefault(state.group_id, {})
@@ -1154,16 +1307,26 @@ def rebuild_animations(
                 effect_value = derived_effect_entries[state.effect_index][1]
             effect_value["order"] = state.order
             effect_value["delay"] = _seconds_from_ms(delay_ms)
-            effect_value["trigger"] = "after-previous"
-            previous_end_ms = actual_start_ms + state.duration_ms
+            effect_value["trigger"] = state.trigger
+            previous_start_ms = actual_start_ms
+            previous_row_end_ms = actual_start_ms + state.duration_ms
+            timeline_end_ms = max(timeline_end_ms, previous_row_end_ms)
+            has_previous_row = True
 
         ignored_cue_count += len(cues) - len(referenced_cues)
 
-        advance_ms = int((audio_duration + narration_padding) * 1000)
-        if previous_end_ms > advance_ms:
+        advance_ms = round(
+            (
+                audio_duration
+                + narration_padding
+                + narration_lead_in_ms / 1000
+            )
+            * 1000
+        )
+        if timeline_end_ms > advance_ms:
             raise ValueError(
                 f'Animations on slide "{slide_name}" end at '
-                f"{_seconds_from_ms(previous_end_ms):.3f}s, after the recorded "
+                f"{_seconds_from_ms(timeline_end_ms):.3f}s, after the recorded "
                 f"slide advance at {_seconds_from_ms(advance_ms):.3f}s"
             )
 
@@ -1223,7 +1386,8 @@ def rebuild_animations(
     )
 
 
-def _presentation_slide_members(package: zipfile.ZipFile) -> list[str]:
+def presentation_slide_members(package: zipfile.ZipFile) -> list[str]:
+    """Return slide package members in presentation order."""
     try:
         presentation_root = ET.fromstring(package.read("ppt/presentation.xml"))
         relationships_root = ET.fromstring(
@@ -1270,17 +1434,21 @@ def _presentation_slide_members(package: zipfile.ZipFile) -> list[str]:
     return members
 
 
-def _read_powerpoint_timings(pptx_path: Path, slide_count: int) -> list[tuple[int, int]]:
-    timings: list[tuple[int, int]] = []
+def _read_powerpoint_timings(
+    pptx_path: Path,
+    slide_count: int,
+) -> list[PowerPointTiming]:
+    timings: list[PowerPointTiming] = []
     with zipfile.ZipFile(pptx_path) as package:
-        slide_members = _presentation_slide_members(package)
+        slide_members = presentation_slide_members(package)
         if len(slide_members) != slide_count:
             raise ValueError(
                 f"Narrated PPTX has {len(slide_members)} slides, "
                 f"but the project has {slide_count}"
             )
         for slide_index, member in enumerate(slide_members, 1):
-            summary = read_slide_transition_xml(package.read(member))
+            slide_xml = package.read(member)
+            summary = read_slide_transition_xml(slide_xml)
             if summary.logical_count != 1:
                 raise ValueError(
                     f"Narrated PPTX slide {slide_index} has "
@@ -1292,24 +1460,45 @@ def _read_powerpoint_timings(pptx_path: Path, slide_count: int) -> list[tuple[in
                     f"Narrated PPTX slide {slide_index} has no recorded advance time"
                 )
             transition_ms = summary.duration_ms or 0
-            if advance_ms <= 0 or transition_ms < 0:
+            narration_delay_ms = read_narration_start_delay_xml(
+                slide_xml.decode("utf-8")
+            )
+            if (
+                advance_ms <= 0
+                or transition_ms < 0
+                or narration_delay_ms < 0
+                or narration_delay_ms >= advance_ms
+            ):
                 raise ValueError(
                     f"Narrated PPTX slide {slide_index} has invalid timing values"
                 )
-            timings.append((transition_ms, advance_ms))
+            timings.append(
+                PowerPointTiming(
+                    transition_ms=transition_ms,
+                    narration_delay_ms=narration_delay_ms,
+                    advance_ms=advance_ms,
+                )
+            )
     return timings
 
 
 def _powerpoint_audio_starts(
-    timings: list[tuple[int, int]],
+    timings: list[PowerPointTiming],
 ) -> tuple[list[int], int]:
     """Return theoretical narration starts and the complete PPTX timeline."""
     audio_starts: list[int] = []
     timeline_ms = 0
-    for transition_ms, advance_ms in timings:
-        audio_start_ms = timeline_ms + transition_ms
+    for timing in timings:
+        slide_start_ms = timeline_ms
+        audio_start_ms = (
+            slide_start_ms
+            + timing.transition_ms
+            + timing.narration_delay_ms
+        )
         audio_starts.append(audio_start_ms)
-        timeline_ms = audio_start_ms + advance_ms
+        timeline_ms = (
+            slide_start_ms + timing.transition_ms + timing.advance_ms
+        )
     return audio_starts, timeline_ms
 
 
@@ -1318,7 +1507,7 @@ def _require_numpy() -> Any:
         import numpy as np
     except ImportError as exc:
         raise RuntimeError(
-            "Exported-video subtitle calibration requires numpy. "
+            "Exported-video timeline calibration requires numpy. "
             "Install it with: python3 -m pip install numpy"
         ) from exc
     return np
@@ -1406,11 +1595,15 @@ def _best_correlation(search: Any, template: Any) -> tuple[int, float]:
 
 def _alignment_template_bounds(
     fine_envelope: Any,
-    cues: list[SubtitleCue],
+    cues: list[SubtitleCue] | None,
 ) -> tuple[int, int]:
     duration_ms = len(fine_envelope)
-    start_ms = min(cues[0].start_ms, max(0, duration_ms - 500))
-    cue_end_ms = min(cues[-1].end_ms, duration_ms)
+    if cues:
+        start_ms = min(cues[0].start_ms, max(0, duration_ms - 500))
+        cue_end_ms = min(cues[-1].end_ms, duration_ms)
+    else:
+        start_ms = 0
+        cue_end_ms = duration_ms
     end_ms = min(duration_ms, start_ms + _ALIGNMENT_TEMPLATE_MAX_MS)
     end_ms = min(end_ms, max(start_ms + 1000, cue_end_ms))
     if end_ms - start_ms < 500:
@@ -1423,7 +1616,7 @@ def _locate_audio_start(
     video_coarse: Any,
     audio_fine: Any,
     audio_coarse: Any,
-    cues: list[SubtitleCue],
+    cues: list[SubtitleCue] | None,
     predicted_start_ms: int,
 ) -> tuple[int, float]:
     """Locate one page narration near its predicted exported-video position."""
@@ -1475,7 +1668,7 @@ def _locate_audio_start(
 def _align_audio_starts_to_video(
     *,
     slide_names: list[str],
-    local_cues: dict[str, list[SubtitleCue]],
+    local_cues: dict[str, list[SubtitleCue] | None],
     theoretical_starts: list[int],
     audio_dir: Path,
     video_path: Path,
@@ -1486,7 +1679,7 @@ def _align_audio_starts_to_video(
     ffmpeg_path = shutil.which("ffmpeg")
     if ffmpeg_path is None:
         raise RuntimeError(
-            "Exported-video subtitle calibration requires ffmpeg. "
+            "Exported-video timeline calibration requires ffmpeg. "
             "Install ffmpeg and make it available on PATH."
         )
 
@@ -1499,13 +1692,15 @@ def _align_audio_starts_to_video(
         audio_path = _find_audio(audio_dir, slide_name)
         audio_paths.append(audio_path)
         audio_fine, audio_coarse = _decode_audio_envelopes(audio_path, ffmpeg_path)
+        slide_cues = local_cues.get(slide_name)
         if (
-            local_cues[slide_name][-1].end_ms
+            slide_cues
+            and slide_cues[-1].end_ms
             > len(audio_fine) + _ALIGNMENT_END_TOLERANCE_MS
         ):
             raise ValueError(
                 f"{slide_name}.srt ends after its narration audio: "
-                f"cue end={_seconds_from_ms(local_cues[slide_name][-1].end_ms):.3f}s, "
+                f"cue end={_seconds_from_ms(slide_cues[-1].end_ms):.3f}s, "
                 f"decoded audio={_seconds_from_ms(len(audio_fine)):.3f}s"
             )
         if index == 0:
@@ -1521,7 +1716,7 @@ def _align_audio_starts_to_video(
             video_coarse,
             audio_fine,
             audio_coarse,
-            local_cues[slide_name],
+            slide_cues,
             predicted_start_ms,
         )
         if correlation < _ALIGNMENT_MIN_CORRELATION:
@@ -1534,22 +1729,120 @@ def _align_audio_starts_to_video(
             raise ValueError(
                 f"Exported-video audio order is invalid at slide {slide_name}"
             )
-        final_cue_end_ms = (
-            aligned_start_ms + local_cues[slide_name][-1].end_ms
-        )
+        final_audio_end_ms = aligned_start_ms + len(audio_fine)
         if (
-            final_cue_end_ms
+            final_audio_end_ms
             > len(video_fine) + _ALIGNMENT_END_TOLERANCE_MS
         ):
             raise ValueError(
-                f"Exported video ends before the final cue on slide {slide_name}: "
-                f"cue end={_seconds_from_ms(final_cue_end_ms):.3f}s, "
+                f"Exported video ends before the narration on slide {slide_name}: "
+                f"audio end={_seconds_from_ms(final_audio_end_ms):.3f}s, "
                 f"decoded video audio={_seconds_from_ms(len(video_fine)):.3f}s"
             )
         aligned_starts.append(aligned_start_ms)
         correlations.append(correlation)
 
     return aligned_starts, correlations, audio_paths
+
+
+def calibrate_video_timeline(
+    *,
+    slide_names: list[str],
+    pptx_path: Path,
+    audio_dir: Path,
+    video_path: Path,
+    subtitle_dir: Path | None = None,
+) -> VideoTimelineCalibration:
+    """Calibrate PPTX slide starts against narration in an exported video.
+
+    Page-local SRT improves the correlation template when available. Audio-only
+    narration remains supported by matching each complete page track.
+    """
+    if not slide_names:
+        raise ValueError("Video timeline calibration requires at least one slide")
+    if len(set(slide_names)) != len(slide_names):
+        raise ValueError("Video timeline calibration slide names must be unique")
+
+    timings = _read_powerpoint_timings(pptx_path, len(slide_names))
+    theoretical_starts, timeline_ms = _powerpoint_audio_starts(timings)
+    local_cues: dict[str, list[SubtitleCue] | None] = {}
+    for slide_name in slide_names:
+        subtitle_path = (
+            subtitle_dir / f"{slide_name}.srt"
+            if subtitle_dir is not None
+            else None
+        )
+        local_cues[slide_name] = (
+            _parse_srt(subtitle_path)
+            if subtitle_path is not None and subtitle_path.is_file()
+            else None
+        )
+
+    aligned_starts, correlations, audio_paths = _align_audio_starts_to_video(
+        slide_names=slide_names,
+        local_cues=local_cues,
+        theoretical_starts=theoretical_starts,
+        audio_dir=audio_dir,
+        video_path=video_path,
+    )
+
+    slides: list[VideoSlideTiming] = []
+    powerpoint_slide_start_ms = 0
+    previous_video_slide_start_ms = -1
+    for (
+        slide_name,
+        timing,
+        powerpoint_narration_start_ms,
+        video_narration_start_ms,
+        correlation,
+        audio_path,
+    ) in zip(
+        slide_names,
+        timings,
+        theoretical_starts,
+        aligned_starts,
+        correlations,
+        audio_paths,
+    ):
+        raw_video_slide_start_ms = (
+            video_narration_start_ms
+            - timing.transition_ms
+            - timing.narration_delay_ms
+        )
+        if raw_video_slide_start_ms < -_ALIGNMENT_END_TOLERANCE_MS:
+            raise ValueError(
+                f"Exported-video calibration places slide {slide_name} before "
+                f"the video start: {raw_video_slide_start_ms}ms"
+            )
+        video_slide_start_ms = max(0, raw_video_slide_start_ms)
+        if video_slide_start_ms <= previous_video_slide_start_ms:
+            raise ValueError(
+                f"Exported-video slide order is invalid at {slide_name}"
+            )
+        slides.append(
+            VideoSlideTiming(
+                slide_name=slide_name,
+                transition_ms=timing.transition_ms,
+                narration_delay_ms=timing.narration_delay_ms,
+                advance_ms=timing.advance_ms,
+                powerpoint_slide_start_ms=powerpoint_slide_start_ms,
+                powerpoint_narration_start_ms=powerpoint_narration_start_ms,
+                video_slide_start_ms=video_slide_start_ms,
+                video_narration_start_ms=video_narration_start_ms,
+                adjustment_ms=(
+                    video_narration_start_ms - powerpoint_narration_start_ms
+                ),
+                correlation=correlation,
+                audio_path=audio_path,
+            )
+        )
+        previous_video_slide_start_ms = video_slide_start_ms
+        powerpoint_slide_start_ms += timing.transition_ms + timing.advance_ms
+
+    return VideoTimelineCalibration(
+        slides=tuple(slides),
+        powerpoint_timeline_ms=timeline_ms,
+    )
 
 
 def _merge_subtitles_result(
@@ -1591,13 +1884,21 @@ def _merge_subtitles_result(
         audio_starts = theoretical_starts
     else:
         resolved_audio_dir = audio_dir or project_path / "audio"
-        audio_starts, correlations, audio_paths = _align_audio_starts_to_video(
+        calibration = calibrate_video_timeline(
             slide_names=slide_names,
-            local_cues=local_cues,
-            theoretical_starts=theoretical_starts,
+            pptx_path=pptx_path,
             audio_dir=resolved_audio_dir,
             video_path=video_path,
+            subtitle_dir=subtitle_dir,
         )
+        if calibration.powerpoint_timeline_ms != timeline_ms:
+            raise ValueError("Video calibration and subtitle timelines differ")
+        audio_starts = [
+            slide.video_narration_start_ms
+            for slide in calibration.slides
+        ]
+        correlations = [slide.correlation for slide in calibration.slides]
+        audio_paths = [slide.audio_path for slide in calibration.slides]
         _reject_output_alias(
             output_path,
             audio_paths,
@@ -1610,17 +1911,19 @@ def _merge_subtitles_result(
 
     merged_cues: list[SubtitleCue] = []
 
-    for slide_name, audio_start_ms, (_transition_ms, advance_ms) in zip(
+    for slide_name, audio_start_ms, timing in zip(
         slide_names,
         audio_starts,
         timings,
     ):
         slide_cues = local_cues[slide_name]
-        if slide_cues[-1].end_ms > advance_ms:
+        narration_window_ms = timing.advance_ms - timing.narration_delay_ms
+        if slide_cues[-1].end_ms > narration_window_ms:
             raise ValueError(
                 f"{slide_name}.srt ends at "
                 f"{_seconds_from_ms(slide_cues[-1].end_ms):.3f}s, after the "
-                f"PowerPoint slide advance at {_seconds_from_ms(advance_ms):.3f}s"
+                "available narration window before PowerPoint advances at "
+                f"{_seconds_from_ms(narration_window_ms):.3f}s"
             )
         for cue in slide_cues:
             merged_cue = SubtitleCue(
@@ -1714,7 +2017,7 @@ def build_parser() -> argparse.ArgumentParser:
     fingerprint.add_argument(
         "--subtitle-dir",
         default=None,
-        help="Page-local SRT directory; default: <project>/notes/subtitles",
+        help="Page-local SRT directory; default: <project>/audio",
     )
 
     animations = subparsers.add_parser(
@@ -1735,7 +2038,7 @@ def build_parser() -> argparse.ArgumentParser:
     animations.add_argument(
         "--subtitle-dir",
         default=None,
-        help="Page-local SRT directory; default: <project>/notes/subtitles",
+        help="Page-local SRT directory; default: <project>/audio",
     )
     animations.add_argument(
         "--audio-dir",
@@ -1756,6 +2059,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.5,
         help="Seconds added after each narration before slide advance (default: 0.5)",
+    )
+    animations.add_argument(
+        "--narration-start-floor",
+        type=float,
+        default=DEFAULT_NARRATION_START_FLOOR,
+        help=(
+            "Minimum seconds from transition start to narration start; "
+            "0 waits only for transition completion "
+            f"(default: {DEFAULT_NARRATION_START_FLOOR:g})"
+        ),
     )
     animations.add_argument(
         "--force",
@@ -1779,7 +2092,7 @@ def build_parser() -> argparse.ArgumentParser:
     subtitles.add_argument(
         "--subtitle-dir",
         default=None,
-        help="Page-local SRT directory; default: <project>/notes/subtitles",
+        help="Page-local SRT directory; default: <project>/audio",
     )
     subtitles.add_argument(
         "--video",
@@ -1801,7 +2114,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-o",
         "--output",
         default=None,
-        help="Merged SRT output; default: <project>/notes/subtitles/total.srt",
+        help="Merged SRT output; default: <project>/audio/total.srt",
     )
     subtitles.add_argument(
         "--force",
@@ -1823,7 +2136,7 @@ def main(argv: list[str] | None = None) -> int:
             subtitle_dir = _project_path(
                 project_path,
                 args.subtitle_dir,
-                Path("notes/subtitles"),
+                Path("audio"),
             )
             slide_names = _page_subtitle_names(subtitle_dir)
             for slide_name in slide_names:
@@ -1845,7 +2158,7 @@ def main(argv: list[str] | None = None) -> int:
             subtitle_dir = _project_path(
                 project_path,
                 args.subtitle_dir,
-                Path("notes/subtitles"),
+                Path("audio"),
             )
             audio_dir = _project_path(
                 project_path,
@@ -1865,6 +2178,7 @@ def main(argv: list[str] | None = None) -> int:
                 audio_dir=audio_dir,
                 output_path=output_path,
                 narration_padding=args.narration_padding,
+                narration_start_floor=args.narration_start_floor,
                 force=args.force,
             )
             print(f"Narration animation config written: {output_path}")
@@ -1881,7 +2195,7 @@ def main(argv: list[str] | None = None) -> int:
         subtitle_dir = _project_path(
             project_path,
             args.subtitle_dir,
-            Path("notes/subtitles"),
+            Path("audio"),
         )
         audio_dir = _project_path(
             project_path,
@@ -1896,7 +2210,7 @@ def main(argv: list[str] | None = None) -> int:
         output_path = _project_path(
             project_path,
             args.output,
-            Path("notes/subtitles/total.srt"),
+            Path("audio/total.srt"),
         )
         result = _merge_subtitles_result(
             project_path,

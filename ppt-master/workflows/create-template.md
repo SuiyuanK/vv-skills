@@ -18,6 +18,12 @@ Create one reusable template workspace under either the **global template librar
 
 > **Boundary against template-fill and in-place structure edits**: Create Template does not fill content into a PPTX, add Master/Layout structure to an existing PPTX/SVG, or directly output the user's final generated deck. It authors a separate reusable workspace; an optional PPTX is review evidence only. To generate a deck, return the workspace root as an exact candidate to [`generate-pptx`](./generate-pptx.md) Step 3, confirm it with Stage 1, then author new SVG pages from the installed state. A project-scoped workspace selected for its own project is consumed in place after that confirmation.
 
+> **Boundary against page-image reconstruction**: screenshots and page visuals
+> in this route are evidence for reusable rules and prototypes. When the user
+> instead wants each supplied page image reconstructed into one final editable
+> slide, use the Codex-supported [`image-to-pptx.md`](./profiles/image-to-pptx.md);
+> do not turn a final-deck request into a template workspace.
+
 ## Child Workflow Dispatch
 
 Create Template is the fixed user-facing entry and common contract. It selects one child workflow, then that child owns the kind-specific lifecycle. Do not execute two children for one workspace or blend their schemas.
@@ -32,7 +38,7 @@ Create Template is the fixed user-facing entry and common contract. It selects o
 Select Create Brand only for identity-only intent. Select Create Style when the portable value is a communication method, evidence discipline, and visual direction but there is no official identity, page geometry, or prototype roster to retain. Select Create Layout only when identity remains downstream-selectable and the reusable artifact does not prescribe communication objectives, audience outcomes, a required narrative sequence, or scenario-specific starting content. Select Create Deck when structure carries brand identity or reusable application semantics. A complete source PPTX alone does not determine the kind: classify only the stable rules worth reusing. Ask one discriminator question only when the user's requested reusable artifact is genuinely ambiguous; once selected, enter that child workflow and do not repeat route selection inside its confirmation gate.
 
 See [`templates/README.md`](../templates/README.md) for the shared kind and
-workspace model. Downstream template application and fusion remain owned by
+workspace model. Downstream template application and installation remain owned by
 [`generate-pptx.md`](./generate-pptx.md) Step 3.
 
 ## Output scope — library (default) vs project

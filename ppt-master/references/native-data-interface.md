@@ -1,8 +1,8 @@
-> See [`shared-standards-core.md`](./shared-standards-core.md) for the mandatory SVG foundation.
+> See [`executor-base.md`](./executor-base.md) for the Shape-first page authority and [`shared-standards-core.md`](./shared-standards-core.md) for the mandatory SVG foundation.
 
 # Native Data Interface
 
-Conditional interface for preset pattern fills and PowerPoint-native chart/table replacement metadata. Load when either feature appears in the authored SVG.
+Sole conditional interface for preset pattern fills and PowerPoint-native chart/table replacement eligibility, markers, metadata schemas, and export activation. Load only when either feature is selected for the authored SVG.
 
 ## 1. Pattern Fill — `<pattern>` with PPTX preset annotation
 
@@ -40,9 +40,30 @@ this enum.
 
 ## 2. PowerPoint-Native Chart / Table Replacement Markers (Opt-in)
 
-Native PowerPoint tables and Excel-backed charts activate at export time only. Generated pages prepare dormant replacement metadata for independently planned native-ready objects while keeping hand-authored SVG geometry pixel-stable across PowerPoint / Keynote / LibreOffice / WPS.
+[`executor-base.md`](./executor-base.md) remains the single Shape-first authoring authority: the complete visible SVG fallback is required regardless of native eligibility. This section only adds dormant replacement metadata to independently selected objects and defines how export may activate it.
 
-**Hard rule — planned-object authoring**: Executor writes the marker and JSON metadata in the same edit only for a supported chart or pure text-grid table whose `design_spec.md §IX` page block says `Native-ready: yes` ([`executor-chart.md`](./executor-chart.md) §2.2). `no` and incidental microvisuals stay on the SVG fallback route. For legacy specs only, a matching §VII value may supply the decision when §IX has no field. Canonical rectangular merged text cells may use the narrow `row_span` / `col_span` contract below; graphical cells stay unmarked. The marker group supplies visible SVG fallback children for browser/live-preview rendering and JSON metadata for `svg_to_pptx` native export.
+**Hard rule — selected-object authoring**: write the marker and JSON metadata in
+the same edit only for a supported chart or pure text-grid table independently
+selected as native-ready. Default reads the exact semantic object key from §IX
+`Native-ready: <object-key>=yes|no; ...`; Quick assigns the same page-local
+`kebab-case` key in active context before drawing. Use that key as the marker
+group `id` and metadata `name`. A catalog `family/key`, family name, §VII row,
+numeric content, or another ready object on the page never implies eligibility.
+Default `<object-key>=no`, Quick `no`, and unlisted incidental microvisuals stay
+on the SVG fallback route. Canonical rectangular merged text cells may use the narrow
+`row_span` / `col_span` contract below; graphical cells stay unmarked. The
+marker group supplies visible fallback children for browser rendering and JSON
+metadata for `svg_to_pptx` native export.
+
+A legacy bare `Native-ready: yes|no` maps only to the page's sole eligible
+object. Zero or multiple eligible objects make it ambiguous and require
+upstream repair.
+
+**MUST — atomic authoring**: treat one object's visible SVG fallback, parent
+`data-pptx-replace-with` marker, and single JSON `<metadata>` child as one
+authoring unit. Write all three while that object's data is in context. Do not
+defer the marker or metadata to `verify-charts`, the final quality gate, or
+export.
 
 **Hard rule — activation is the opt-in, dormant unless exported with `--native-charts-and-tables`**: A marker only declares that a group is eligible for PowerPoint-native Chart/Table replacement. Normal `svg_to_pptx.py` runs keep the fallback SVG children and convert them into independently editable DrawingML shapes. Pass `--native-charts-and-tables` only when the data source and chart/table-specific object model matter more than cross-renderer layout fidelity: it emits the PowerPoint Chart/Table object and skips the fallback children to avoid duplicates. Native styling preserves the core palette, text, axis, grid, and background colors where possible, but it is still a PowerPoint Chart/Table object rather than a pixel-identical SVG drawing.
 
@@ -71,6 +92,11 @@ inside PowerPoint's 32-bit DrawingML coordinate range; `width` and `height`
 must resolve to at least one EMU. Native table frames must additionally resolve
 to at least one EMU per resolved row and column.
 
+**Classic plot-area layout**: supported classic charts accept root `plot_area`;
+ChartEx rejects it. It contains only finite `x`, `y`, `width`, `height` in
+absolute slide px and forms a positive rectangle inside the chart frame. Export
+writes `c:manualLayout`; omission keeps automatic layout.
+
 **Validation**: `svg_quality_checker.py` validates replacement marker kind, JSON
 metadata, bounds/fallback availability, table rows/columns, supported chart
 type, chart data shape, and any imported fallback baseline before export.
@@ -85,6 +111,7 @@ free of those attributes; use the exact behavior and field index in
   <metadata type="application/json">
     {
       "x": 120, "y": 150, "width": 520, "height": 320,
+      "name": "p03-revenue-chart",
       "type": "column",
       "title": "Revenue by Segment",
       "categories": ["Q1", "Q2", "Q3"],
@@ -96,6 +123,31 @@ free of those attributes; use the exact behavior and field index in
   </metadata>
   <!-- Visible SVG fallback for live preview / non-native export goes here. -->
 </g>
+```
+
+**Hard rule — transcribe the authored object**: metadata is the native object's
+source of truth and must describe the same data and visible chart/table chrome
+as the fallback drawn in that marker group.
+
+| Object | Required projection from the visible fallback |
+|---|---|
+| Chart | Every category/point and series value, the actual x/y/size data where applicable, visible point colors and labels, line/area treatment needed by the schema, visible title/axis/legend chrome, companion text, bounds, and fallback typography/style values that native export cannot infer unambiguously |
+| Table | Every resolved row/column cell, header/summary line, rectangular span, required cell style, alignment, bounds, and visible typography |
+
+Do not simplify the SVG artwork to match the native object model. When the
+closed payload cannot represent an object without losing required data or cell
+topology, Default returns the native-ready decision upstream and Quick revises
+that per-object decision before drawing; only the resolved non-native object
+stays unmarked on its complete SVG fallback. Never silently ignore an explicit
+`<object-key>=yes` declaration.
+
+**Per-page verification**: enumerate every `<object-key>=yes` on the current
+page and confirm a one-to-one key match. Each key identifies one parent marker
+and exactly one JSON metadata child; `<object-key>=no` and unlisted incidental
+objects have no marker. Finding one marker somewhere on a page is insufficient.
+
+```bash
+rg -n 'data-pptx-replace-with="(chart|table)"|<metadata type="application/json">' <project_path>/svg_output/<current_page>.svg
 ```
 
 **Table schema**: Native tables are rectangular DrawingML grids. Use `columns`
@@ -137,8 +189,8 @@ materialized alternating row fills. Native table typography mirrors the
 visible SVG fallback: put `style.font_family` and `style.font_size` on the
 marker from the table text already drawn, then use `style.header_font_size` or
 per-cell `font_size` only when the fallback visibly differs. If the fallback
-has no explicit table font, use the deck body family and declared body anchor from
-`spec_lock.md`.
+has no explicit table font, Default uses the deck body family and declared body
+anchor from `spec_lock.md`; Quick uses its active-context body family and size.
 
 **Hard rule — table metadata is the native source of truth**: Every row,
 summary line, value, and cell-level style that must survive
@@ -164,6 +216,8 @@ with `unsupported-merge-topology`.
 `series[].values`. Pie-family charts (`pie`, `doughnut`, `pieOfPie`, and
 `barOfPie`) must have exactly one series; the exporter assigns per-category
 slice colors so single-series charts do not collapse into one solid color.
+Root `hole_size` is doughnut-only, integer `10..90`, default `75`;
+no pie-family rotation or angle field exists.
 Column and bar charts may set per-point colors with `series[].point_colors`
 or `series[].pointColors`; the list must match `series[].values` length.
 Classic category charts may set native PowerPoint data labels with
@@ -212,6 +266,8 @@ area charts and OHLC stock charts; arbitrary date-axis source families are not.
 This contract is not a full `AxisSpec`: logarithmic scales, minor units/gridlines,
 crossing values, display units, tick skipping, and other unlisted OOXML semantics
 remain unsupported and fail closed on import.
+Single-plot `bar` accepts `category` at left/right and `value` at bottom/top;
+`pie`, `doughnut`, and `pieOfPie` / `barOfPie` reject `axes`.
 
 **Narrow XY-axis schema**: `scatter` and `bubble` may use a closed `axes` object
 with only `x` and `y` roles. Both roles have `kind: "value"`; `x.position`
@@ -238,19 +294,15 @@ imply full visual-axis parity.
 required only when the native object must preserve typography that cannot be
 inferred unambiguously from the visible fallback.
 
-**Chart chrome metadata**: Text that is visually part of the chart must be in
-metadata, not only in SVG fallback children; metadata MUST still match visible
-fallback chrome. `title` becomes the native chart title on classic charts; it
-is not an object name, so use `name` for semantic object naming. `subtitle`
-becomes the second rich-text line of that classic chart title. `title`,
-`subtitle`, and axis-title values may be strings or objects with `text`,
-`font_size`, `font_family`, and `color` when the fallback uses local role
-typography. `svg_quality_checker.py` rejects `title`, `subtitle`, or axis-title
-metadata whose text is not visible inside the replacement marker's fallback. Direct
-`--native-charts-and-tables` export keeps the chart native but omits that inconsistent
-chrome with a warning. chartEx keeps PowerPoint's empty `<cx:title>` and emits
-the title / subtitle as companion editable text boxes until chartEx rich titles
-are validated. Axis
+**Chart chrome metadata**: Metadata MUST match fallback chrome. For classic
+charts, a string or unbounded-object `title` becomes native `c:title`;
+`subtitle` is line two. A title object with complete `x`, `y`,
+`width`, and `height` becomes a companion editable text box at those absolute
+slide-px bounds; partial bounds or `subtitle` fail. Use `name`, not
+`title`, for object naming. `title`, `subtitle`, and axis-title objects may set
+`text`, `font_size`, `font_family`, and `color`. The checker rejects title/axis
+text absent from the fallback; export omits it with a warning. ChartEx keeps an empty `<cx:title>` and
+emits title/subtitle as companion editable text boxes. Axis
 titles are optional and explicit: use `axis_titles` with
 `category`, `value`, `x`, `y`, or `secondary_value` keys, or the root aliases
 `category_axis_title`, `value_axis_title`, `x_axis_title`, `y_axis_title`, and

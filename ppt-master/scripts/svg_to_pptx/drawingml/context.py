@@ -69,6 +69,8 @@ class ConvertContext:
     claimed_shape_ids: set[int] = field(default_factory=set)
     referenced_shape_ids: set[int] = field(default_factory=set)
     slide_num: int = 1
+    # Public presentation roster size, used to fail closed on #slide-N links.
+    slide_count: int | None = None
     translate_x: float = 0.0
     translate_y: float = 0.0
     scale_x: float = 1.0
@@ -127,6 +129,8 @@ class ConvertContext:
     # Canonical BCP-47 content language from spec_lock.md. ``None`` preserves
     # the legacy per-run script heuristic for older projects and lockless quick generation.
     primary_language: str | None = None
+    # Reuse media relationships when the same image fills multiple text runs.
+    text_image_fill_cache: dict[tuple[str, str], str] = field(default_factory=dict)
 
     def next_id(self) -> int:
         """Allocate the next shape ID."""
@@ -243,6 +247,7 @@ class ConvertContext:
             claimed_shape_ids=self.claimed_shape_ids,
             referenced_shape_ids=self.referenced_shape_ids,
             slide_num=self.slide_num,
+            slide_count=self.slide_count,
             translate_x=self.translate_x + dx,
             translate_y=self.translate_y + dy,
             scale_x=self.scale_x * sx,
@@ -277,6 +282,7 @@ class ConvertContext:
             theme_font_spec=self.theme_font_spec,
             theme_color_spec=self.theme_color_spec,
             primary_language=self.primary_language,
+            text_image_fill_cache=self.text_image_fill_cache,
         )
 
     def sync_from_child(self, child_ctx: ConvertContext) -> None:

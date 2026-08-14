@@ -13,11 +13,14 @@ before the page plan is frozen, not only when a deck is already exported.
 
 | What the deck needs | Reach for | Decided at |
 |---|---|---|
-| Reveal content in step with the narration | Per-element object animation — `-a auto` for generic entrance reveals, or an `animations.json` sidecar for explicit enter/emphasize/move/exit/static lifecycle choreography | Post-processing; §2, §4, [`customize-animations`](../workflows/stages/customize-animations.md) |
+| A generic deck-wide entrance build | `-a auto`; with the default `after-previous` Start mode, groups use fixed `--animation-stagger` timing rather than narration cues | Post-processing; §2, §4 |
+| Explicit object lifecycle choreography | An `animations.json` sidecar for selected enter/emphasize/move/exit/static duties, order, Start mode, and timing | Post-processing; §2, §4, [`customize-animations`](../workflows/stages/customize-animations.md) |
+| Object reveals semantically synchronized to recorded narration | Narration-cue sync derives `narration_animations.json` from canonical `animations.json`, page-local SRT, and `narration_timing.json`; `-a auto` alone does not provide this mapping | Audio stage; [`generate-audio`](../workflows/stages/generate-audio.md) |
 | A continuous action — slide-in, flip, camera push-in, progressive reveal, camera pan | **Morph: author the action as two static pages, then select Morph and add explicit pairs when identity must be deterministic.** There is no keyframe timeline anywhere in this pipeline; the difference between two ordinary editable slides *is* the animation | **Page authoring (Step 6), then motion post-processing** — §2.1, §3.1 |
 | A static full-bleed page that should stop looking frozen | Consider slow `path_*` motion on a visually subordinate image or atmospheric layer; §4.1 gives one starting recipe | Post-processing; §4.1 |
 | Carousel, counting numerals, parallax depth, click-to-reveal flip card | Four recurring recipes assembled from the mechanisms above | §4.2 — the carousel and odometer both need paired pages |
 | Kiosk or unattended playback | `--auto-advance <seconds>`, optionally with `-t none` | Export; §3 |
+| A transition or object animation needs an audible cue | Optional `transition.sound` or object-animation `sound`; select it only after the visual motion solution is complete, then sync the chosen global-library ids into the project. For direct narrated MP4 delivery, [`generate-audio`](../workflows/stages/generate-audio.md) selects either the verified native-export mix or explicit real-time slideshow capture; never combine them | Post-motion; §2.2 |
 | Nothing should move | `-t none`, and leave per-element animation at its default `none` | Export; §1 |
 
 **Hard rule — Morph geometry is an authoring decision; pairing is a later
@@ -40,6 +43,7 @@ tell; each capability above earns its place per page, not per deck.
 |---|---|---|
 | Page transition | CLI: `fade`, 0.4s | Calm baseline that suits most decks; the public Python builder retains its legacy 0.5s default |
 | Per-element animation | **`none` (off)** | A page appears as a whole. Auto-firing element builds are an unsolicited "AI deck" tell, so object animation is opt-in. Turn on the content-aware canonical entrance policy with `-a auto`, or select one PowerPoint-native `entrance_*`, `emphasis_*`, `path_*`, or `exit_*` key explicitly |
+| Sound effects | **`none` (off)** | No global sound is copied and no `<project>/sounds/` directory is created unless a resolved transition or object-animation cue actually selects one |
 
 To regenerate a deck with different settings, rerun the final checker when its current matching report is absent or stale, then rerun `svg_to_pptx.py` against the same `svg_output/`; the content-generation LLM need not rerun unless authored SVG requires repair. `-s final` is reserved for diagnostic comparison and is not a supported release source. To turn per-element animation on for the whole deck, pass `-a auto`.
 
@@ -155,7 +159,9 @@ Rules:
   `decelerate`; `restart` is `always`, `when-not-active`, or `never`;
   `after_effect` is `none`, `dim` (with `color`), `hide`, or
   `hide-on-next-click`; `sound` is a project-relative or absolute `.m4a`,
-  `.mp3`, or `.wav` path.
+  `.mp3`, or `.wav` path. New generated configurations use a project-relative
+  path. A bundled library choice first follows §2.2 and resolves to a
+  project-local `.wav`; never point new output at `templates/sounds/`.
 - `Speed` and smooth start/end are not duplicate sidecar fields: they are
   derived from `duration` and `accelerate`/`decelerate`.
 - This is the complete parameter surface for the generated top-level-group
@@ -238,6 +244,51 @@ The generated names follow Microsoft's
   OOXML object types. Missing, structural, moved, ambiguous, or mismatched
   targets fail instead of falling back to automatic Morph matching.
 
+### 2.2 On-Demand Sound Selection
+
+**Hard rule — select after motion, materialize after selection**: sound is not a
+Strategist resource and does not belong in `design_spec.md`, `spec_lock.md`, or
+pre-SVG resource preparation. First complete the SVG roster and resolve the
+transition/object-motion solution. Only when a specific cue is then selected,
+copy its global-library file into the project and reference that local copy.
+
+| Source | Action |
+|---|---|
+| Bundled CC0 library | Discover ids with `sound_sync.py list`, sync only the selected ids, then use the corresponding `sounds/<namespace>/<file>.wav` paths |
+| User-provided audio already inside the project | Reference its existing project-relative `.m4a`, `.mp3`, or `.wav` path for object animation; a transition sound uses `.wav` |
+| External absolute file | The low-level object-animation path remains compatible, but new generated projects should copy or sync the intended file into the project and use a relative path |
+| No concrete auditory cue job | Keep `sound` omitted; do not create `<project>/sounds/` and do not copy the library |
+
+```bash
+# Inspect ids only after the visual motion solution exists
+python3 skills/ppt-master/scripts/sound_sync.py list
+python3 skills/ppt-master/scripts/sound_sync.py list --query <term>
+
+# Materialize only the chosen ids
+python3 skills/ppt-master/scripts/sound_sync.py \
+  <project_path> <namespace>/<sound_id> [<namespace>/<sound_id> ...]
+```
+
+`sound_sync.py` is the only bundled-library materialization path. Stable ids
+include their namespace; copied files remain under
+`<project_path>/sounds/<namespace>/`. The exporter never reads the global
+`templates/sounds/` library directly, and sidecars store paths rather than
+library ids.
+
+**Default — silence (may override for a specific cue)**: do not add sound to
+demonstrate capability or spread it across a deck for coverage. A sound may
+support a named transition, reveal, confirmation, warning, or drawn/moving
+gesture after the corresponding visual behavior is already selected.
+
+**Hard rule — PPTX and MP4 are separate sound deliveries**: sound fields and
+package read-back prove the editable PPTX contains the intended native cue;
+they do not prove PowerPoint's video encoder placed it in the MP4 audio track.
+For direct narrated MP4 delivery with resolved cues, follow `generate-audio`
+and choose exactly one branch: mix from the final narrated trace plus final
+PPTX after native encoding, or explicitly capture the live PowerPoint Slide
+Show with system audio. Never mix the capture again. Keep post-production gain
+and limiter settings out of `animations.json`.
+
 ---
 
 ## 3. Page Transitions
@@ -303,6 +354,13 @@ effect-specific contract; unknown or inapplicable options fail validation.
 carry a real PowerPoint effect in `mc:Choice` and a `fade` fallback for older
 consumers; validation requires the requested primary effect and never accepts
 the fallback as a silent substitute.
+
+An optional `transition.sound` adds one `.wav` cue to the transition. It is a
+sidecar field rather than a CLI flag. Bundled choices must first be synced by
+§2.2 and referenced through their project-relative path. `effect: none` may
+still carry a transition sound and/or automatic advance without restoring a
+visual effect. A slide-level `transition.sound: null` explicitly clears an
+inherited default transition sound for that page.
 
 Flags:
 
@@ -441,7 +499,7 @@ Flags: `-a/--animation` selects effect/mode; `--animation-trigger` selects Start
 `--animation-config` selects a sidecar; `--no-animations` disables page/object
 motion but preserves narration audio and recorded advance timing.
 
-> Note: `--recorded-narration` rejects `on-click` and `trigger_shape`. When either animation sidecar exists, narrated export selects `narration_animations.json`; canonical `animations.json` without that derived file remains a synchronization error. Without sidecars, pass `--inherit-motion-from <base_postflight_report>` for the base deck motion. Pass `--animation-config animations.json` for canonical animation, or `--no-animations` to remove page and object motion.
+> Note: `--recorded-narration` rejects `on-click` and `trigger_shape`. Narration-cue sync uses `narration_animations.json` and blocks when only canonical `animations.json` exists. Narration-independent custom motion explicitly passes `--animation-config animations.json`, even when a derived sidecar also exists. With no sidecar, pass `--inherit-motion-from <base_postflight_report>`; explicit all-motion-off uses `--no-animations`.
 
 ### 4.1 Slow ambient motion — the page that breathes
 
@@ -537,6 +595,12 @@ object-animation timing before and after their allowed edits, then run
 structural package validation; they do not author or normalize animation
 effects.
 
+**Validation boundary**: these checks prove PPTX timing, relationships, and
+embedded sound parts. They are not final-video audio acceptance. The
+native-export branch requires a triggered `video_sound_mix.py` receipt; the
+slideshow-capture branch requires the human picture/audio/all-cue acceptance
+owned by `generate-audio` and never claims that receipt.
+
 ---
 
 ## 7. Video Adaptation Contract
@@ -547,6 +611,13 @@ locks identity, order, effect, direction, and timing; video may refine only its
 declared renderer parameters. Unsupported families fail visibly. See
 [`video-motion-plan.md`](../scripts/docs/video-motion-plan.md).
 
+On the native-export mix branch, direct narrated video sound uses the final
+resolved trace for cue order and offsets, the final PPTX relationships for the
+exact embedded audio bytes, and page-level narration correlation for the
+exported-video clock. It never reads sound timing from a raw sidecar or
+filename. The explicit slideshow-capture branch records PowerPoint's real-time
+playback instead and does not consume the trace for sound mixing.
+
 ---
 
 ## 8. Limitations
@@ -556,6 +627,11 @@ declared renderer parameters. Unsupported families fail visibly. See
   not create object anchors.
 - PowerPoint OOXML is the compatibility target; other presentation apps may
   reinterpret individual native behavior trees.
+- PowerPoint's native MP4 encoder may omit transition and object-animation
+  sounds even when the PPTX package is valid. Direct sound-enabled MP4 delivery
+  therefore uses either the post-export mix or the explicit real-time
+  slideshow-capture contract owned by `generate-audio`; the branches never
+  stack.
 - Direct-PPTX routes preserve unknown transition `AlternateContent`; timing
   edits keep Choice and Fallback advance attributes synchronized.
 

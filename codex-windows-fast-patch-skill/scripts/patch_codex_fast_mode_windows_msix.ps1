@@ -641,6 +641,11 @@ if (text.includes(marker) && models.every((model) => text.includes(model))) {
 
 const visibilityPatterns = [
   {
+    re: /return ([$A-Za-z_][$\w]*)\?\.has\(([$A-Za-z_][$\w]*)\.model\)===!0\|\|\2\.model!==`codex-auto-review`&&\(([$A-Za-z_][$\w]*)&&!([$A-Za-z_][$\w]*)&&([$A-Za-z_][$\w]*)!==`amazonBedrock`\?([$A-Za-z_][$\w]*)\.has\(\2\.model\):!\2\.hidden\)\}/,
+    modelGroup: 2,
+    isReturn: true,
+  },
+  {
     re: /if\(([$A-Za-z_][$\w]*)\?([$A-Za-z_][$\w]*)\.has\(([$A-Za-z_][$\w]*)\.model\):!\3\.hidden\)\{/,
     modelGroup: 3,
   },
@@ -1337,6 +1342,34 @@ if (changed) {
   }
 }
 
+function Test-CustomModelVisibilityExpression {
+  param(
+    [AllowNull()]
+    [string]$Text
+  )
+
+  if ([string]::IsNullOrEmpty($Text)) {
+    return $false
+  }
+  if ($Text.Contains('CODEX_CUSTOM_MODELS_V1')) {
+    return $true
+  }
+
+  # Keep target discovery aligned with the embedded Node patcher's supported predicate shapes.
+  $patterns = @(
+    'if\([$A-Za-z_][$\w]*\?[$A-Za-z_][$\w]*\.has\((?<model>[$A-Za-z_][$\w]*)\.model\):!\k<model>\.hidden\)\{',
+    'if\([$A-Za-z_][$\w]*\?\.has\((?<model>[$A-Za-z_][$\w]*)\.model\)===!0\|\|\([$A-Za-z_][$\w]*\?[$A-Za-z_][$\w]*\.has\(\k<model>\.model\):!\k<model>\.hidden\)\)\{',
+    '\?\.has\(\w+\.model\)===!0\|\|\(\w+(?:&&\w+!==`amazonBedrock`)?\?\w+\.has\(\w+\.model\):!\w+\.hidden\)',
+    '\?\.has\((?<model>[$A-Za-z_][$\w]*)\.model\)===!0\|\|\k<model>\.model!==`codex-auto-review`&&\((?<showHidden>[$A-Za-z_][$\w]*)&&!(?<customProvider>[$A-Za-z_][$\w]*)&&(?<authMethod>[$A-Za-z_][$\w]*)!==`amazonBedrock`\?(?<availableModels>[$A-Za-z_][$\w]*)\.has\(\k<model>\.model\):!\k<model>\.hidden\)'
+  )
+  foreach ($pattern in $patterns) {
+    if ($Text -match $pattern) {
+      return $true
+    }
+  }
+  return $false
+}
+
 function Find-PatchTargets {
   param(
     [string]$RgPath,
@@ -1402,8 +1435,7 @@ function Find-PatchTargets {
       if ($text.Contains('available_models') -and
           $text.Contains('useHiddenModels') -and
           $text.Contains('supportedReasoningEfforts') -and
-          (($text -match '\?\.has\(\w+\.model\)===!0\|\|\(\w+(?:&&\w+!==`amazonBedrock`)?\?\w+\.has\(\w+\.model\):!\w+\.hidden\)') -or
-           $text.Contains('CODEX_CUSTOM_MODELS_V1'))) {
+          (Test-CustomModelVisibilityExpression -Text $text)) {
         $customModelsTarget = $candidate
         break
       }
@@ -1852,8 +1884,7 @@ function Invoke-PatchAppAsar {
         if ($text.Contains('available_models') -and
             $text.Contains('useHiddenModels') -and
             $text.Contains('supportedReasoningEfforts') -and
-            (($text -match '\?\.has\(\w+\.model\)===!0\|\|\(\w+(?:&&\w+!==`amazonBedrock`)?\?\w+\.has\(\w+\.model\):!\w+\.hidden\)') -or
-             $text.Contains('CODEX_CUSTOM_MODELS_V1'))) {
+            (Test-CustomModelVisibilityExpression -Text $text)) {
           $customModelsTarget = $candidate
           break
         }
@@ -2300,38 +2331,6 @@ function Add-LocalMarketplace {
   }
 }
 
-function Test-BrowserClientProcessShimCompatible {
-  param([string]$Content)
-
-  $localProxy = "  const process = processShim;`n  const global = Object.create(globalThis, { process: { value: processShim, enumerable: true } });"
-  if ($Content.Contains($localProxy)) {
-    return $true
-  }
-
-  foreach ($legacyBinding in @(
-    'globalThis.process = processShim;',
-    'globalThis.global.process = processShim;',
-    'const process = processShim;'
-  )) {
-    if ($Content.Contains($legacyBinding)) {
-      return $false
-    }
-  }
-
-  foreach ($directShimMarker in @(
-    'const processShim = {',
-    'processShim.on("beforeExit"',
-    'processShim.memoryUsage().rss',
-    'typeof processShim.versions.icu'
-  )) {
-    if (-not $Content.Contains($directShimMarker)) {
-      return $false
-    }
-  }
-
-  return $true
-}
-
 function Patch-ChromePluginWindowsRegistryParsing {
   param([string]$WorkApp)
 
@@ -2371,24 +2370,6 @@ function Patch-ChromePluginWindowsRegistryParsing {
         $changed = $true
       } else {
         Write-Log "warning: Chrome native-host registry parser anchor not found: $nativeHostPath"
-      }
-    }
-  }
-
-  $browserClientPath = Join-Path $chromePluginRoot 'scripts\browser-client.mjs'
-  if (Test-Path -LiteralPath $browserClientPath -PathType Leaf) {
-    $browserClientContent = [System.IO.File]::ReadAllText($browserClientPath, [System.Text.UTF8Encoding]::new($false))
-    $browserClientNew = "  const process = processShim;`n  const global = Object.create(globalThis, { process: { value: processShim, enumerable: true } });"
-    if (-not (Test-BrowserClientProcessShimCompatible $browserClientContent)) {
-      $browserClientOld = "  globalThis.process = processShim;`n  globalThis.global = globalThis.global ?? globalThis;`n  globalThis.global.process = processShim;"
-      $browserClientIntermediate = "  const process = processShim;`n  const global = globalThis;"
-      $browserClientIntermediate2 = "  const process = processShim;`n  const global = Object.assign(Object.create(globalThis), { process: processShim });"
-      $browserClientAnchor = if ($browserClientContent.Contains($browserClientOld)) { $browserClientOld } elseif ($browserClientContent.Contains($browserClientIntermediate)) { $browserClientIntermediate } elseif ($browserClientContent.Contains($browserClientIntermediate2)) { $browserClientIntermediate2 } else { $null }
-      if ($null -ne $browserClientAnchor) {
-        [System.IO.File]::WriteAllText($browserClientPath, $browserClientContent.Replace($browserClientAnchor, $browserClientNew), [System.Text.UTF8Encoding]::new($false))
-        $changed = $true
-      } else {
-        Fail "Chrome browser client process shim shape is unsupported: $browserClientPath"
       }
     }
   }
@@ -2830,3 +2811,6 @@ try {
     Remove-DirectoryRobust -Path $tempWork -RequiredRoot $workRoot -BestEffort
   }
 }
+
+# Native tools such as robocopy use nonzero success codes. Do not leak one after a successful script run.
+$global:LASTEXITCODE = 0

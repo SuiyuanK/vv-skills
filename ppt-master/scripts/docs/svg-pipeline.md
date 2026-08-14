@@ -524,6 +524,21 @@ It aggregates:
 
 Convert project SVGs into PPTX.
 
+Native formulas use the two markers owned by
+[`native-formula.md`](../../references/native-formula.md). A standalone block
+stores delimiter-free LaTeX in the JSON metadata of
+`<g data-pptx-replace-with="formula">` and exports `m:oMathPara`. A leaf
+`<tspan data-pptx-inline-formula="...">preview</tspan>` inside ordinary text
+exports `m:oMath` in the same DrawingML paragraph as its surrounding runs; it
+inherits computed size and visible solid fill, then uses the project text
+language and Cambria Math.
+Matrices, multiline derivations, and other high-structure expressions remain
+blocks. Formula replacement is always active, independent of
+`--native-charts-and-tables`: export replaces only the registered SVG preview
+and writes editable PowerPoint 2010+ Office Math. It emits no formula PNG, media
+relationship, or compatibility fallback, and makes no rendering/editability
+promise for Keynote, WPS, LibreOffice, or another non-PowerPoint client.
+
 ```bash
 python3 scripts/svg_to_pptx.py <project_path>
 # Explicit compact image export:
@@ -563,8 +578,8 @@ explicit current structured contract remains blocking.
 Explicit direct generation may use the
 [`quick-generate`](../../workflows/profiles/quick-generate.md) profile after the
 current agent has converted/read sources, researched identified factual gaps,
-and prepared the required images, icons, formulas, and resource manifests as
-needed. That profile skips Strategist, Confirm UI, `design_spec.md`, and
+prepared the required images, icons, and resource manifests as needed, and
+retained any source LaTeX for direct native-marker authoring. That profile skips Strategist, Confirm UI, `design_spec.md`, and
 `spec_lock.md`; it does not skip the resources required by the authored pages.
 After the complete SVG roster exists, run its lockless final checker, then
 export:
@@ -584,8 +599,8 @@ custom object animation, and narration start off in Quick and may be enabled
 when needed. The exporter refuses a missing, blocking, non-final, or stale
 Quick final report before PPTX creation. Default-path output retains the normal
 postflight report and `backup/` snapshot; explicit `-o` retains the ordinary
-no-backup behavior. Existing source, analysis, image/icon/formula, and
-resource-manifest artifacts remain untouched.
+no-backup behavior. Existing source, analysis, image/icon, and resource-manifest
+artifacts remain untouched; formula source stays inside its authored SVG marker.
 
 For generated-project narration, follow the
 [`generate-audio`](../../workflows/stages/generate-audio.md) stage. It owns voice
@@ -647,9 +662,9 @@ Behavior:
   - `notes_to_audio.py` uses `edge-tts` by default, or a configured cloud TTS provider (`elevenlabs`, `minimax`, `qwen`, `cosyvoice`), and generates one audio file per slide into `audio/`
   - Narration text is read strictly from the matching `notes/*.md` file; the script only skips Markdown heading lines (`# ...`) and does not summarize, rewrite, or filter delivery notes
   - `--recorded-narration audio` prepares PowerPoint's "recorded timings and narrations": every slide must have matching `m4a` / `mp3` / `wav` audio, `ffprobe` must read every duration, and `--animation-trigger on-click` is rejected
-  - `--recorded-narration audio` keeps speaker notes, embeds each matching audio file, and writes slide auto-advance timings from audio duration
-  - When either animation sidecar exists, narrated export defaults to `<project>/narration_animations.json`; a canonical `animations.json` without that derived file remains a blocking synchronization error
-  - Without animation sidecars, Generate narration reads base-report deck motion via `--inherit-motion-from`; direct low-level omission keeps legacy `fade` / no object builds. Use `--animation-config animations.json` for canonical animation, or `--no-animations` to remove object/page motion while retaining narration timings
+  - `--recorded-narration audio` keeps speaker notes, embeds each matching audio file, and writes slide auto-advance timings from page-start lead-in + audio duration + page-tail padding. `--narration-start-floor` and `--narration-padding` are independent optional seconds; their defaults are `0.8` and `0.5`, and the post-transition lead-in is `max(0, start floor - transition duration)`
+  - While motion remains enabled, narrated export without an explicit `--animation-config` selects `<project>/narration_animations.json` when either animation sidecar exists; canonical-only cue synchronization therefore blocks until the derived file exists. Narration-independent custom motion explicitly passes `--animation-config animations.json`, even when a derived sidecar also exists
+  - Without animation sidecars, Generate narration may inherit base-report deck motion via `--inherit-motion-from`; direct low-level omission keeps legacy `fade` / no object builds. Use `--no-animations` to remove object/page motion while retaining narration timings
   - Non-narrated export keeps the existing optional `<project>/animations.json` default
   - Narration timing merges into the existing slide timing DOM. While motion remains enabled, object-animation rows and the resolved page transition are preserved rather than regenerated; inherited `-a none` suppresses object rows, and `--no-animations` removes both motion layers
   - `--narration-audio-dir audio` is the lower-level embedding path: it embeds whatever files match and allows partial audio coverage
@@ -675,6 +690,7 @@ Behavior:
   supplies the default gap between successive non-trigger-shape rows in
   `after-previous` mode (default `0.5`)
 - Optional object-level overrides live in `<project>/animations.json` or a path passed via `--animation-config`; build and validate them with `animation_config.py scaffold|validate`. The scaffold is neutral (`defaults.animation.effect: none`, untouched groups `{}`). A populated group uses either the fully compatible legacy single-effect fields or a non-empty `effects[]`, never both; every `effects[]` row names an explicit effect
+- Transition/object sound remains off by default. After SVG and visual motion are complete, discover bundled ids with `sound_sync.py list [--query <term>]` and copy only selected ids with `sound_sync.py <project> <namespace>/<sound_id> [...]`. `transition.sound` references a project-relative `.wav`; object-animation `sound` accepts the existing `.m4a`/`.mp3`/`.wav` path contract, while bundled selections use the synced project-relative `.wav`. With no selected cue, do not create `<project>/sounds/`. Export never resolves ids or reads `templates/sounds/` directly
 - One `effects[]` row becomes one Animation Pane record on the group's shape target. Each row may independently set sequence `order`, `delay`, `duration`, `trigger`, and `trigger_shape`; ordinary rows use page-wide order, while `trigger_shape` rows keep relative order in separate interactive sequences and imply `on-click`
 - Animation configuration is strict: unknown effects/modes/triggers, invalid finite/range/order values, missing slides/groups, and structural-layer targets fail export without fallback or silent omission
 - Generated export reads every slide back and verifies animation row order, including repeated rows on one shape target, trigger, shape target, resolved effect tuple and native behavior signature, duration, and offset. Package validation then checks timing placement, `p:cTn` ids, and `p:spTgt` references before publication

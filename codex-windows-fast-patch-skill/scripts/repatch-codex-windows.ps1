@@ -451,12 +451,12 @@ if ($DryRun) {
   if (-not $SkipSdkCleanup) {
     $patchArgs += '-CleanupWindowsSdkAfterInstall'
   }
-  if (-not $KeepBuild) {
-    $patchArgs += '-CleanupAfter'
-  }
   if (-not $SkipFastVerify) {
     $patchArgs += '-VerifyFastModeRequest'
   }
+}
+if (-not $KeepBuild) {
+  $patchArgs += '-CleanupAfter'
 }
 if (-not [string]::IsNullOrWhiteSpace($OutputRoot)) {
   $patchArgs += '-OutputRoot'

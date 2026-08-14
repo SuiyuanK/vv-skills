@@ -16,6 +16,7 @@ This route treats a `.pptx` as the artifact to preserve. It archives the source 
 |---|---|
 | Source file | If already under `projects/`, move it into the enhancement project; otherwise copy it |
 | Visible slides | Do not rewrite existing text, shapes, images, charts, tables, masters, or layouts |
+| Existing hyperlinks | Preserve hyperlink XML and relationships unchanged |
 | Route | Direct PPTX package patching; no SVG conversion |
 | Output | A new `.pptx` under `<project>/exports/` |
 | Project kind | `native_pptx_enhancement` |
@@ -50,10 +51,10 @@ source.pptx
 |---|---:|---|
 | `narration.notes` | Enabled | Add or replace speaker notes generated from slide content |
 | `narration.audio` | Enabled | Embed one audio file per slide |
-| `narration.timings` | Enabled | Set narrated slides to auto-advance by audio duration |
+| `narration.timings` | Enabled | Set narrated slides to auto-advance from page-start lead-in, audio duration, and page-tail padding |
 | `narration.transitions` | Enabled | Add page-level transitions for narrated/selected slides |
 | `delivery.check` | Enabled | Read-only package/font/media/hidden-slide/file-size and existing-motion audit |
-| `media` | Planned | Background music, video, media compression |
+| `delivery.compress` | Planned | Reduce embedded media size for oversized packages; the audit above already reports them |
 | `presenter` | Planned | Q&A notes, speaker cues, rehearsal artifacts |
 | `animation` | Planned | Explicit object-level animation only |
 | `visible-stamp` | Planned | Watermark/footer/logo; requires explicit confirmation |
@@ -137,7 +138,7 @@ Present the plan to the user before generating notes or audio:
 |---|---|---|
 | `notes` | Enabled; required whenever audio is enabled | Add/replace speaker notes generated from slide content? |
 | `audio` | Enabled when user wants narration/video/autoplay | After notes are complete, generate one narration audio file per slide? |
-| `timings` | Enabled with audio | Set slide auto-advance from audio duration? |
+| `timings` | Enabled with audio; 0.8s page-start floor and 0.4s page-tail padding | Set slide auto-advance from narration timing? |
 | `transitions` | Enabled, `fade` 0.5s | Add page transitions? Which canonical native effect, Effect Options, and duration? |
 | `delivery.check` | Always on, read-only | No confirmation required; review errors and advisories |
 
@@ -156,8 +157,20 @@ the notes artifact.
 | Transitions enabled with an effect | Replace with that exact effect and duration | Preserve unless timings is enabled |
 | Transitions disabled with a non-`none` configured effect | Preserve the source effect, including unknown `AlternateContent` | Preserve unless timings is enabled |
 | Explicit `none` | Remove the visual effect | Preserve, or write timing-only advance when timings is enabled |
-| Timings enabled with audio | Keep the resolved enter policy | Use audio duration plus narration padding; click disabled |
-| Timings disabled | Apply the confirmed enter policy only | Audio readiness may probe decodability; do not use duration or add/change `advTm` or `useTimings` |
+| Timings enabled with audio | Keep the resolved enter policy | Use page-start lead-in plus audio duration plus page-tail padding; click disabled |
+| Timings disabled | Apply the confirmed enter policy only | Use duration only to reject source auto-advance that would truncate narration; do not derive, add, or change `advTm` / `useTimings` |
+
+The timing module's `narration_start_floor` and `narration_padding` are
+independent optional values. When omitted, use `0.8` and `0.4` seconds
+respectively. For a destination-page transition of `T` seconds, the
+post-transition lead-in is
+`max(0, narration_start_floor - T)`: narration does not begin during the
+transition, and the transition duration itself remains unchanged. A start
+floor of `0` means start immediately after the transition completes. A
+preserved legacy transition that exposes only `spd` has no exact millisecond
+duration; keep the full configured floor after that transition instead of
+guessing a PowerPoint-specific duration. When timings are disabled, preserve
+source `advTm`, but fail if it would advance before the delayed narration ends.
 
 The confirmed `modules.transitions` object may include `effect_options` beside
 an explicit canonical `effect`. Use
@@ -314,6 +327,7 @@ Optional:
 python3 skills/ppt-master/scripts/native_enhance_pptx.py apply "<project>" \
   --transition fade \
   --transition-duration 0.5 \
+  --narration-start-floor 0.8 \
   --narration-padding 0.4 \
   --apply-transition-without-audio \
   --overwrite
@@ -347,7 +361,9 @@ Patch scope:
 | `ppt/presProps.xml` | `showPr useTimings=1` only when this run writes automatic slide advance |
 | `[Content_Types].xml` | Required content types |
 
-**Hard rule**: Do not modify existing slide shapes, text bodies, images, chart data, master/layout parts, or existing non-target relationships.
+**Hard rule**: Do not modify existing slide shapes, text bodies, images, chart
+data, master/layout parts, hyperlink XML/relationships, or existing non-target
+relationships.
 
 Before publishing the candidate, apply validates transitions, timing/object
 animation structure, ZIP integrity, unique parts, internal relationships,
@@ -376,7 +392,7 @@ Check:
 | Visible content | No intentional changes |
 | Notes | Present on intended slides |
 | Audio media | Present under `ppt/media/` when generated |
-| Auto-play | Narrated slides advance by audio duration |
+| Auto-play | Narrated slides wait for the resolved page-start lead-in, then advance after audio duration plus page-tail padding |
 | Transition | Requested effect remains exact; preserved `AlternateContent` keeps its primary and fallback branches |
 | Timings disabled | Source `advTm` and package `useTimings` are not changed |
 | Delivery check | No newly introduced structural errors; source baseline and font/media/hidden-slide advisories reviewed |

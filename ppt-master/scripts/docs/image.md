@@ -5,43 +5,25 @@
 > inputs while delivery writes self-contained SVG previews and native PPTX
 > media.
 
-Image tools cover formula rendering, prompt-based AI generation, web image search, image inspection, and Gemini watermark removal.
+Image tools cover prompt-based AI generation, web image search, image inspection,
+and Gemini watermark removal. Native formula authoring belongs to the SVG
+pipeline, not the image pipeline.
 
-## `latex_render.py`
+## Legacy standalone `latex_render.py`
 
-Manifest-driven LaTeX formula renderer. Default Generate has Strategist write
-`images/formula_manifest.json` after Typography confirmation; Quick Generate
-has the current agent write the same resource manifest without confirmation.
-This script renders only those declared formulas to transparent PNGs and writes
-dimensions back into the manifest.
+This retained standalone utility renders a user-authored
+`images/formula_manifest.json` to PNG. Neither Default nor Quick Generate calls
+it, and new projects do not create formula manifests or formula images. The
+supported generated-deck path authors a native formula marker in SVG and lets
+`svg_to_pptx.py` compile its LaTeX payload to editable PowerPoint OMML.
 
 ```bash
 python3 scripts/latex_render.py <project_path>
 python3 scripts/latex_render.py <project_path> --dry-run
-python3 scripts/latex_render.py <project_path> --providers codecogs,quicklatex,mathpad,wikimedia
 ```
 
-Manifest shape:
-
-```json
-{
-  "providers": ["codecogs", "quicklatex", "mathpad", "wikimedia"],
-  "items": [
-    {
-      "id": "formula_001",
-      "latex": "E = mc^2",
-      "display": "block",
-      "color": "#1D1D1F",
-      "background": "#FFFFFF",
-      "transparent": true,
-      "dpi": 300,
-      "filename": "formula_001.png"
-    }
-  ]
-}
-```
-
-Output files land directly under `project/images/`. Formula filenames should use a shared `formula_` prefix, e.g. `formula_001.png`. The default provider chain is `codecogs,quicklatex,mathpad,wikimedia`; each provider is tried automatically until one succeeds, and the winning provider is recorded back into the manifest. `--providers` or manifest-level `providers` may override the order, but all four are available as no-key fallbacks. Formula PNGs are transparent by default. `background` is the temporary render matte and local background-removal reference; set `transparent: false` only when an opaque final formula asset is intentional. The script does not scan `spec_lock.md` or source documents for `$...$`; formula selection belongs to the active resource owner.
+Use it only for an explicitly requested external raster workflow. It is not a
+compatibility fallback for Keynote, WPS, LibreOffice, or another client.
 
 ## `image_gen.py`
 
@@ -162,6 +144,39 @@ MINIMAX_API_KEY=your-api-key
 # MINIMAX_BASE_URL=https://api.minimax.io
 # MINIMAX_MODEL=image-01
 ```
+
+## `image_treat.py`
+
+Create a non-destructive PNG derivative from one bitmap already prepared under
+`<project_path>/images/`. Use this only when a slide needs a baked bitmap effect;
+crop, mask, rotation, mirror, opacity, shadow, scrim, outline, and overlap remain
+native SVG/PPT treatments. This tool does not perform semantic background
+removal: use `slice_images.py --alpha` for flat-color keys, an already prepared
+RGBA asset or the active host image editor for a standalone cutout, and
+[`image-generator.md`](../../references/image-generator.md) §4.4 only for
+registered subject/base layers.
+
+```bash
+python3 scripts/image_treat.py projects/demo hero.jpg \
+  --output hero_soft.png --brightness 0.9 --contrast 1.1 --blur 12
+
+python3 scripts/image_treat.py projects/demo hero.jpg \
+  --output hero_duotone.png --duotone "#14213D" "#FCA311"
+```
+
+Supported operations are brightness, contrast, desaturation/grayscale,
+duotone, and Gaussian blur. They compose in a fixed order: brightness →
+contrast → tone treatment → blur. Desaturation, grayscale, and duotone are
+mutually exclusive. At least one option must produce a real change; animated
+or multi-frame sources are rejected rather than reduced to one frame.
+
+Both input and output are bare filenames directly under `images/`; output must
+be a new `.png` file. The tool keeps the EXIF-corrected display dimensions,
+leaves any alpha mask unchanged, and never overwrites the source or an existing
+derivative. If `images/image_sources.json` contains the source filename, the
+new record inherits that legal provenance and records `derived_from` plus the
+ordered `treatments`. Run `analyze_images.py` after all planned derivatives are
+ready so the inventory reflects the files that SVG authoring will consume.
 
 ## `analyze_images.py`
 

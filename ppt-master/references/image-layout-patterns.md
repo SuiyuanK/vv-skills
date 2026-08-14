@@ -1,6 +1,6 @@
-# Image and Formula Layout Pattern Catalog
+# Image Layout Pattern Catalog
 
-Compact composition vocabulary for prepared images, illustrations, and rendered formula assets. Use the patterns as options, not as a checklist.
+Compact composition vocabulary for prepared images and illustrations. Use the patterns as options, not as a checklist.
 
 ---
 
@@ -46,7 +46,7 @@ Compact composition vocabulary for prepared images, illustrations, and rendered 
 | Several visuals should read as one system | `#P3-05` grid, `#P3-14` mosaic with text cell, `#P3-20` tessellation, `#P3-21` split tiling, `#P3-22` curve array, `#P3-23` depth row |
 | A foreground needs an opening or reveal | `#M1-06` true hole, `#M1-07` cut scrim, `#M1-08` background-registered fill, `#M1-05` text subtraction |
 | Text needs contrast without discarding the visual | `#M2-01` directional scrim, `#M2-05` spotlight, `#A3-02` prepared frosted panel, `#M2-09` grid scrim |
-| A subject should cross or re-layer around native content | `#A2-02` frame breakout or `#A2-03` registered subject/base pair |
+| A subject should cross or re-layer around native content | `#A2-02` frame breakout or `#A2-03` registered reconstruction group |
 | A cover, divider, or promotional page needs image-led structure | `#P1-01`, `#P1-04`, `#P1-13`, or `#P3-15`–`#P3-19` |
 | Consecutive pages should share one visual world | `#C1-01` persistent state, `#C2-01` pan, `#C2-02` push/pull, or `#C3-01` matched framing |
 
@@ -165,7 +165,7 @@ The following three patterns are topologically different and are not interchange
 
 ## 5. Asset-Dependent Treatments
 
-**Prepared-asset gate**: every treatment below consumes its named project-local asset; it does not authorize creation during SVG realization. Embedded lettering belongs to the artwork only when deliberately fixed; authoritative or editable labels remain native SVG. If a required asset is absent, return to the active workflow's preparation owner or choose a native treatment.
+**Prepared-asset gate**: every treatment below consumes its named project-local asset; it does not authorize creation during SVG realization. Embedded lettering belongs to the artwork only when deliberately fixed; authoritative or editable labels remain native SVG. If a required asset is absent, return to the active workflow's preparation owner or choose a native treatment. [`image-base.md`](./image-base.md) §2 maps these ids to preparation paths without auto-triggering them.
 
 ### 5.1 A1 · Prepared Composites and Appearance
 
@@ -178,7 +178,7 @@ The following three patterns are topologically different and are not interchange
 
 - **#A2-01 · Transparent sticker or cutout** — use a prepared RGBA asset and preserve its open silhouette.
 - **#A2-02 · Subject breaking out of a container** — register a prepared foreground subject across its frame boundary.
-- **#A2-03 · Registered subject/base pair** — align a base photo with its prepared transparent subject cutout in one coordinate system; optionally place a native title, panel, or shape between them so the subject crosses that middle layer.
+- **#A2-03 · Registered reconstruction group** — align a clean base with one or more prepared transparent midground/subject/foreground layers in one coordinate system. Draw each member at its required z-order. Give every full-canvas member the same `x`, `y`, `width`, `height`, and aspect mapping; never trim or independently crop it. Several padded-bbox-disjoint objects may share one prepared plate while remaining separate nested-SVG picture crops.
 
 ### 5.3 A3 · Registered Derivatives
 
@@ -233,17 +233,16 @@ If motion is enabled, [`animations.md`](./animations.md) owns its implementation
 | Scene-backed evidence or metrics | `#P2-01` / `#P2-05` + `#M2-01` or `#M2-03`; let the image carry context and native SVG carry information |
 | One selected region needs explanation | Use `#P2-03` for an outline and caption on one picture; use `#P2-04` when a second same-source picture must magnify the region |
 | Several sources should read as one object | `#P3-21` + restrained `#M3-01`, or `#P3-20` + a native text/color cell |
-| One continuous scene should span detached shapes | `#M1-10` + optional `#M3-05`; keep one-picture topology |
+| Several mixed-ratio photos need one visual rhythm | Use `#P3-06` + `#M1-01` + `#M2-01`; repeat equal-size parallelogram carriers on one horizontal `vector` with fixed positive advance and alternating transverse offsets, fill-crop each upright bitmap, overlay each carrier with a same-contour directional gradient, and keep labels native |
+| One continuous scene should span detached shapes | `#M1-10` + optional `#M3-05`; combine `#P1-08` for a triangular image-and-copy split, and keep one-picture topology |
 | Same-source windows must remain independent | `#M1-11`; add `#C2-01` or `#C2-02` only when consecutive pages use the relationship |
 | A prepared subject should re-layer over its source | `#A2-03`; keep the base and cutout registered, and insert a native middle layer only when it has a distinct job |
 | A busy visual needs one focal region | `#M2-05`, or prepared `#A3-01` / `#A3-03` when a native contrast treatment is insufficient |
 | A visual argument should build across pages | `#C1-01` + `#P2-01` or `#P2-05`; keep the underlying source and frame stable |
-| Formula or technical figure needs explanation | `#P1-12` + `#P2-07` / `#P2-03`; use `#P2-04` only when a second cropped detail is useful, and keep explanatory labels native |
+| Technical figure needs explanation | `#P1-12` + `#P2-07` / `#P2-03`; use `#P2-04` only when a second cropped detail is useful, and keep explanatory labels native |
 
 **Registration boundary**: registration-dependent effects succeed only when their declared coordinate relationship remains exact. Preserve registration for `#M1-10`, `#A2-02`, `#A3-01`, `#M1-08`, `#A2-03`, `#A3-02`, `#A3-03`, and `#M1-11`; `#M1-09` is the intentional exception.
 
 **Source-correspondence boundary**: `#P2-04` reuses one exact source but intentionally changes the detail crop, scale, and placement; preserve the selected-region correspondence instead of forcing page-space registration.
-
-**Formula placement**: treat a rendered formula as a prepared visual asset. Use whitespace patterns such as `#P1-11` or `#P1-12` for isolated derivations, `#P1-07`, `#P2-07`, `#P2-03`, or `#P2-04` for annotated formulas, and `#P3-04` or `#P3-03` for comparisons; keep editable explanatory text native.
 
 All compatibility details remain owned by [`shared-standards-core.md`](./shared-standards-core.md) and its routed references.

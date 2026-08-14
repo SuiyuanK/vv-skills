@@ -38,7 +38,10 @@ from .xml_support import (
 )
 
 try:
-    from project_utils import CANVAS_FORMATS, validate_communication_trace
+    from project_utils import (
+        CANVAS_FORMATS,
+        validate_communication_trace,
+    )
 except ImportError:
     print("Warning: Unable to import project_utils")
     CANVAS_FORMATS = {}
@@ -83,6 +86,7 @@ try:
     from svg_to_pptx.drawingml.utils import (
         IDENTITY_MATRIX as _IDENTITY_MATRIX,
         PROJECT_PAINT_PROPERTIES as _PAINT_PROPERTIES,
+        PROJECT_TEXT_IMAGE_FILL_ATTR as _TEXT_IMAGE_FILL_ATTR,
         detect_text_lang as _detect_text_lang,
         matrix_multiply as _matrix_multiply,
         parse_inline_style as _parse_inline_style,
@@ -100,6 +104,7 @@ try:
 except ImportError:
     _IDENTITY_MATRIX = None
     _PAINT_PROPERTIES = None
+    _TEXT_IMAGE_FILL_ATTR = 'data-pptx-text-image-fill'
     _detect_text_lang = None
     _matrix_multiply = None
     _parse_inline_style = None
@@ -113,6 +118,15 @@ except ImportError:
     _transform_point = None
     _unsafe_exported_font_faces = None
     _validate_dml_shape_matrix = None
+
+try:
+    from hyperlink_contract import (
+        SHAPE_HYPERLINK_ATTR as _SHAPE_HYPERLINK_ATTR,
+        project_hyperlink_errors as _project_hyperlink_errors,
+    )
+except ImportError:
+    _SHAPE_HYPERLINK_ATTR = 'data-pptx-shape-hyperlink'
+    _project_hyperlink_errors = None
 
 try:
     from svg_to_pptx.drawingml.converter import (
@@ -204,13 +218,17 @@ except ImportError:
 
 try:
     from svg_to_pptx.native_objects import (
+        INLINE_FORMULA_ATTR as _INLINE_FORMULA_ATTR,
         native_fallback_kind as _native_fallback_kind,
+        inline_formula_marker_errors as _inline_formula_marker_errors,
         native_marker_legacy_warnings as _native_marker_legacy_warnings,
         native_replacement_kind as _native_replacement_kind,
         native_replacement_status as _native_replacement_status,
     )
 except ImportError:
+    _INLINE_FORMULA_ATTR = 'data-pptx-inline-formula'
     _native_fallback_kind = None
+    _inline_formula_marker_errors = None
     _native_marker_legacy_warnings = None
     _native_replacement_kind = None
     _native_replacement_status = None
@@ -1049,6 +1067,7 @@ class SVGQualityChecker:
         self._communication_trace_issues: List[Tuple[str, str]] = []
         self._pptx_structure_issues: List[Tuple[str, str]] = []
         self._has_incomplete_page_roster = False
+        self._active_slide_count: int | None = None
         self._prototype_by_output: Dict[Path, Path] = {}
         self._active_prototype_path: Path | None = None
         self._active_template_reuse_scope: str | None = None
@@ -1214,6 +1233,9 @@ class SVGQualityChecker:
                 # 5. Check text wrapping methods
                 self._check_text_elements(content, root, result)
 
+                # 5b. Validate native hyperlink targets and carrier structure.
+                self._check_hyperlinks(root, result)
+
                 # 6. Check image references (file existence and resolution)
                 self._check_image_references(root, svg_path, result)
 
@@ -1233,7 +1255,7 @@ class SVGQualityChecker:
                 # 8b. Check <pattern> elements declare a PPTX preset.
                 self._check_pattern_fills(root, result)
 
-                # 8c. Check opt-in native table/chart markers before export.
+                # 8c. Check explicit native replacement markers before export.
                 self._check_native_object_markers(root, result)
 
                 # 8d. Validate explicit master/layout/placeholder metadata.
@@ -1488,6 +1510,32 @@ class SVGQualityChecker:
         self._check_fragmented_paragraph_text(root, result)
         self._check_unmergeable_leading_text(root, result)
         self._check_nested_positional_tspans(root, result)
+
+    def _check_hyperlinks(self, root: ET.Element, result: Dict) -> None:
+        """Validate the standard SVG anchor surface shared with export."""
+        anchors = [
+            elem for elem in root.iter()
+            if _local_name(elem) == 'a'
+        ]
+        transports = [
+            elem for elem in root.iter()
+            if elem.get(_SHAPE_HYPERLINK_ATTR) is not None
+        ]
+        if not anchors and not transports:
+            return
+        result['info']['hyperlinks'] = len(anchors) + len(transports)
+        if _project_hyperlink_errors is None:
+            result['errors'].append(
+                'Unable to import hyperlink validator; cannot verify SVG links'
+            )
+            return
+        result['errors'].extend(
+            f'Invalid SVG hyperlink: {error}'
+            for error in _project_hyperlink_errors(
+                root,
+                slide_count=self._active_slide_count,
+            )
+        )
 
     def _check_nested_positional_tspans(
         self,
@@ -3656,7 +3704,9 @@ class SVGQualityChecker:
 
         svg_to_pptx maps <pattern fill> to native <a:pattFill prst="...">. The
         preset name comes from `data-pptx-pattern` (e.g. `lgGrid` / `smGrid` /
-        `dkUpDiag`). Two failure modes worth catching pre-export:
+        `dkUpDiag`). Patterns marked with `data-pptx-text-image-fill` instead
+        map to run-level <a:blipFill> and are validated by converter preflight.
+        Two preset-pattern failure modes are worth catching pre-export:
 
         1. Missing annotation → the converter compatibility fallback chooses
            `ltUpDiag` (diagonal stripes), which is not an authoring contract.
@@ -3688,6 +3738,8 @@ class SVGQualityChecker:
         ):
             pat_id = pattern.get('id', '<unnamed>')
             prst = pattern.get('data-pptx-pattern')
+            if pattern.get(_TEXT_IMAGE_FILL_ATTR) is not None:
+                continue
             if pat_id in referenced_patterns and not prst:
                 result['warnings'].append(
                     f"Fidelity warning: <pattern id=\"{pat_id}\"> has no "
@@ -3717,7 +3769,20 @@ class SVGQualityChecker:
                 )
 
     def _check_native_object_markers(self, root: ET.Element, result: Dict) -> None:
-        """Validate opt-in native table/chart markers before PPTX export."""
+        """Validate explicit native replacement markers before PPTX export."""
+        inline_formula_markers = [
+            elem for elem in root.iter()
+            if elem.get(_INLINE_FORMULA_ATTR) is not None
+        ]
+        if inline_formula_markers and _inline_formula_marker_errors is None:
+            result['errors'].append(
+                "Unable to import inline-formula validator; cannot verify "
+                f"{_INLINE_FORMULA_ATTR} markers"
+            )
+        elif _inline_formula_marker_errors is not None:
+            for error in _inline_formula_marker_errors(root):
+                result['errors'].append(f"Invalid inline formula marker: {error}")
+
         invalid_status_elements: set[ET.Element] = set()
         for elem in root.iter():
             marker_id = elem.get('id') or elem.get('data-name') or '<unnamed>'
@@ -5020,6 +5085,8 @@ class SVGQualityChecker:
             self.issue_types['Input issues'] += 1
             return []
 
+        self._active_slide_count = len(svg_files)
+
         self._configure_prototype_context(dir_path, svg_files)
         if not self.template_mode:
             self._prepare_undeclared_size_occurrences(svg_files)
@@ -5111,7 +5178,6 @@ class SVGQualityChecker:
                 ('error', message)
                 for message in validate_communication_trace(project_path)
             )
-
         return self.results
 
     def _check_pptx_structure_contract(
@@ -6874,6 +6940,8 @@ class SVGQualityChecker:
         print(
             f"  [ERROR] With errors: {self.summary['errors']} ({self._percentage(self.summary['errors'])}%)")
 
+        self._print_provenance_category_summary()
+
         if self.issue_types:
             print(f"\nIssue categories:")
             for issue_type, count in sorted(self.issue_types.items(), key=lambda x: x[1], reverse=True):
@@ -6912,6 +6980,36 @@ class SVGQualityChecker:
             )
             print(f"  4. foreignObject: Use <text> + <tspan> for manual line breaks")
             print(f"  5. Font issues: use PPT-safe exported typefaces (e.g. Microsoft YaHei / Arial / Consolas)")
+
+    def _print_provenance_category_summary(self):
+        """Print compact JSON-equivalent counts for token-safe gate handling."""
+        categories = self._provenance_categories()
+        rows = (
+            (
+                'blocking',
+                len(categories['blocking']),
+                'hard findings; gate also requires exit 0',
+            ),
+            (
+                'introduced',
+                len(categories['introduced']),
+                'advisory; new or changed',
+            ),
+            (
+                'inherited',
+                len(categories['inherited']),
+                'informational; prototype-identical',
+            ),
+            (
+                'source-import',
+                _source_import_warning_count(categories['source_import']),
+                'informational; source-conversion loss',
+            ),
+        )
+
+        print("\nProvenance categories:")
+        for name, count, note in rows:
+            print(f"  {f'{name}: {count}':<20} {note}")
 
     def _print_animation_summary(self):
         """Print animations.json validation issues if present."""
@@ -7166,14 +7264,13 @@ class SVGQualityChecker:
 
         print(f"\n[REPORT] Check report exported: {output_file}")
 
-    def export_json_report(
-        self,
-        output_file: str,
-        *,
-        target: str,
-        stage: str,
-    ) -> None:
-        """Write a machine-readable quality report with provenance classes."""
+    def _provenance_categories(self) -> Dict[str, object]:
+        """Classify every issue by provenance.
+
+        Single source for the JSON report's ``categories`` block and the
+        terminal summary, so the console and the report never disagree about
+        what blocks a release export.
+        """
         self._apply_aggregated_issue_counts()
         introduced: List[Dict[str, str]] = []
         blocking: List[Dict[str, str]] = []
@@ -7230,6 +7327,28 @@ class SVGQualityChecker:
                 else:
                     introduced.append(item)
 
+        return {
+            'blocking': blocking,
+            'introduced': introduced,
+            'inherited': inherited,
+            'project_issues': project_issues,
+            'source_import': dict(self._source_import_summary),
+        }
+
+    def export_json_report(
+        self,
+        output_file: str,
+        *,
+        target: str,
+        stage: str,
+    ) -> None:
+        """Write a machine-readable quality report with provenance classes."""
+        categories = self._provenance_categories()
+        blocking = categories['blocking']
+        introduced = categories['introduced']
+        inherited = categories['inherited']
+        project_issues = categories['project_issues']
+
         # Keep the legacy `drift` JSON field for report compatibility. Its
         # colors/fonts entries are informational anchor comparisons; sparse
         # size entries are informational until their third occurrence.
@@ -7240,7 +7359,7 @@ class SVGQualityChecker:
             }
             for category, values in self._anchor_value_summary.items()
         }
-        source_import = dict(self._source_import_summary)
+        source_import = categories['source_import']
         payload = {
             'schema': 'ppt-master.svg-quality-report.v1',
             'stage': stage,

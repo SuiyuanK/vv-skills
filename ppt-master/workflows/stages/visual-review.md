@@ -6,7 +6,7 @@ description: Optional quality-gate stage for per-page rubric-based visual review
 
 > Optional Generate-PPTX quality stage. Goal: reduce human iteration by letting AI subagents visually self-check each rendered slide against a fixed rubric and apply atomic position/spacing fixes.
 >
-> Reads `<project>/svg_output/<page>.svg` and a pre-rendered PNG of each slide, then either applies a fix or flags `needs_human`. When an installed/fused Style exists, it also reads that workspace's `Review Focus` as supplemental acceptance context. **Never touches** brand decisions, layout structure, or other files.
+> Reads `<project>/svg_output/<page>.svg` and a pre-rendered PNG of each slide, then either applies a fix or flags `needs_human`. When an installed Style exists, it also reads that workspace's `Review Focus` as supplemental acceptance context. **Never touches** brand decisions, layout structure, or other files.
 >
 > This stage is **context-independent** — invokable in a fresh chat session with only `<project_path>` as input. No upstream conversation context required.
 
@@ -58,7 +58,7 @@ The renderer (`visual_review.py`) does **not** auto-start the live-preview serve
 python3 skills/ppt-master/scripts/visual_review.py <project_path>
 ```
 
-This writes one PNG per page to `<project_path>/.preview/<page>.png` at 1280×720, with `<use data-icon>` inlined and `<image href>` resolved exactly as the live-preview browser sees them. Renders are serialized via a project-local file lock — safe to invoke concurrently.
+This writes one PNG per page to `<project_path>/.preview/<page>.png`, sized from that SVG root's `viewBox`, with `<use data-icon>` inlined and `<image href>` resolved exactly as the live-preview browser sees them. Each successful page record in the JSON summary includes the exact canvas plus its raster dimensions. Renders are serialized via a project-local file lock — safe to invoke concurrently.
 
 Exit codes:
 
@@ -69,13 +69,22 @@ Exit codes:
 
 If any page comes back with `"all_background": true` in the JSON summary, that page rendered to a blank surface — investigate before continuing (broken `<use>` reference, missing image asset, etc.).
 
+**Mandatory — normalize partial renders before dispatch**: parse the renderer
+summary before Step 2. Dispatch only records with `"ok": true`,
+`"all_background": false`, and a complete `canvas` object. For every other page,
+the main agent adds a `render_failed` row directly to the aggregate with the
+renderer error or blank-surface reason; no per-page `.review/<page>.json` is
+expected until that page renders successfully. Exit `2` or `3` stops dispatch
+entirely. Exit `4` may still review the successful subset, but the stage cannot
+finish cleanly until every failed page is retried or handed off per Step 4.
+
 ---
 
 ## Step 2 — Spawn the review team
 
 Create a team and dispatch one orchestrator agent. The orchestrator partitions the N pages into batches of ≤ K pages (default **K = 5**) and spawns one subagent per batch **in parallel** (single message, `ceil(N/K)` parallel `Agent` calls). Each batch subagent reads the fixed inputs (rubric + `design_spec.md` + `spec_lock.md` + conditional Style Review Focus) **once**, then iterates over its assigned pages sequentially.
 
-Before dispatch, inspect `<project>/templates/design_spec.md`. If it declares `kind: style` or its fused provenance contains an active Style segment, read only `## VII. Review Focus` once and include those checks in every batch prompt. Otherwise pass no Style supplement. This lookup never triggers visual review; it runs only after the user has already activated this stage. The supplement cannot weaken the fixed rubric or widen edit permissions.
+Before dispatch, look for `<project>/templates/design_spec.style.*.md`. For each one found, read only its `## VII. Review Focus` once and include those checks in every batch prompt. Otherwise pass no Style supplement. This lookup never triggers visual review; it runs only after the user has already activated this stage. The supplement cannot weaken the fixed rubric or widen edit permissions.
 
 ```text
 TeamCreate(team_name="visual-review-<project>", agent_type="orchestrator")
@@ -90,13 +99,13 @@ Agent(
 The orchestrator prompt must be self-contained and is the **single** place where dispatch shape, batch size, and forbid lists are stated — the rubric (`references/visual-review.md`) defines the contract those prompts must satisfy. Required fields (all absolute paths):
 
 - `<project_path>` — project root
-- Full page list with `page_role` per page (parse `<project>/design_spec.md` §IX outline; **fixed compatibility default**: if an existing `design_spec.md` lacks §IX, use `content` for every page and flag this in the final report; if `design_spec.md` itself is missing, restore it through [`failure-recovery.md`](../governance/failure-recovery.md) §3 before dispatch)
+- Full page list with `page_role` and the successful renderer record's `canvas` per page (parse `<project>/design_spec.md` §IX outline; **fixed compatibility default**: if an existing `design_spec.md` lacks §IX, use `content` for every page and flag this in the final report; if `design_spec.md` itself is missing, restore it through [`failure-recovery.md`](../governance/failure-recovery.md) §3 before dispatch). Pass `canvas` through verbatim; do not assume a fixed slide size.
 - Batch size `K` (default 5; raise to 10 for token-sensitive runs on large decks, lower to 3 for high-fidelity short decks — see rubric §6.1)
 - Iteration budget per page (default 1; 2 only for high-stakes / final-cut runs — see [Appendix: Iteration loop](#appendix-iteration-loop-opt-in))
 - Path to the rubric: `skills/ppt-master/references/visual-review.md`
 - Style Review Focus excerpt, only when the conditional lookup above found one; preserve its wording and source path
 - Dispatch contract reference: rubric [§6](../../references/visual-review.md#6-dispatch--messaging-contract) (batched parallel spawn, self-contained prompts, mandatory `SendMessage` on idle, anonymous-name tolerance)
-- Subagent forbid list: do not edit any other page, `design_spec.md`, `spec_lock.md`, `templates/design_spec.md`, `animations.json`, `image_prompts.json`, or `images/`
+- Subagent forbid list: do not edit any other page, `design_spec.md`, `spec_lock.md`, anything under `templates/`, `animations.json`, `image_prompts.json`, or `images/`
 
 **Host compatibility**: `TeamCreate` and `SendMessage` are Claude-Code-specific multi-agent primitives. On hosts without those primitives (Cursor, VS Code + Copilot, Codebuddy, etc.) the main agent processes batches sequentially — same partitioning, same per-batch prompts, no parallel dispatch. Token savings from shared fixed inputs still apply; wall-clock time grows roughly N/K-fold.
 

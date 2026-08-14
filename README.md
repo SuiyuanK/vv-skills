@@ -2,7 +2,7 @@
 
 这个仓库用于收录个人可复用的 agent skills、第三方 skill 镜像与自动化工作流，不限定只能用于 Codex。Windows 维护类 skills 重点强调只读诊断、备份和确认门控。
 
-## Skills
+## 自研 Skills
 
 ### `codex-history-recovery`
 
@@ -78,12 +78,15 @@
 - 仅在多个超级块结构一致、错误局限于校验和且目录可读时，才允许带撤销文件的最小 `debugfs` 写入。
 - 正式修复后必须再次执行 `dumpe2fs`、只读 `e2fsck` 和启动后日志验证。
 
+## 第三方 Skills
+
 ### `codex-windows-fast-patch-skill`
 
 诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
 
 - 上游来源：[chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)
-- 当前同步基线：上游 `main` 提交 [`5a48446`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/5a484467c15df2055f9fc1828b349cde31160a1b)
+- 跟踪分支：上游 `main`
+- 当前同步基线：提交 [`e7f8573`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/e7f85737d4b2337aa846412e4c15f6af1d8ccec0)
 - 本目录是上游内容在 `vv-skills` 中的已审核镜像，不替代或冒充上游仓库。
 - `vv-skills` 保留本机验证后的安全调整：Provider 历史等数据层修复必须由用户手动关闭和重新打开 Codex，不自动停止或拉起应用。
 
@@ -99,7 +102,8 @@
 面向论文、学位论文和研究文章的模块化科研写作 skill 套件，包含头脑风暴、文献综述、证据驱动写作、章节写作、实验结果规划、LaTeX、统计分析、图表和审稿流程。
 
 - 上游来源：[Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill)
-- 首次镜像基线：上游 `main` 提交 [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c)
+- 跟踪分支：上游 `main`
+- 当前同步基线：提交 [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c)
 - 本目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
 - 保留上游的 `LICENSE`、README、多平台配置、模块、脚本和子 skills。
 
@@ -108,79 +112,42 @@
 将 PDF、DOCX、URL、Markdown 等资料转换为可编辑的 PowerPoint，支持原生形状、图表、表格、模板、演讲者备注、动画和音频旁白工作流。
 
 - 上游来源：[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)
-- 当前镜像基线：上游 `main` 提交 [`4343bd8b`](https://github.com/hugohe3/ppt-master/commit/4343bd8bfc91e79dfb9680681a378476cc38a280)
+- 跟踪分支：上游 `main`
+- 当前同步基线：提交 [`b87f5f5`](https://github.com/hugohe3/ppt-master/commit/b87f5f524cabff9376355163c0f2c622ead43493)
 - 本目录镜像上游的 `skills/ppt-master/` 可安装 skill，并附带上游 MIT `LICENSE`；不复制网站、示例演示文稿和项目工作区。
 - Python 3.10+ 依赖记录在 `ppt-master/requirements.txt`，应安装到实际执行 skill 脚本的 Python 解释器。
 
-## 安装
+## 本地管理
 
-将所需 skill 目录复制到 Codex skills 目录：
+CC Switch 的规范 skill 目录同时是 `vv-skills` 的本地 Git 工作副本，不需要把 skill 再复制到另一份本地仓库。Linux 下该目录为 `/home/vv/.cc-switch/skills`；Windows 或其他系统应以 CC Switch 的实际配置为准。
 
-```powershell
-Copy-Item -Recurse .\codex-history-recovery "$env:USERPROFILE\.codex\skills\codex-history-recovery"
-Copy-Item -Recurse .\windows-vivado-clean-uninstall "$env:USERPROFILE\.codex\skills\windows-vivado-clean-uninstall"
-Copy-Item -Recurse .\vivado-ubuntu26-ncurses-fix "$env:USERPROFILE\.codex\skills\vivado-ubuntu26-ncurses-fix"
-Copy-Item -Recurse .\synopsys-eda-fix "$env:USERPROFILE\.codex\skills\synopsys-eda-fix"
-Copy-Item -Recurse .\qqmusic-linux-fix "$env:USERPROFILE\.codex\skills\qqmusic-linux-fix"
-Copy-Item -Recurse .\nemo-cinnamon-ghostty "$env:USERPROFILE\.codex\skills\nemo-cinnamon-ghostty"
-Copy-Item -Recurse .\linux-ext4-superblock-recovery "$env:USERPROFILE\.codex\skills\linux-ext4-superblock-recovery"
-Copy-Item -Recurse .\codex-windows-fast-patch-skill "$env:USERPROFILE\.codex\skills\codex-windows-fast-patch-skill"
-Copy-Item -Recurse .\research-writing-skill "$env:USERPROFILE\.codex\skills\research-writing-skill"
-Copy-Item -Recurse .\ppt-master "$env:USERPROFILE\.codex\skills\ppt-master"
+Claude、Codex、Cursor、Gemini 等 Agent 使用的 skill 目录及软连接由 CC Switch 管理，不要直接在这些 Agent 目录中新增、修改、删除或重建 skill 和软连接。skill 变更后，通过 CC Switch 刷新配置，并在新任务中确认相应 skill 可以被发现。
+
+`ppt-master` 的 Python 依赖记录在 `ppt-master/requirements.txt`。确认实际执行脚本的 Python 环境后，可在仓库根目录安装：
+
+```shell
+python -m pip install -r ./ppt-master/requirements.txt
 ```
 
-安装 `ppt-master` 的 Python 依赖：
+`research-writing-skill` 是包含多个子 skills 的套件，其子目录暴露方式由 CC Switch 配置管理，不要直接修改 Agent 目录中的软连接。
 
-```powershell
-python -m pip install -r "$env:USERPROFILE\.codex\skills\ppt-master\requirements.txt"
-```
+## 第三方 Skill 更新流程
 
-`research-writing-skill` 是多 skill 套件。安装后还需将其子 skills 暴露给 Codex：
+仅在用户明确要求检查或更新第三方 skill 时执行：
 
-```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.agents\skills"
-New-Item -ItemType Junction `
-  -Path "$env:USERPROFILE\.agents\skills\research-writing" `
-  -Target "$env:USERPROFILE\.codex\skills\research-writing-skill\skills"
-```
+1. 在 CC Switch 规范目录检查当前分支、未提交改动以及本地 `main` 与远程 `main` 的同步状态；本地仅落后时先执行 `git pull --ff-only`。
+2. 从根目录 `README.md` 读取目标 skill 的上游仓库、跟踪分支和当前同步基线。
+3. 将上游内容获取到本次任务工作区的 `./tmp/`，不得写入系统 `/tmp`、`/var/tmp` 或 Agent skill 目录。
+4. 比较当前版本与上游版本，检查许可证、敏感信息、文件增删、依赖和本仓库保留的本地调整；不得未经比较直接覆盖。
+5. 在 CC Switch 规范目录中完成更新或合并，运行适用的结构验证、脚本测试和核心功能检查。
+6. 同步更新本 README 中的用途、依赖、跟踪分支和当前版本标签或提交哈希。
+7. 只暂存本次相关文件，提交并直接推送 `main`；推送后再次检查本地、远程、README 和上游基线是否一致。
 
-重新启动 Codex，或开启一个新任务以重新加载 skill。
+各第三方 skill 的附加要求：
 
-## `codex-windows-fast-patch-skill` 更新顺序
-
-仅在明确有更新意图时同步该第三方 skill，固定顺序如下：
-
-1. 从[上游仓库](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)获取新版到 `.codex/vvwork/upstream-sync/codex-windows-fast-patch-skill/`，不要直接覆盖本机已安装副本。
-2. 对比上游与 `vv-skills/codex-windows-fast-patch-skill/`，检查敏感信息、文件范围、脚本变化及本仓库的安全调整。
-3. 将确认后的上游内容同步到本仓库，重新应用并验证 Provider 历史修复的手动关闭/重开规则，再提交、审核并合并进 `main`。
-4. 仅从已合并的 `vv-skills/main/codex-windows-fast-patch-skill/` 更新 `%USERPROFILE%\.codex\skills\codex-windows-fast-patch-skill`。
-5. 在新任务中确认 skill 可被发现，并检查上游基线、仓库副本和本机安装副本一致。
-
-不要采用“上游仓库直接覆盖本机、但不更新 `vv-skills`”的路径；`vv-skills/main` 应作为后续本地更新的已审核来源。
-
-## `ppt-master` 更新顺序
-
-仅在明确有更新意图时同步该第三方 skill，固定顺序如下：
-
-1. 从[上游仓库](https://github.com/hugohe3/ppt-master)获取新版到 `.codex/vvwork/upstream-sync/ppt-master/`，不要直接覆盖本机已安装副本。
-2. 对比上游 `skills/ppt-master/` 与 `vv-skills/ppt-master/`，检查许可证、敏感信息、文件范围、依赖清单和 skill 结构。
-3. 将确认后的 skill 内容及上游 `LICENSE` 同步到本仓库，验证后提交、审核并合并进 `main`。
-4. 使用已合并的 `vv-skills/main/ppt-master/requirements.txt` 更新实际执行脚本的 Python 环境。
-5. 仅从已合并的 `vv-skills/main/ppt-master/` 更新本机安装目录，并在新任务中验证发现结果和核心脚本。
-
-不要采用“上游仓库直接覆盖本机、但不更新 `vv-skills`”的路径；`vv-skills/main` 应作为后续本地更新的已审核来源。
-
-## `research-writing-skill` 更新顺序
-
-仅在明确有更新意图时同步该第三方套件，固定顺序如下：
-
-1. 从[上游仓库](https://github.com/Norman-bury/research-writing-skill)获取新版到 `.codex/vvwork/upstream-sync/research-writing-skill/`，不要直接覆盖本机已安装副本。
-2. 对比上游与 `vv-skills/research-writing-skill/`，检查许可证、敏感信息、文件范围和 skill 结构。
-3. 将确认后的上游内容复制到本仓库的 `research-writing-skill/`，提交、审核并合并进 `main`。
-4. 仅从已合并的 `vv-skills/main/research-writing-skill/` 更新 `%USERPROFILE%\.codex\skills\research-writing-skill`。
-5. 保持 `%USERPROFILE%\.agents\skills\research-writing` 指向本机安装目录的 `skills` 子目录，并在新任务中验证发现结果。
-
-不要采用“上游仓库直接覆盖本机、但不更新 `vv-skills`”的路径；`vv-skills/main` 应作为后续本地更新的已审核来源。
+- `codex-windows-fast-patch-skill`：同步上游可安装 skill 文件集（`SKILL.md`、`agents/`、`scripts/`、`references/` 和 `assets/`），不引入上游仓库级 `AGENTS.md`、README、SECURITY 或 Git 配置文件；不自动调用上游的就地更新脚本，统一通过本节流程审查上游。更新后重新应用和验证 Provider History 安全调整；数据层修复必须由用户手动关闭和重新打开 Codex，不得自动停止或拉起应用。
+- `ppt-master`：只同步上游的 `skills/ppt-master/`，保留该目录内的许可证，不复制上游网站、示例项目或其他工作区内容；不得覆盖或提交本机 `.venv`、缓存和生成产物。
+- `research-writing-skill`：保留上游许可证、README、多平台配置、模块、脚本和子 skills，并确认 CC Switch 对子 skills 的暴露配置仍然有效。
 
 ## 使用说明
 

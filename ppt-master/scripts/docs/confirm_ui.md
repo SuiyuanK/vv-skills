@@ -271,9 +271,9 @@ The Stage-1 submission writes this receipt and the Stage-1 `result.json`
 together. Generate reads both exactly once after `--wait-only --wait-stage
 stage1` returns. Free design skips installation. Template mode runs
 `apply-template-workspace` against all selected roots and waits for complete
-project-local installation/fusion. Only then does the agent complete the
-handoff below. Installation resolves template-to-template ownership; Stage 2
-later evaluates current-project fit from the installed copy. Strategist never
+project-local installation. Only then does the agent complete the
+handoff below. Installation copies each selected spec separately; Stage 2
+resolves segment ownership and current-project fit from the installed set. Strategist never
 reads the source roots.
 
 ### Agent handoff — `template_handoff.json`
@@ -307,15 +307,17 @@ its file time is newer than the handoff.
 The following fields belong to the Strategist stages, not to the
 template-selection receipt.
 
-- **Enumerable + custom** — canvas / icons retain blank manual inputs; mode / visual_style instead show a mandatory AI-authored proposal in full, initially unselected and editable after selection. Selected mode / style writes literal `custom` plus its behavior sibling.
-- **Visual examples for hard-to-name choices** — the full-screen confirmation page loads real SVG page samples from `static/style_previews/` for `visual_style`, and renders real sample SVGs from `templates/icons` for `icons`. These thumbnails make style and icon-library choices visually comparable before the user locks them. Preview copy is fixed role text (big title / section title / body / points), not project content from recommendation files, so users compare visual treatment rather than copywriting. These previews are a confirmation aid only: they do not add fields to recommendation stage files or `result.json`, and they do not replace the later Step 6 live preview.
+- **Enumerable + custom** — canvas / icons retain blank manual inputs. Mode and visual style first show three project-specific `custom` values projected from the complete directions, then the full fixed base catalog as conservative single-select alternatives. Selecting a projected card expands its behavior editor in place; edits change only the current value, while the adjusted active whole-direction card exposes an explicit restore action for the authored text.
+- **Visual examples for hard-to-name choices** — the full-screen confirmation page loads real SVG page samples from `static/style_previews/` for fixed `visual_style` catalog choices, and renders real sample SVGs from `templates/icons` for `icons`. Project-specific `custom` direction cards show their authored summary instead of requesting a nonexistent preset asset. These thumbnails and summaries make style and icon-library choices visually comparable before the user locks them. Preview copy is fixed role text (big title / section title / body / points), not project content from recommendation files, so users compare visual treatment rather than copywriting. These previews are a confirmation aid only: they do not add fields to recommendation stage files or `result.json`, and they do not replace the later Step 6 live preview.
 - **Image usage multi-select** — image sources are selected as one or more catalog ids: `ai` = AI-generated, `web` = Web-sourced, `provided` = User-provided, `placeholder` = Placeholder, `none` = No images. `none` is exclusive. A confirmed non-`none` set is the allowed acquisition-source boundary, not a requirement to use every selected source; only explicit `image_notes` wording can require a source, asset, or page role. Recommendation and result values may be a legacy single string, but new files should use an array. When several sources are recommended, write the source ids to `recommend.image_usage` and write the actual usage strategy to `image_notes`, not a custom prose value.
-- **Closed enumerable** — PPT reading mode (`delivery_purpose` compatibility key), formula policy / generation mode / refine spec, plus AI source only when image usage includes `ai`. These have no Custom box; out-of-catalog values snap back to the recommended option.
+- **Closed enumerable** — PPT reading mode (`delivery_purpose` compatibility key), generation mode / refine spec, plus AI source only when image usage includes `ai`. These have no Custom box; out-of-catalog values snap back to the recommended option.
 - **Proactive execution booleans** — Final Stage 2 carries top-level `proactive_speaker_notes`, `proactive_custom_animations`, and `proactive_narration_audio` values. Defaults are `true`, `false`, and `false`, respectively. They control what the Agent does proactively only when the user has not explicitly instructed otherwise; the latest explicit user instruction always wins. These three values are raw confirmation evidence: the UI and server neither couple nor rewrite them, and every boolean combination is valid. When narration audio is enabled, Strategist later resolves the effective Speaker Notes outcome to enabled and records `Narration Audio dependency` as its Design Spec provenance. Disabling proactive custom animation does not suppress the Strategist's advisory motion recommendations.
 - **Open prose** — `audience`, `communication_intent`, `audience_outcome`, `core_message`, `delivery_context`, `artifact_afterlife`, `content_divergence`, and `page_count`. `communication_intent` may carry several purposes plus priority / sequence; common paths appear only as help text. `delivery_context` states one primary presenter-led / reader-led / hybrid / recorded-self-running context plus optional secondary use; a hybrid recommendation names which context leads. `content_divergence` is the source-treatment axis. `page_count` may be a range here; Strategist resolves the exact §IX roster, leaving Executor no pagination latitude.
-- **Coordinated generative directions** — `design_directions` carries ≥3 safe / shifted / bold candidates. Each candidate bundles visual style, color, typography, icon id, and conditional generated-image rendering. The page can still render legacy top-level `color`, `typography`, and `image_strategy` candidates, but new staged recommendations use the coordinated bundle.
+- **Coordinated generative directions** — `design_directions` carries exactly three complete candidates authored top-down from the project contract. Each has a unique stable id and bundles `custom` mode, `custom` visual style, color, typography, icon id, and `custom` generated-image rendering regardless of recommended image source. Its localized note is a compact, user-facing style summary. It may reuse localized display labels from `catalogs.visual_styles` when they describe the result concisely, but those labels are optional vocabulary rather than a selection constraint or required mapping. Otherwise it uses concise natural language and never forces the nearest label. The summary stays within one or two short sentences and does not expose catalog ids or reference mechanics. All three must be viable as whole solutions; they do not need different catalog bases or forced safe / shifted / bold archetypes. After completing all three bundles, Strategist compares them against the confirmed contract and source, then writes the strongest overall fit's zero-based index to `selected`; array position does not determine preference. That bundle becomes the initial default and applies its three custom projections coherently. The page can still render legacy top-level `color`, `typography`, and `image_strategy` candidates, but new staged recommendations use the coordinated bundle.
 
-AI-authored custom proposals apply only to mode, visual style, and conditional AI-image rendering; a selected proposal cannot be blank. Color / typography keep their existing manual Custom cards. Image usage uses source ids plus `image_notes`; closed sets have no Custom path.
+Direction-local custom projections apply to mode, visual style, and generated-image rendering; all three are editable after selection and a selected custom value cannot be blank. The original recommendation remains immutable so the active whole-direction card can explicitly restore every edited component without making an ordinary card click destructive. Legacy standalone `custom_candidates` remain readable but are optional and are not authored in new files. Color / typography keep their existing manual Custom cards. Image usage uses source ids plus `image_notes`; closed sets have no Custom path.
+
+**Stage-2 catalog read gate.** Before choosing component bases, Strategist reads only `modes/_index.md`, `visual-styles/_index.md`, and `image-renderings/_index.md`. It authors the three whole solution intents first, freezes every basis id from those indexes, and only then reads the deduplicated selected detail files before completing the custom behaviors. Unselected sibling files never enter context; a novel custom reads none.
 
 **Stage-1 current-value contract.** Each editable prose box starts with the Strategist's recommendation, if one exists. The user may retain, revise, or clear it; no Stage-1 prose field has a non-empty validation gate. On confirmation, the browser submits the current strings and the server preserves them through every later stage and the final `result.json`, including `""`. Blank means no explicit user constraint and may cause downstream default judgment, but it never causes the initial recommendation to be restored. A profile-declared `locked: true` field is read-only and remains the sole exception.
 
@@ -323,7 +325,7 @@ AI-authored custom proposals apply only to mode, visual style, and conditional A
 
 ## Catalogs — `static/catalogs.json` (the finite option universe)
 
-The front-end loads `/api/catalogs` (served by the confirm server) and falls back to the static `/static/catalogs.json` if that route is unavailable. `/api/catalogs` returns the static file **with the `canvas` list synced live from `config.py CANVAS_FORMATS`** — the set of formats and their `dim` come from config (single source of truth, zero drift), while trilingual labels / use text stay in catalogs.json (a plain fallback label is synthesized for any new id config adds). Keys: `canvas`, `modes`, `visual_styles` (grouped), `icons`, `image_usage`, `image_ai_path`, `formula_policy`, `generation_mode`, `delivery_purpose`. Each entry is `{ "id", "label", "label_zh", "label_en", "label_ja", ... }`; descriptions use `desc_zh` / `desc_en` / `desc_ja`, and `visual_styles` groups use `group_zh` / `group_en` / `group_ja`. The front-end falls back to legacy `label` / `desc` / `group`, so old catalogs still load, but new user-facing catalog text must cover all three languages (zh / en / ja). English labels should mirror canonical reference names (`pyramid`, `swiss-minimal`, `Path A`, `mixed`, etc.); Chinese and Japanese labels should be translated for users. Descriptions render inline after the option title, not as a separate selected-option line. `visual_styles` is `[{ "group", "group_zh", "group_en", "group_ja", "items": [...] }]`. For `canvas` you only need to maintain the trilingual labels in catalogs.json; the format set and dimensions are authoritative in `config.py CANVAS_FORMATS`.
+The front-end loads `/api/catalogs` (served by the confirm server) and falls back to the static `/static/catalogs.json` if that route is unavailable. `/api/catalogs` returns the static file **with the `canvas` list synced live from `config.py CANVAS_FORMATS`** — the set of formats and their `dim` come from config (single source of truth, zero drift), while four-language labels / use text stay in catalogs.json (a plain fallback label is synthesized for any new id config adds). Keys: `canvas`, `modes`, `visual_styles` (grouped), `icons`, `image_usage`, `image_ai_path`, `generation_mode`, `delivery_purpose`. Each entry is `{ "id", "label", "label_zh", "label_zh_tw", "label_en", "label_ja", ... }`; descriptions use `desc_zh` / `desc_zh_tw` / `desc_en` / `desc_ja`, and `visual_styles` groups use `group_zh` / `group_zh_tw` / `group_en` / `group_ja`. The front-end falls back to legacy `label` / `desc` / `group`, so old catalogs still load, but new user-facing catalog text must cover all four languages (zh / zh-TW / en / ja). English labels should mirror canonical reference names (`pyramid`, `swiss-minimal`, `Path A`, `continuous`, etc.); Simplified Chinese, Traditional Chinese, and Japanese labels should be translated for users. Descriptions render inline after the option title, not as a separate selected-option line. `visual_styles` is `[{ "group", "group_zh", "group_zh_tw", "group_en", "group_ja", "items": [...] }]`. For `canvas` you only need to maintain the four-language labels in catalogs.json; the format set and dimensions are authoritative in `config.py CANVAS_FORMATS`.
 
 ## Round-trip data contract
 
@@ -361,7 +363,7 @@ run remains inactive. An existing `result.json` outside the current `stage1` /
 | Recommendation file | Declared stage | Page renders | Button | On submit |
 |---|---|---|---|---|
 | `recommendations.stage1.json` + `template_options.json` | `"stage1"` | communication contract — content language; audience; open `communication_intent`; audience outcome; core message / primary delivery context + optional secondary use / artifact afterlife / `content_divergence` (all prose fields may be blank); canvas; free-design/template mode and conditional candidate selectors | **Confirm contract & template choice** | writes Stage-1 `result.json` plus `template_selection.json` in one submission; the page stays open and polls while the agent installs/completes the handoff |
-| `recommendations.stage2.json` | `"stage2"` | complete deck solution and production — conditional natural-language template application, reading mode, mode, page count, visual direction, color, icons, typography, image usage/rendering, conditional AI acquisition path, formula policy, proactive notes/custom-animation/narration-audio toggles, generation mode, and Design Spec review toggle | **Confirm final plan** | writes `result.json` `{ stage: "final", status: "confirmed", <all fields> }`, then shuts the page down |
+| `recommendations.stage2.json` | `"stage2"` | complete deck solution and production — conditional natural-language template application, reading mode, mode, page count, visual direction, color, icons, typography, image usage/rendering, conditional AI acquisition path, proactive notes/custom-animation/narration-audio toggles, generation mode, and Design Spec review toggle | **Confirm final plan** | writes `result.json` `{ stage: "final", status: "confirmed", <all fields> }`, then shuts the page down |
 
 In the UI branch, the AI authors Stage 1 without reading template candidates,
 then launches the combined page. In chat/delegated confirmation it authors the
@@ -395,7 +397,7 @@ Stage 2: its recommendations must include `template_application.value`.
 ### Input — `recommendations.stage1.json` (created beside template options)
 
 Author this file before reading candidate index summaries in chat and without
-reading any template spec, prototype, asset, fused segment owner, or template
+reading any template spec, prototype, asset, segment owner, or template
 canvas. `template_options.json` supplies display state only and never changes
 the communication recommendation.
 
@@ -434,11 +436,14 @@ The common paths — inform / explain / persuade / decide / align / teach / repo
 After Stage 1 is confirmed, create `recommendations.stage2.json` with the complete solution; leave Stage 1 unchanged (the server folds confirmed communication fields back in when serving the page):
 
 **Stage-2 production contract**: the server rejects the recommendation file
-unless `recommend.formula_policy`, `recommend.generation_mode`, and boolean
-`refine_spec.value` are present; `recommend.image_ai_path` is additionally
-required when `image_usage` includes `ai`. Final submission must retain the
-corresponding direct values (`formula_policy`, `generation_mode`, boolean
-`refine_spec`, and conditional `image_ai_path`) or confirmation is rejected.
+unless `recommend.generation_mode` and boolean `refine_spec.value` are present;
+`recommend.image_ai_path` is additionally required when `image_usage` includes
+`ai`. Final submission must retain the corresponding direct values
+(`generation_mode`, boolean `refine_spec`, and conditional `image_ai_path`) or
+confirmation is rejected. Formula realization is Executor-owned and is not a
+Stage-2 choice. Legacy recommendation/result objects may contain
+`formula_policy`; the server tolerates the extra field but does not render or
+persist it in a new receipt.
 
 ```json
 {
@@ -446,11 +451,11 @@ corresponding direct values (`formula_policy`, `generation_mode`, boolean
   "lang": "zh",
   "recommend": {
     "delivery_purpose": "balanced",
-    "mode": "pyramid",
-    "visual_style": "swiss-minimal",
+    "mode": "custom",
+    "visual_style": "custom",
+    "image_strategy": "custom",
     "image_usage": ["ai", "provided"],
     "image_ai_path": "auto",
-    "formula_policy": "mixed",
     "generation_mode": "continuous"
   },
   "page_count": { "value": "12-15" },
@@ -459,30 +464,17 @@ corresponding direct values (`formula_policy`, `generation_mode`, boolean
   "proactive_custom_animations": { "value": false },
   "proactive_narration_audio": { "value": false },
   "refine_spec": { "value": false },
-  "custom_candidates": {
-    "mode": {
-      "name_zh": "冲突到决策",
-      "behavior_zh": "先建立业务冲突，再用结论先行结构推动决策。"
-    },
-    "visual_style": {
-      "name_zh": "编辑批注风",
-      "behavior_zh": "严格栅格配合边注和证据强调。"
-    },
-    "image_strategy": {
-      "name_zh": "证据拼贴",
-      "rendering": "custom",
-      "visual_zh": "纸面证据拼贴",
-      "mood_zh": "审慎可信",
-      "behavior_zh": "裁切纸面配少量批注，保持平面深度并继承演示色板。"
-    }
-  },
   "design_directions": {
-    "selected": 0,
+    "selected": 1,
     "candidates": [
       {
+        "id": "executive-clarity",
         "name_zh": "稳妥专业",
-        "note_zh": "像成熟咨询简报",
-        "visual_style": "swiss-minimal",
+        "note_zh": "以瑞士极简为主，融合柔和圆角与编辑出版风格。",
+        "mode": "custom",
+        "mode_behavior_zh": "以 pyramid 作为唯一目录基底，为当前风险决策材料定制两次结论闸门；标题保持判断句，每章先给判断，再用证据展开并以可执行结论收束。",
+        "visual_style": "custom",
+        "visual_style_behavior_zh": "由 swiss-minimal 负责精确栅格和大留白，soft-rounded 负责少量关键容器的轮廓与轻微抬升，editorial 负责细规则、边注与证据层级；标题锐利，正文中性，装饰只标记推理关系。",
         "icons": "tabler-outline",
         "color": { "name_zh": "冷静专业", "palette": {
           "background": "#FFFFFF", "secondary_bg": "#F4F6F8",
@@ -496,10 +488,11 @@ corresponding direct values (`formula_policy`, `generation_mode`, boolean
           "body_size": 24
         },
         "image_strategy": {
-          "name_zh": "克制矢量",
-          "rendering": "vector-illustration",
-          "visual_zh": "扁平矢量、实色块、少阴影",
-          "mood_zh": "稳定、可信、克制"
+          "name_zh": "编辑式证据图",
+          "rendering": "custom",
+          "visual_zh": "简化矢量主体配合编辑式注释与局部材质对比",
+          "mood_zh": "审慎、可信，像调查报道中的证据插图",
+          "behavior_zh": "由 vector-illustration 负责清晰轮廓，minimalist-swiss 负责留白构图，screen-print 负责克制的半调纹理，warm-scene 负责暖光与可信氛围；四者服从同一平面主体和当前演示文稿颜色角色，避免写实景深与装饰性渐变。"
         }
       }
     ]
@@ -507,11 +500,11 @@ corresponding direct values (`formula_policy`, `generation_mode`, boolean
 }
 ```
 
-The example abbreviates the required ≥3 directions. Custom mode/style candidates remain mandatory; only a recommendation containing AI requires the custom image candidate. Final Stage 2 rejects fewer than three bundles, incomplete six-role palettes, or incomplete heading/body stacks. Legacy grids remain readable only with three complete palettes and complete typography.
+The example shows one candidate's complete shape; the actual array repeats that shape for exactly three candidates. Every candidate requires a unique stable `id`, literal `custom` mode/style/rendering with localized behavior, an icon value, complete six-role palette, complete heading/body stack, and complete image strategy even when `recommend.image_usage` excludes AI. The server rejects any fixed mode/style/rendering inside a new direction and any explicit `design_directions.selected` outside integer `0` through `2`; omission remains readable as a legacy index-`0` fallback. Legacy grids remain readable only with three complete palettes and complete typography.
 
-- `recommend.*` names each recommended id. New mode / style values use a catalog id or literal `custom`; arbitrary prose values are legacy-only. Use `recommend.image_strategy: "custom"` only when an explicit user-supplied image direction should start selected. Missing recommendations fall back to the normal preset. Legacy aliases remain accepted; new files write canonical ids.
+- `design_directions.selected` owns the initial complete bundle and MUST be the actual zero-based index (`0`, `1`, or `2`) that Strategist chooses only after all three bundles are complete. The chosen card is marked Recommended and initially applies its matching mode, visual-style, and generated-image custom candidates together; array order carries no recommendation meaning. New direction mode/style/rendering values are always literal `custom`; prose stays in the required behavior sibling. `recommend.*` remains a compatibility hint and may mirror `custom`, but it never replaces the selected direction. Legacy aliases remain accepted; new files write canonical ids.
 - The three proactive-execution fields are top-level boolean `{ "value": ... }` objects, not catalog ids. Omitted fields use `true / false / false` for notes / custom animation / narration audio. These are absence-of-instruction defaults, not permission to override the user's latest explicit request. Preserve all three raw values independently through `result.json`; do not couple or rewrite them. Strategist derives effective Speaker Notes as enabled when audio is `true` and records `Narration Audio dependency` as provenance in the Design Spec. `proactive_custom_animations: false` leaves Strategist animation suggestions unchanged; it only prevents unrequested custom-animation execution.
-- `custom_candidates` is recommendation-only. Mode / style carry localized `name` + `behavior`; conditional image strategy also carries `rendering: "custom"`, `visual`, and `mood`. When a proposal combines or borrows existing catalog entries, the visible behavior names every exact id and Strategist reads every corresponding file before authoring it; a genuinely novel proposal names none. The server rejects missing required candidates; the UI shows full copy, edits it only after selection, rejects a selected blank, and omits unselected candidates from `result.json`. Template-backed proposals obey inherited identity, prototype capacity, and `template_application`.
+- `custom_candidates` is an optional legacy recommendation-only shape. New files place all three project-specific variants inside `design_directions`; each remains separately selectable and becomes editable in place. A custom behavior may use zero, one, or many exact catalog bases. Reference count has no fixed cap: every named id must contribute a distinct executable job, the behavior omits any id whose contribution it cannot state, and one basis never requires a decorative second. The UI rejects a selected blank and submits only the edited current value. Template-backed variants obey inherited identity, prototype capacity, and `template_application`.
 - Seed `audience`, `communication_intent`, `audience_outcome`, and `delivery_context` when evidence supports them; users need not supply them, and every Stage-1 prose field may end blank. The contract and `primary_language` stay in `result.json` and `design_spec.md`; `spec_lock.md communication` receives `primary_language`, compact `audience` / `objective` / `core_message`, and reading mode. `communication_intent` may preserve multiple purposes and priority/sequence; never add a `primary_job` enum.
 - Do not write `recommend.template_reuse_scope` or `recommend.template_adherence`. Strategist records those internal exporter values later in `spec_lock.md` after inspecting the actual template and current content.
 - For a confirmed templates-mode handoff, write one editable prose field as top-level `template_application.value`. It summarizes **how to use** the already selected project-local template: actual page/prototype use and preservation/reorganization decisions. It never chooses, changes, or reinstalls a workspace. Omit it for free design. The UI returns the current string through final Stage 2; Strategist then persists the final effective plan as `- **Template Application**: ...` in `design_spec.md §I`, which Executor reads from the retained Design Spec. Never replace it with internal reuse/adherence ids or a fixed option menu.
@@ -530,16 +523,16 @@ Template-mode-only Stage-2 fragment:
 - `image_notes` is the initial strategy note shown under the image source chips. Use it for page-role guidance and constraints: which source applies where, what to avoid, which user assets are authoritative, how realistic / abstract the imagery should be, and what can remain as placeholders. It is intent guidance, not a separate finite option.
 - Final Stage 2 shows and submits `recommend.image_ai_path` as one of `auto` / `api` / `host-native` / `manual` only while its current `image_usage` includes `ai`; changing sources refreshes that production control on the same page.
 - **Color candidates carry the user-facing core `palette`**: `background`, `secondary_bg`, `primary`, `accent`, `secondary_accent`, and `body_text`. The page renders every role as a labelled swatch with its HEX value visible, and offers per-role override inputs for precise single-role edits, plus a **Custom color card with a free-text box** — the user can describe the palette in words or paste HEX values instead of filling each role; this writes `color: { "name": "custom", "custom": "<text>" }` to `result.json` for the AI to interpret. Legacy `text` is accepted as an alias for `body_text`, but new files should write `body_text`. Strategist derives secondary text, borders, state colors, and visual-style neutral tiers while writing `design_spec.md`, then projects the machine values to `spec_lock.md`; those are not user-facing confirmation choices.
-- **Candidate display text may be multilingual**: color / typography candidates can provide `name_zh` / `name_en` / `name_ja` and `note_zh` / `note_en` / `note_ja`; the page falls back to legacy `name` / `note`. Labels resolve in the page language first, then fall back across the others (a `ja` page: ja → en → zh; zh/en pages keep their zh↔en fallback and try `_ja` last), so when `lang` is `ja` always include the `_ja` variants — otherwise the candidate labels render in English.
-- **Typography candidates** use concrete heading/body `primary`; non-English decks also use `english`, while English-primary decks omit it. `cjk` / `latin` remain legacy aliases. Localized `name` labels the pair and `css` only previews. Bundles differ overall; font pairs may repeat without blocking. Fixed pairs require `fixed: true`. Catalog `fonts` supplies language-filtered dropdowns plus Other without limiting recommendations; edits mark Custom and refresh the preview. Include topic samples. PPT baselines are `text` 20 · `balanced` 24 · `presentation` 32 px; cards preserve sizes and submit px.
-- **Per-role size override** (parallel to color's per-role HEX override): besides `body_size`, the page exposes editable inputs for `title` / `subtitle` / `annotation`. The browser applies one documented deterministic dependency chain: `reading mode → body baseline → unpinned role sizes` (role ramp: `body ×` the §g ratios). Changing reading mode updates the body and all unpinned roles locally; changing body updates unpinned roles locally. Editing body or a role pins that value, so later reading-mode changes do not overwrite it. Font / direction-card selection preserves all current sizes. This is a browser-only state update: it performs no fetch, asks the backend to author no new recommendations, and a re-render preserves exactly what the user sees. Each role input is labelled as px and shows an approximate pt equivalent (`1px = 0.75pt`) for orientation. The final values are written to `result.json` as `typography.sizes: { "title", "subtitle", "annotation" }` in **px** — every canvas, no pt and no `sizes_pt` provenance. These confirmed values are Strategist input anchors: the completed page plan may add recurring roles, and downstream execution owns bounded per-occurrence treatment. Candidate `sizes` remain accepted for compatibility, but the fresh Stage-2 baseline is normalized through the same local ramp before first render.
+- **Candidate display text may be multilingual**: color / typography candidates can provide `name_zh` / `name_zh_tw` / `name_en` / `name_ja` and `note_zh` / `note_zh_tw` / `note_en` / `note_ja`; the page falls back to legacy `name` / `note` when present. Otherwise localized fields resolve in the page language first, then by the locale's fallback order: zh → en → ja → zh_tw, en → zh → ja → zh_tw, ja → en → zh → zh_tw, or zh_tw → zh → en → ja. Include all four variants in newly authored multilingual candidates so a persisted UI-language choice never hides recommendation text.
+- **Typography candidates** use concrete heading/body `primary`; non-English decks also use `english`, while English-primary decks omit it. `cjk` / `latin` remain legacy aliases. Localized `name` labels the pair and `css` only previews. Bundles differ overall; font pairs may repeat without blocking. Fixed pairs require `fixed: true`. Catalog `fonts` supplies language-filtered dropdowns plus Other without limiting recommendations; edits mark Custom and refresh the preview. Include topic samples. [`canvas-formats.md`](../../references/canvas-formats.md) § "Typography Scale Start" is the single owner of initial body anchors and sanity bands; the browser mirrors that rule, and submitted values remain px.
+- **Per-role size override** (parallel to color's per-role HEX override): besides `body_size`, the page exposes editable inputs for `title` / `subtitle` / `annotation`. The browser applies one documented deterministic dependency chain: PPT uses `reading mode → body baseline`, non-PPT uses `canvas → body baseline`, then every canvas uses `body baseline → unpinned role sizes` (role ramp: `body ×` the §g ratios). Changing reading mode updates a PPT body and all unpinned roles locally; changing body updates unpinned roles locally. Editing body or a role pins that value, so later reading-mode changes do not overwrite it. A font-only selection preserves current sizes; applying a different complete direction, or using the active card's explicit restore action, restores that direction's typography baseline and derived unpinned sizes. This is a browser-only state update: it performs no fetch and asks the backend to author no new recommendations. Each role input is labelled as px and shows an approximate pt equivalent (`1px = 0.75pt`) for orientation. The final values are written to `result.json` as `typography.sizes: { "title", "subtitle", "annotation" }` in **px** — every canvas, no pt and no `sizes_pt` provenance. These confirmed values are Strategist input anchors: the completed page plan may add recurring roles, and downstream execution owns bounded per-occurrence treatment. Candidate `sizes` remain accepted for compatibility; fresh Stage 2 preserves a candidate `body_size` as its baseline and derives only missing or unpinned role sizes from the same local ramp before first render.
 - **`delivery_purpose` compatibility key / Reading mode** (enumerable, PPT only) decides where meaning is carried, not merely how large type is: `text` makes pages self-contained with complete sentences, short prose, captions, tables, and necessary detail; `balanced` shares explanation between page and presenter; `presentation` uses one idea, concise claims, and visual evidence while speech / notes carry the detail. It therefore governs page grammar, granularity, density / rhythm, and note burden. Reading-mode cards intentionally show **no px value**; the typography section owns the separately visible body / role sizes and applies any local default. It is surfaced in Stage 2 beside the visual system, separate from communication intent. `recommend.delivery_purpose` pre-selects one; `result.json` retains the key, while `spec_lock.md` uses canonical `consumption_mode`. Non-PPT canvases omit it.
 - **Combined style preview** — a compact live "overall impression" strip sits just above the color section and is **sticky**: it pins under the topbar so it stays visible while the user scrolls through the color / icon / typography sections, keeping the picking controls and their combined effect on screen together. It applies the currently selected color palette **and** typography (heading sample in `primary` over `background`, body sample in `body_text`, an `accent` bar, a `secondary_bg` chip) and repaints on every color / HEX-override / font / `body_size` change. It does not replace the per-candidate swatches or font samples (those stay for picking); it is deliberately an abstract style chip, **not** a slide-layout preview — page layout preview remains the live-preview server's job (Step 6). No schema field; it derives entirely from the existing color + typography selections.
-- **Generated-image direction** appears only for `image_usage: ai`. One preset dropdown contains project recommendations when present plus the 20 system styles; Custom remains a separate card and is blank when AI was added manually. A preset submits its id; Custom submits `rendering: "custom"` + non-empty `behavior`; closing AI omits `image_strategy`. Catalog-based custom behavior names exact ids for optional `image_rendering_references`; a novel behavior has none. The left preview follows selection. No image palette is written; deck colors remain authoritative, and legacy `image_strategy.palette` is ignored.
-- **`design_directions`** is the canonical Stage-2 spectrum: ≥3 meaningfully different safe / shifted / bold bundles with localized copy, style, icons, conditional image strategy, complete language-aware typography, and HEX `background`, `secondary_bg`, `primary`, `accent`, `secondary_accent`, `body_text`. Selection applies the bundle; component controls override it. `result.json` stores components, not a direction id.
+- **Generated-image direction** appears only for current `image_usage: ai`, but all three custom project candidates already exist in `design_directions` before that toggle. Turning AI on reveals those candidates immediately without a backend rerun, followed by the 20 fixed system styles. Selecting a project candidate expands its behavior editor in that card; a fixed preset submits its id, while a project candidate submits `rendering: "custom"` + edited non-empty `behavior`. Turning AI off omits `image_strategy` from the final result without deleting the authored recommendation candidates. Catalog-based custom behavior names exact ids for optional `image_rendering_references`; a novel behavior has none. The left preview follows selection. No image palette is written; deck colors remain authoritative, and legacy `image_strategy.palette` is ignored.
+- **`design_directions`** is the canonical Stage-2 starting set: exactly three top-down, project-fit bundles with stable ids, localized copy, custom mode/style/rendering, icons, complete language-aware typography, and HEX `background`, `secondary_bg`, `primary`, `accent`, `secondary_accent`, `body_text`. The `selected` card carries the persistent Recommended marker and is applied first. A custom direction card uses its localized style-summary note—or the required behavior fallback—instead of requesting a preset-style preview. Newly authored notes may borrow localized catalog display labels where useful or use concise natural language freely; they never force an approximate label or expose internal catalog ids. Clicking an inactive card applies every field it owns; projected custom fields can then be edited in place and all lower controls may diverge. The active card shows an adjusted state and exposes an explicit restore action for its immutable authored bundle. `result.json` stores the edited current components, never a direction id.
 - `recommend.generation_mode` and `refine_spec` mirror [`generate-pptx`](../../workflows/generate-pptx.md) Step 4. `split` / `true` are explicit opt-ins. Refinement adds no UI stage: after Gate 1 it stops before the lock for unrestricted chat revision until approval.
 - `content_divergence` is a **free-text** Stage-1 source-treatment field. Blank means a balanced default; facts stay sourced at every level. Strategist consumes it while authoring §IX and records it in `design_spec.md §I`; it is not written to `spec_lock.md`. Beautify sends `{ "value": "keep source wording and page structure verbatim", "locked": true }`, so the UI displays it read-only and the server restores it on every staged submit. Template-fill does not use this confirmation flow and does not surface it.
-- `lang` is the soft UI-language default (`zh` / `en` / `ja`); the persisted user choice wins. It never sets `primary_language`.
+- `lang` is the soft UI-language default (`zh` / `zh-TW` / `en` / `ja`); the persisted user choice wins. It never sets `primary_language`.
 
 ### Output — `result.json` (written on submit, read by the AI)
 
@@ -555,17 +548,18 @@ Template-mode-only Stage-2 fragment:
   "delivery_context": "Primary: presenter-led 20-minute leadership review; secondary: reader-led approval copy shared afterward",
   "artifact_afterlife": "Approval record, hand-off reference, and audit trail",
   "content_divergence": "freely restructure and expand within the source",
-  "mode": "pyramid",
-  "visual_style": "swiss-minimal",
+  "mode": "custom",
+  "mode_behavior": "...",
+  "visual_style": "custom",
+  "visual_style_behavior": "...",
   "color": { "name": "...", "palette": { "background": "#...", "secondary_bg": "#...", "primary": "#...", "accent": "#...", "secondary_accent": "#...", "body_text": "#..." } },
   "icons": "tabler-outline",
   "typography": { "name": "...", "heading": { "primary": "...", "english": "...", "css": "..." }, "body": { "primary": "...", "english": "...", "css": "..." }, "body_size": 24, "body_size_unit": "px", "sizes": { "title": 42, "subtitle": 32, "annotation": 18 } },
   "delivery_purpose": "balanced",
-  "formula_policy": "mixed",
   "image_usage": ["ai", "provided"],
   "image_notes": "封面和章节页用 AI 主视觉；产品页优先用户素材，缺口页可用占位符。",
   "image_ai_path": "auto",
-  "image_strategy": { "name": "方案 A", "rendering": "vector-illustration", "visual": "...", "mood": "..." },
+  "image_strategy": { "name": "方案 A", "rendering": "custom", "visual": "...", "mood": "...", "behavior": "..." },
   "proactive_speaker_notes": true,
   "proactive_custom_animations": false,
   "proactive_narration_audio": false,
@@ -589,14 +583,16 @@ custom` + `visual_style_behavior`, or `image_strategy.rendering: custom` +
 `behavior`. During Design Spec and lock authoring, Strategist projects optional
 `mode_references`, `visual_style_references`, or
 `image_rendering_references` only when that confirmed behavior actually uses
-named catalog sources; genuinely novel custom behavior has no reference list.
+named catalog sources. These lists have no fixed item limit; each item must own
+a distinct executable contribution, while genuinely novel custom behavior has
+no reference list.
 The Stage-1 intermediate write retains the communication contract for Stage 2.
 
 **Final-result consumption contract.** A final result is the user-confirmed input contract for the Strategist's Design Spec, not another recommendation input. After the final wait, Generate Step 4 reads the complete final object exactly once and retains it while Strategist writes and audits `design_spec.md` against every explicitly present field. Normal lock authoring and downstream execution do not reopen `result.json`; the completed Design Spec is the durable authority. Only after that audit passes does Strategist author `spec_lock.md` from the Design Spec plus current execution context, selecting stable anchors and routing rather than copying every field or enumerating every legal color/font. Every value must be consumed at the semantic type owned by [`strategist.md`](../../references/strategist.md) §1 and its field owner: do not omit or substitute it, and do not silently strengthen or weaken its type. If a confirmed requirement cannot be honored, the owning workflow reports or pauses under failure recovery; it never deletes the requirement to keep the pipeline moving.
 
 - Bespoke mode / style prose lives only in the required behavior sibling; image custom prose lives in `image_strategy.behavior`. Canvas / icons retain free-text edge cases, color / typography retain `name: "custom"`, and image usage remains a source-id array plus `image_notes`.
 - `image_ai_path` and `image_strategy` appear only with `image_usage: ai` and remain confirmed downstream. The page is default; explicit/failure chat fallback keeps identical fields. `image_ai_path` selects the Step 5 path, and [`strategist-image.md`](../../references/strategist-image.md) §2 retains the selected rendering or custom behavior as the deck-level image identity anchor; individual prompts still adapt subject, composition, and atmosphere within it.
-- Stage-1 **Confirm contract & template choice** writes the Stage-1 `result.json` and `template_selection.json` together, then keeps the page open while the agent installs the selection. The agent runs `--complete-template-selection`, writes fresh Stage 2 only after that handoff, and the page keeps polling. Stage-2 **Confirm final plan** saves the final `result.json` and shuts the server down (auto-close). The AI reads each receipt at its owning boundary; chat fallback mirrors the same decisions without UI artifacts. Either way, Step 4 ends with `--shutdown` so a never-confirmed page cannot retain its selected port ahead of Step 6 live preview.
+- Stage-1 **Confirm contract & template choice** writes the Stage-1 `result.json` and `template_selection.json` together, then keeps the page open while the agent installs the selection. A successful Stage-1 wait is explicitly intermediate and cannot end the task. In the same active run, the agent runs `--complete-template-selection`, writes fresh Stage 2 only after that handoff, and enters the final wait while the page keeps polling. Stage-2 **Confirm final plan** saves the final `result.json` and shuts the server down (auto-close). The AI reads each receipt at its owning boundary; chat fallback mirrors the same decisions without UI artifacts. Either way, Step 4 ends with `--shutdown` so a never-confirmed page cannot retain its selected port ahead of Step 6 live preview.
 
 ## Scope
 

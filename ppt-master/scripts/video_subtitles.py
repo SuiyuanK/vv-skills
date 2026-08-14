@@ -2,10 +2,10 @@
 """
 PPT Master - Final Video Subtitles
 
-Align the exact narration text frozen in page-local Edge SRT files against the
-audio track of a finished PowerPoint-exported video. This produces a delivery
-SRT from the actual video timeline without rewriting speaker notes or relying
-on theoretical slide offsets.
+Align the exact narration text frozen in page-local narration SRT files against
+the audio track of a finished PowerPoint-exported or slideshow-captured video.
+This produces a delivery SRT from the actual video timeline without rewriting
+speaker notes or relying on theoretical slide offsets.
 
 Usage:
     python3 scripts/video_subtitles.py <project_path> --video <video> --language <language>
@@ -189,7 +189,7 @@ def _page_subtitle_paths(subtitle_dir: Path) -> list[Path]:
     ]
     if not paths:
         raise FileNotFoundError(
-            f"No page-local Edge SRT files found under {subtitle_dir}"
+            f"No page-local narration SRT files found under {subtitle_dir}"
         )
     return paths
 
@@ -311,7 +311,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--video",
         required=True,
-        help="Finished PowerPoint-exported video; relative paths are project-relative",
+        help=(
+            "Finished PowerPoint-exported or slideshow-captured video; "
+            "relative paths are project-relative"
+        ),
     )
     parser.add_argument(
         "--language",
@@ -321,7 +324,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--subtitle-dir",
         default=None,
-        help="Page-local Edge SRT directory; default: <project>/notes/subtitles",
+        help="Page-local narration SRT directory; default: <project>/audio",
     )
     parser.add_argument(
         "-o",
@@ -367,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
     subtitle_dir = (
         Path(args.subtitle_dir)
         if args.subtitle_dir
-        else Path("notes/subtitles")
+        else Path("audio")
     )
     if not subtitle_dir.is_absolute():
         subtitle_dir = project_path / subtitle_dir

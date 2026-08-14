@@ -130,9 +130,9 @@ _ICON_PREVIEW_SAMPLES = {
     'phosphor-duotone': ('house', 'chart-line', 'users', 'target'),
 }
 
-# Prefer the same memorable entry port as live preview. Normal single-project
-# execution releases it between Step 4 and Step 6; concurrent projects advance
-# from this base while explicit ``--port`` remains exact.
+# Keep the long-standing Confirm UI entry port. Live preview uses a separate
+# base range so stale preview tabs cannot address a later Confirm UI process.
+# Concurrent Confirm UI sessions advance while explicit ``--port`` remains exact.
 DEFAULT_PORT = 5050
 PUBLIC_HOST = '127.0.0.1'
 STARTUP_TIMEOUT = 10
@@ -665,13 +665,28 @@ def _read_template_handoff(project_path: Path, handoff_file: Path) -> dict:
             f'{TEMPLATE_HANDOFF_NAME} selection_sha256 does not match selection'
         )
     if data['mode'] == 'templates':
-        installed_spec = project_path / 'templates' / 'design_spec.md'
-        if not installed_spec.is_file():
+        if not _installed_template_specs(project_path):
             raise ValueError(
-                f'{TEMPLATE_HANDOFF_NAME} requires installed template spec: '
-                f'{installed_spec}'
+                f'{TEMPLATE_HANDOFF_NAME} requires at least one installed '
+                f'template spec: {project_path / "templates"}/'
+                'design_spec.<kind>.<id>.md'
             )
     return data
+
+
+def _installed_template_specs(project_path: Path) -> list[Path]:
+    """Return every template spec installed into the project by the apply stage.
+
+    The apply stage installs one file per selected workspace, named
+    ``design_spec.<kind>.<id>.md``. A bare ``design_spec.md`` under
+    ``templates/`` means the project is itself a Create Template workspace and
+    is deliberately excluded here.
+    """
+    return sorted(
+        path
+        for path in (project_path / 'templates').glob('design_spec.*.md')
+        if path.is_file()
+    )
 
 
 def _complete_template_selection(project_path: Path) -> int:
@@ -695,11 +710,11 @@ def _complete_template_selection(project_path: Path) -> int:
         )
         return 1
     if selection['mode'] == 'templates':
-        installed_spec = project_path / 'templates' / 'design_spec.md'
-        if not installed_spec.is_file():
+        if not _installed_template_specs(project_path):
             logger.error(
-                'cannot complete template selection before template apply writes %s',
-                installed_spec,
+                'cannot complete template selection before template apply '
+                'writes %s/design_spec.<kind>.<id>.md',
+                project_path / 'templates',
             )
             return 1
 
@@ -1243,7 +1258,7 @@ def _localized_text_present(candidate: dict, field: str) -> bool:
     """Return whether a candidate carries non-empty localized prose."""
     return any(
         isinstance(candidate.get(key), str) and bool(candidate[key].strip())
-        for key in (field, f'{field}_zh', f'{field}_en', f'{field}_ja')
+        for key in (field, f'{field}_zh', f'{field}_zh_tw', f'{field}_en', f'{field}_ja')
     )
 
 
@@ -1271,13 +1286,12 @@ def _stage2_production_recommendations_error(
     recommend = recommendations.get('recommend')
     if not isinstance(recommend, dict):
         recommend = {}
-    for field in ('formula_policy', 'generation_mode'):
-        value = recommend.get(field)
-        if not isinstance(value, str) or not value.strip():
-            return (
-                'Stage 2 recommendations must include non-empty '
-                f'recommend.{field}'
-            )
+    generation_mode = recommend.get('generation_mode')
+    if not isinstance(generation_mode, str) or not generation_mode.strip():
+        return (
+            'Stage 2 recommendations must include non-empty '
+            'recommend.generation_mode'
+        )
     refine_spec = recommendations.get('refine_spec')
     if (
         not isinstance(refine_spec, dict)
@@ -1296,10 +1310,9 @@ def _stage2_production_recommendations_error(
 
 def _stage2_production_result_error(result: dict) -> Optional[str]:
     """Require every user-confirmed production control in the final payload."""
-    for field in ('formula_policy', 'generation_mode'):
-        value = result.get(field)
-        if not isinstance(value, str) or not value.strip():
-            return f'final Stage 2 payload must include non-empty {field}'
+    generation_mode = result.get('generation_mode')
+    if not isinstance(generation_mode, str) or not generation_mode.strip():
+        return 'final Stage 2 payload must include non-empty generation_mode'
     if not isinstance(result.get('refine_spec'), bool):
         return 'final Stage 2 payload must include refine_spec as a boolean'
     if _uses_ai_images(result):
@@ -1505,23 +1518,44 @@ def _stage2_design_directions_error(
     *,
     main_language: object = '',
 ) -> Optional[str]:
-    """Require three complete coordinated Stage 2 design systems."""
+    """Require three complete custom systems and a valid preferred direction."""
     main_language = main_language or _recommendation_language(recommendations)
     directions = recommendations.get('design_directions')
     if isinstance(directions, dict):
         candidates = _candidate_list(directions)
-        if len(candidates) < 3:
-            return 'Stage 2 design_directions must include at least 3 candidates'
+        if len(candidates) != 3:
+            return 'Stage 2 design_directions must include exactly 3 candidates'
+        selected = directions.get('selected', 0)
+        if type(selected) is not int or not 0 <= selected < len(candidates):
+            return 'Stage 2 design_directions.selected must be an integer from 0 to 2'
         typography_candidates = []
+        direction_ids = set()
         for index, candidate in enumerate(candidates, start=1):
             label = f'design_directions.candidates[{index - 1}]'
             if not isinstance(candidate, dict):
                 return f'{label} must be an object'
+            direction_id = str(candidate.get('id') or '').strip()
+            if not direction_id:
+                return f'{label}.id must be non-empty'
+            if direction_id in direction_ids:
+                return f'{label}.id must be unique'
+            direction_ids.add(direction_id)
             if not _localized_text_present(candidate, 'name'):
                 return f'{label} requires a non-empty localized name'
-            for field in ('visual_style', 'icons'):
+            for field in ('mode', 'visual_style', 'icons'):
                 if not isinstance(candidate.get(field), str) or not candidate[field].strip():
                     return f'{label}.{field} must be non-empty'
+            if candidate['mode'] != 'custom':
+                return f'{label}.mode must be custom'
+            if not _localized_text_present(candidate, 'mode_behavior'):
+                return f'{label}.mode=custom requires non-empty localized mode_behavior'
+            if candidate['visual_style'] != 'custom':
+                return f'{label}.visual_style must be custom'
+            if not _localized_text_present(candidate, 'visual_style_behavior'):
+                return (
+                    f'{label}.visual_style=custom requires non-empty localized '
+                    'visual_style_behavior'
+                )
             error = _palette_error(candidate.get('color'), f'{label}.color')
             if error:
                 return error
@@ -1534,12 +1568,25 @@ def _stage2_design_directions_error(
             if error:
                 return error
             typography_candidates.append(candidate['typography'])
-            if _uses_ai_images(recommendations):
-                image_strategy = candidate.get('image_strategy')
-                if not isinstance(image_strategy, dict) or not str(
-                    image_strategy.get('rendering') or ''
-                ).strip():
-                    return f'{label}.image_strategy.rendering must be non-empty'
+            image_strategy = candidate.get('image_strategy')
+            if not isinstance(image_strategy, dict):
+                return f'{label}.image_strategy must be an object'
+            rendering = str(image_strategy.get('rendering') or '').strip()
+            if not rendering:
+                return f'{label}.image_strategy.rendering must be non-empty'
+            if rendering != 'custom':
+                return f'{label}.image_strategy.rendering must be custom'
+            for prose_field in ('name', 'visual', 'mood'):
+                if not _localized_text_present(image_strategy, prose_field):
+                    return (
+                        f'{label}.image_strategy requires non-empty localized '
+                        f'{prose_field}'
+                    )
+            if not _localized_text_present(image_strategy, 'behavior'):
+                return (
+                    f'{label}.image_strategy.rendering=custom requires non-empty '
+                    'localized behavior'
+                )
         return _typography_candidates_fixed_error(
             typography_candidates,
             main_language=main_language,
@@ -1577,13 +1624,17 @@ def _stage2_design_directions_error(
 
 
 def _stage2_custom_candidates_error(recommendations: dict) -> Optional[str]:
-    """Require visible AI-authored custom alternatives in new Stage 2 files."""
+    """Validate optional legacy standalone custom alternatives."""
     candidates = recommendations.get('custom_candidates')
+    if candidates is None:
+        return None
     if not isinstance(candidates, dict):
-        return 'Stage 2 recommendations must include custom_candidates'
+        return 'custom_candidates must be an object when present'
 
     for field in ('mode', 'visual_style'):
         candidate = candidates.get(field)
+        if candidate is None:
+            continue
         if not isinstance(candidate, dict):
             return f'custom_candidates.{field} must be an object'
         for prose_field in ('name', 'behavior'):
@@ -1593,12 +1644,11 @@ def _stage2_custom_candidates_error(recommendations: dict) -> Optional[str]:
                     f'{prose_field}'
                 )
 
-    if not _uses_ai_images(recommendations):
-        return None
-
     image_candidate = candidates.get('image_strategy')
+    if image_candidate is None:
+        return None
     if not isinstance(image_candidate, dict):
-        return 'custom_candidates.image_strategy must be an object when image_usage includes ai'
+        return 'custom_candidates.image_strategy must be an object'
     if image_candidate.get('rendering') != 'custom':
         return 'custom_candidates.image_strategy.rendering must be custom'
     for prose_field in ('name', 'visual', 'mood', 'behavior'):
@@ -2155,6 +2205,11 @@ def _wait_result_status(
                 )
                 return 2
         logger.info('confirmation stage=%s received: %s', target_stage, result_file)
+        if target_stage == 'stage1':
+            logger.info(
+                '[NEXT] Stage 1 is intermediate: complete the template handoff, '
+                'author fresh Stage 2, then wait for final confirmation.'
+            )
         return 0
     if _result_stage_number(current_stage) > _result_stage_number(target_stage):
         logger.error(
@@ -2213,8 +2268,8 @@ def _build_catalogs() -> dict:
     """Return the static catalog set with the canvas list synced live from
     ``config.CANVAS_FORMATS`` — the single source of truth for canvas formats —
     so the confirm page can never drift from the pipeline's real formats. The
-    set of formats and their dimensions come from config; trilingual labels and
-    use text are kept from catalogs.json (with a plain fallback for any new id).
+    set of formats and their dimensions come from config; four-language labels
+    and use text are kept from catalogs.json (with a plain fallback for new ids).
     """
     data = json.loads(_CATALOGS_PATH.read_text(encoding='utf-8'))
     try:
@@ -2708,6 +2763,10 @@ def create_app(
             result_file,
             carry_previous=rec_stage_number > 1,
         )
+        # Formula realization is Executor-owned. Accept the retired field from
+        # older recommendations/clients, but never persist it in a new receipt.
+        result.pop('formula_policy', None)
+        locked_values.pop('formula_policy', None)
         if rec_stage_number == 1 or not template_required:
             result.pop('template_application', None)
             locked_values.pop('template_application', None)
@@ -2786,7 +2845,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--complete-template-selection', action='store_true',
         help='Agent-only: after Stage 1, bind its template selection to a ready '
-             'handoff. Template mode requires <project>/templates/design_spec.md.',
+             'handoff. Template mode requires at least one '
+             '<project>/templates/design_spec.<kind>.<id>.md.',
     )
     parser.add_argument(
         '--reset-template-selection', action='store_true',

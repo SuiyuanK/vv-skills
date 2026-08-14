@@ -10,7 +10,7 @@ Conditional extension for applying an installed Brand/Style/Layout/Deck workspac
 
 ## 1. AI-Authored Template Application Plan
 
-**Template vs preset**: A style mention and a Style workspace are different inputs. Bare names and style words remain interpretive input and never resolve to a local path; only a selected and installed workspace activates the rules below. Its fused `<project_path>/templates/design_spec.md` is the template-design source. Treat `kind: style` or a fused provenance entry for `style` as an active Direction / method segment. Whether a source root was labelled `library` or `explicit` is installation provenance only and never affects Stage-2 precedence.
+**Template vs preset**: A style mention and a Style workspace are different inputs. Bare names and style words remain interpretive input and never resolve to a local path; only a selected and installed workspace activates the rules below. Every installed `<project_path>/templates/design_spec.<kind>.<id>.md` is a template-design source; read all of them. The presence of a `design_spec.style.*.md` file is what marks an active Direction / method segment. Whether a source root was labelled `library` or `explicit` is installation provenance only and never affects Stage-2 precedence.
 
 **Legacy template boundary**: A Layout/Deck template containing `native_structure.json`, `source_template.pptx`, missing root Master identity, direct atomic placeholders, or old `baseline` / `preserve` / distillation metadata is not a Generate Step 3 input. Create a current workspace through [`create-template`](../workflows/create-template.md), preferably from the original PPTX when native topology matters. Brand and Style are intentionally roster-free; never reject either for omitting SVG or Master identity. Do not mutate the input in place.
 
@@ -21,8 +21,8 @@ Conditional extension for applying an installed Brand/Style/Layout/Deck workspac
 Immediately before authoring the Stage-2 solution, load each relevant template
 resource once per path + SHA and inspect:
 
-- every installed `design_spec.md`; for Layout/Deck only, also inspect the actual Page Roster and relevant SVG prototypes;
-- the resolved Identity, Structure, Reusable Application Context, and Direction / method segment owners from the post-Stage-1 fusion receipt;
+- every installed `design_spec.<kind>.<id>.md`; for Layout/Deck only, also inspect the actual Page Roster and relevant SVG prototypes;
+- the Identity, Structure, Reusable Application Context, and Direction / method segment owners, resolved here from the installed set under [`apply-template-workspace`](../workflows/stages/apply-template-workspace.md) §5;
 - the confirmed current communication contract, source obligations, planned page count, and content shape of every planned page;
 - the user's natural-language instructions, including any page names/numbers or elements they explicitly require.
 
@@ -68,13 +68,13 @@ When the communication contract conflicts with the workspace, choose and state t
 
 > Internal note: `content_divergence` controls source reorganization; the AI-derived `template_reuse_scope` records the reused layer; `template_adherence` records whether a structured plan keeps or extends existing Layout identities.
 
-**Template design precedence**: Explicit current user instructions and final confirmation win. Brand identity overrides Deck identity, Layout structure overrides Deck structure, and Deck retains only its non-overridden integrated segments plus reusable application context. Style owns Direction / method only: its color, typography, icon, and image values are candidate defaults and never override resolved Brand/Deck identity or become official facts. Preferred Mode / Visual Style values seed Stage 2; the Style overlay must resolve into the final single `mode` and `visual_style` lock rather than create a parallel narrative or aesthetic authority. Style takes this segment ahead of ordinary Stage-2 defaults; actual Deck prototypes and Signature facts remain compatibility constraints, not a second method owner. Library/explicit provenance never changes this order. Each of ≥3 directions still carries six palette roles and complete fonts: repeat fixed Brand/Deck values with `typography.fixed: true`; adapt Style candidates to that identity and vary only open roles. Keep resolved icon and image constraints. Style Review Focus never activates [`visual-review`](../workflows/stages/visual-review.md); only an explicit user request does.
+**Template design precedence**: Explicit current user instructions and final confirmation win. Brand identity overrides Deck identity, Layout structure overrides Deck structure, and Deck retains only its non-overridden integrated segments plus reusable application context. Style owns Direction / method only: its color, typography, icon, and image values are candidate defaults and never override resolved Brand/Deck identity or become official facts. Preferred Mode / Visual Style values seed Stage 2; the Style overlay must resolve into the final single `mode` and `visual_style` lock rather than create a parallel narrative or aesthetic authority. Style takes this segment ahead of ordinary Stage-2 defaults; actual Deck prototypes and Signature facts remain compatibility constraints, not a second method owner. Library/explicit provenance never changes this order. Each of the three directions still carries six palette roles and complete fonts: repeat fixed Brand/Deck values with `typography.fixed: true`; adapt Style candidates to that identity and vary only open roles. Keep resolved icon and image constraints. Style Review Focus never activates [`visual-review`](../workflows/stages/visual-review.md); only an explicit user request does.
 
 ---
 
 ## 3. Structured Lock Planning
 
-For Style-only or Style + Brand, write `pptx_structure.mode: flat` plus `template_reuse_scope: style`; omit `template_adherence` and every structured mapping section. When Style is fused with Layout or Deck, it changes only Direction / method and does not change the non-Style capability label or force flat/structured routing. Derive reuse scope from the selected Layout/Deck application plan; a literal `mirror` plan is compatible only when the Style segment requires no visual or topology change.
+For Style-only or Style + Brand, write `pptx_structure.mode: flat` plus `template_reuse_scope: style`; omit `template_adherence` and every structured mapping section. When a Style is installed alongside Layout or Deck, it changes only Direction / method and does not force flat/structured routing. Derive reuse scope from the selected Layout/Deck application plan; a literal `mirror` plan is compatible only when the Style segment requires no visual or topology change.
 
 For `mirror` / `layout`, write `pptx_structure.mode: structured` plus `template_adherence: strict|adaptive`; mirror always writes `strict`. Do not write legacy `baseline`, `template`, `preserve`, `layout_strategy`, or Layout-kind rows.
 
@@ -85,4 +85,12 @@ For `mirror` / `layout`, write `pptx_structure.mode: structured` plus `template_
 - **Adaptive refinement**: Initial definitions are complete. If construction shows that reusable framing or slot topology/bounds must change, return to Strategist to add a definition sourced from that page and update its assignment before execution resumes. Executor never mutates or extends the contract; export only compiles declared structure and never discovers or clusters Layouts.
 - **Input prototypes**: Add one `page_layouts` row per page. Strict preserves that SVG's contract; adaptive keeps its Master and may declare a new output Layout; mirror also preserves literal visuals and text-node topology.
 
-**Chart compatibility**: Use `page_layouts` together with `page_charts` only when the selected prototype shell is compatible. For a chart page without an exact roster match, adaptive mode starts from the closest neutral prototype and declares an output Layout; strict mode selects an existing compatible Layout or revises the outline. Never omit `page_layouts` on a structured route.
+**Visualization compatibility**: Use `page_layouts` with optional Chart/Table
+`page_visualizations` only when the prototype shell can carry the actual §IX
+information model. The reference changes neither Layout identity, slot
+topology, nor final visualization type. Qualitative relationships stay in §IX
+and are composed Slide-locally; they never supply Master/Layout/placeholder
+ownership. Without an exact prototype match, adaptive mode starts from the
+closest neutral prototype and declares an output Layout; strict mode selects an
+existing compatible Layout or revises the outline. Never omit `page_layouts`
+on a structured route or write legacy `page_charts` in a new lock.

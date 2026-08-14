@@ -43,7 +43,6 @@ Start with this exact heading order:
 | Reading Mode | <text, balanced, presentation, or the active non-PPT equivalent> |
 | Content Strategy | <confirmed material-divergence prose or balanced default> |
 | Design Style | <resolved design direction> |
-| Formula Policy | <mixed, render-all, or text-only> |
 | AI Image Acquisition Path | <confirmed path or not applicable> |
 | Generation Mode | <continuous or split> |
 | Spec Refinement | <enabled or disabled> |
@@ -153,13 +152,13 @@ For a selected custom rendering, also add `Image Rendering Behavior`; add `Image
 
 ### 2.3 Visualization and image resources
 
-Use the §VII table only when at least one real catalog reference is selected. Always keep the §VIII table, including when it has no data rows:
+Use the §VII table only when at least one real Chart/Table catalog reference is selected. Always keep the §VIII table, including when it has no data rows:
 
 ```markdown
 ## VII. Visualization Reference List
 
-| Page | Template | Usage |
-| --- | --- | --- |
+| Page | Family | Template | Usage |
+| --- | --- | --- | --- |
 
 ## VIII. Image Resource List
 
@@ -167,11 +166,19 @@ Use the §VII table only when at least one real catalog reference is selected. A
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ```
 
-§VII is an optional page-local reference list. Each row records the page, catalog key, and a short semantic Usage—not geometry. The key derives `templates/charts/<key>.svg`; §IX remains authoritative over final type and realization. Omit an empty §VII and never add path, summary, runners-up, `no-template-match`, or `n/a`. Put unmatched fallbacks in §IX. Legacy wider rows remain readable; new specs use these three columns.
+§VII lists at most one `chart|table` reference per page: canonical Template key
+plus semantic Usage. Resolve `family/key`; never derive paths from bare keys.
+§IX owns child visuals, unmatched fallbacks, and qualitative relationships as
+free `Layout` / `Visualization` prose. Layout/Deck alone owns reusable
+PowerPoint structure. Omit empty §VII and recall diagnostics; legacy rows stay
+readable, while new specs use four columns.
 
-For every independent data chart or pure text-grid table, add `- **Native-ready**: yes|no` to its §IX Slide block. Choose `yes` only when the confirmed requirement or artifact afterlife benefits from an editable native data object; otherwise use `no`. Conceptual visualizations and incidental sparklines, KPI trends, or insets omit this field and remain ordinary SVG.
+In §IX `Visualization`, key every independent data chart/pure text-grid table
+in `kebab-case` and add one `Native-ready` map: `<key>=yes|no; ...`. Use `yes`
+only when editable native output helps. Qualitative relationships/read order
+remain unkeyed prose, as do incidental microvisuals.
 
-In §VIII, author every planned or explicitly required resource from the confirmed source boundary. Write one concise, non-empty `Layout pattern` suggestion in ordinary language; optionally cite hierarchical ids from the layout library when they help recall a technique. Set `Crop Policy` to `adaptive` or `no-crop`; set `Acquire Via` to `ai`, `web`, `user`, `formula`, `placeholder`, or `slice`. Preserve unresolved required assets as `Pending` or `Needs-Manual` instead of dropping or reclassifying them.
+In §VIII, author every planned or explicitly required resource from the confirmed source boundary. Write one concise, non-empty `Layout pattern` suggestion in ordinary language; optionally cite hierarchical ids from the layout library when they help recall a technique. Set `Crop Policy` to `adaptive` or `no-crop`; set `Acquire Via` to `ai`, `web`, `user`, `placeholder`, or `slice`. Preserve unresolved required assets as `Pending` or `Needs-Manual` instead of dropping or reclassifying them. Native formulas never enter this table or `spec_lock.md images`.
 
 §VIII `Layout pattern` is a per-resource preference. When a page uses several images, repeats one image in multiple views, or combines an image with native overlays, describe the page-level relationship and participating resources in §IX `Layout` / `Images`; do not duplicate an unchanged resource row merely to encode animation sequencing.
 
@@ -193,6 +200,7 @@ Write one ordered Slide block per page. Slide count and order must equal §I `Pa
 - **Title**: <preferred page title>
 - **Core message**: <one governing assertion>
 - **Content**: <complete intended on-slide content and hierarchy>
+- **Mathematical content**: <exact expression as a delimiter-free LaTeX body; omit when none>
 
 ## X. Speaker Notes Requirements
 
@@ -208,6 +216,10 @@ When Speaker Notes is disabled, keep §X with only
 `- **Generation**: disabled`; do not write filename, duration, style, or purpose
 placeholders. An explicit notes-off/audio-on conflict blocks before authoring.
 
+When an explicit final/literal narration script will become notes or generated
+audio, make §X `Content` name that source and say `preserve verbatim`; keep the
+full segmented script in `notes/total.md`, not in §IX or this Design Spec.
+
 Append either or both optional lines only when the capability earns a place;
 never write an empty or `none` placeholder:
 
@@ -216,7 +228,7 @@ never write an empty or `none` placeholder:
 - **Motion suggestion**: <communication job plus desired page-entry or reveal relationship/order>
 ```
 
-Add `Visualization` / `Images` when a Slide consumes §VII/§VIII or uses a page-local visualization; mark it data-driven when source values determine geometry. §IX stays authoritative without a catalog match and may choose a custom visualization or table. Add `Native shape suggestion` only when a preset, stock Connector, or compound silhouette/cutout/intersection/fragment may help; name the semantic result plus candidate family or Boolean operands, never implementation geometry or keys. Executor chooses the primitive, preset, Boolean construction, or necessary freeform. Add `Motion suggestion` whenever transition/reveal advice strengthens communication, regardless of the Custom Animations outcome; state purpose and semantic order/relationship, not registry keys, options, timing, ids, or coverage. The suggestion never activates animation execution by itself, creates content, or binds implementation. Describe required visible image states in `Layout` / `Images` only for an explicit motion requirement or an enabled Custom Animations outcome. Add `Native-ready: yes|no` only for independent data charts or pure text-grid tables, `Fact IDs` for sourced claims, and `Data class: scenario` for invented demo values. Except on preservation paths, `Cover impact` carries a binding hook and adaptable composition; apply the same split to `Closing impact` only when the deck genuinely resolves. Roster/order/content stay authoritative. §VIII image layout is non-empty free prose with optional library ids; chart rows are references. Executor owns geometry, hierarchy, treatment, and sparse local garnish.
+Add `Mathematical content` whenever a Slide needs a mathematical expression preserved exactly. Store the expression body as valid LaTeX without `$...$`, `$$...$$`, `\(...\)`, or `\[...\]` source delimiters; the field does not classify inline versus structural use. This is content authority for [`native-formula.md`](../references/native-formula.md), not a formula policy, marker, or implementation request; Executor chooses ordinary text, inline native math, or block native math. Add `Visualization` / `Images` when a Slide consumes §VII/§VIII or uses a page-local visual model. Name every value-driven geometry, qualitative relationship, cell grid, and child visual here; only independent Chart/Table entries use object keys. Describe qualitative order, linkage, hierarchy, grouping, contrast, overlap, and reading path freely—not as a model name or grammar enum. §IX may choose a custom Chart/Table fallback. Add `Native shape suggestion` only when a preset, stock Connector, or compound silhouette/cutout/intersection/fragment may help; name the semantic result plus candidate family or Boolean operands, never implementation geometry or keys. Executor chooses the primitive, preset, Boolean construction, or necessary freeform. Add `Motion suggestion` whenever transition/reveal advice strengthens communication, regardless of the Custom Animations outcome; state purpose and semantic order/relationship, not registry keys, options, timing, ids, or coverage. The suggestion never activates animation execution by itself, creates content, or binds implementation. Describe required visible image states in `Layout` / `Images` only for an explicit motion requirement or an enabled Custom Animations outcome. Add keyed `Native-ready` only for independent data charts or pure text-grid tables, `Fact IDs` for sourced claims, and `Data class: scenario` for invented demo values. Except on preservation paths, `Cover impact` carries a binding hook and adaptable composition; apply the same split to `Closing impact` only when the deck genuinely resolves. Roster/order/content stay authoritative. §VIII image layout is non-empty free prose with optional library ids; §VII Chart/Table rows are references. Executor owns geometry, hierarchy, treatment, and sparse local garnish.
 
 For free-design pages, describe `Layout` through relationships, hierarchy, regions, and column spans; do not prescribe element-level `x`, `y`, `width`, or `height` or duplicate the global geometry in §II/§V. Exact coordinates belong to Executor SVG authoring. Preserve literal geometry only when the user explicitly requires it or a mirror/template preservation contract owns it.
 

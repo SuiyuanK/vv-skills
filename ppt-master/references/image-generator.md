@@ -4,7 +4,7 @@
 
 Role definition for the **AI image generation path**: convert each active `Acquire Via: ai` row into an optimized prompt, generate the image, and save it to `project/images/`; also defines the `slice` derivation path for AI-generated illustration sheets.
 
-**Trigger**: the Default Generate resource list or Quick Generate transient roster contains `Acquire Via: ai` or `slice`. The role is loaded only when at least one such row exists.
+**Trigger**: the Default Generate resource list contains `Acquire Via: ai` or `slice`, or Quick Generate has resolved a required AI/sliced image in active context. Load only when at least one such resource exists.
 
 ---
 
@@ -120,11 +120,11 @@ Derive color behavior from the available roles and image context: background / s
 
 ### Step 3 — Per-image type + assembly
 
-For each `Acquire Via: ai` row, use Strategist-owned §VIII/lock by default or the main agent's transient Quick roster. Explicit values remain binding; Quick resolves omissions automatically.
+For each `Acquire Via: ai` row, use Strategist-owned §VIII/lock by default or the main agent's active-context Quick resource decision. Explicit values remain binding; Quick resolves omissions automatically.
 
-`Layout pattern` is a page-realization preference and is not copied wholesale into the bitmap prompt. Any generation-time subject direction, focal placement, quiet region, or overlay-safety requirement must therefore be present in the row's `Reference`, the matching §IX block, or the Quick roster's visual intent.
+`Layout pattern` is a page-realization preference and is not copied wholesale into the bitmap prompt. Any generation-time subject direction, focal placement, quiet region, or overlay-safety requirement must therefore be present in the row's `Reference`, the matching §IX block, or Quick's active-context visual intent.
 
-1. **Determine `page_role`** — the owning row's explicit value wins; a blank or omitted value resolves to `local`. In Default Generate, `hero_page` must be Strategist-explicit; in Quick Generate, the main agent may resolve it while building the transient roster.
+1. **Determine `page_role`** — the owning row's explicit value wins; a blank or omitted value resolves to `local`. In Default Generate, `hero_page` must be Strategist-explicit; in Quick Generate, the main agent may resolve it before acquisition in active context.
 2. **Determine `text_policy`** — the owning row's value wins when set. **Declared-inference fallback for a blank or omitted value**: pick `none` or `embedded` from the row's `Purpose`, `Reference`, and page intent based on whether in-image text serves the page. Long body / data / lists stay in SVG.
 3. **Determine type or free composition** — an Illustration Sheet omits manifest `type` and follows §4.3's grid composition. For another local structural infographic, use one of the 11 types only when the `_index.md` offers a real match; otherwise omit type and author the intended structure directly with §4.1 E. A local single-subject/portrait image omits type and uses §4.1 A/B inside its actual region. A `hero_page` omits type and uses §4.1 A/B/C/D/E.
 4. `read_file references/image-type-templates/<type>.md` only when a type was selected (and only if not already read).
@@ -132,7 +132,7 @@ For each `Acquire Via: ai` row, use Strategist-owned §VIII/lock by default or t
    - The rendering's style paragraph (from Step 2)
    - Color-role instructions anchored by the deck HEX values and refined for the image context (from Step 2)
    - The selected type's structural layout, or the no-type composition prose (from Step 3)
-   - The image's specific `Reference` intent (from `design_spec.md §VIII` or the Quick Generate transient roster)
+   - The image's specific `Reference` intent (from `design_spec.md §VIII` or the Quick Generate active-context decision)
    - Container sizing from the selected type file, or the row's Dimensions for no-type prose
    - The hard rules from §5 below (HEX-not-as-text, rendering-aligned human depiction and likeness authorization, text policy)
 
@@ -254,7 +254,7 @@ An illustration sheet can produce several small **spot illustrations** in one ge
 
 **Default — one sheet for a compatible spot family (may override when separate generation serves the assets better)**: Prefer a sheet when several elements share similar proportions, detail, quality, and semantic precision. Generate elements separately when those needs differ materially; quantity alone neither requires nor forbids a sheet. A single hero/local image stays with the normal one-row-per-image flow (§4.1).
 
-**Hard rule**: a spot sheet is a generation source, not a slide asset. In Default Generate, keep the sheet row out of `spec_lock.md images`; in Quick Generate, mark it generation-only in the transient roster. The sheet is never referenced from SVG. Only sliced element rows are placed.
+**Hard rule**: a spot sheet is a generation source, not a slide asset. In Default Generate, keep the sheet row out of `spec_lock.md images`; in Quick Generate, retain its generation-only status in active context and the operational manifest. The sheet is never referenced from SVG. Only sliced element rows are placed.
 
 **Sheet prompt convention** (one manifest item, `page_role: local`, `text_policy: none`, `image_size` chosen from final placement size):
 
@@ -280,7 +280,7 @@ Use that deliberately. On a wide sheet (`16:9`, `21:9`, `4:1`, `8:1`), `1xN` mak
 
 If one deck needs mixed shapes, create separate sheets per shape family unless one carefully designed grid gives every element enough room. Keep the visual family consistent through the same `deck_rendering` and `color_scheme`, not by forcing all cells into one square sheet.
 
-**Resource contract — the sheet and its elements are different row kinds.** A sliced element can only be placed if it exists in the active placeable-resource authority: `spec_lock.md images` in Default Generate or the transient roster in Quick Generate. Default Generate keeps both row kinds in §VIII under [`strategist-image.md`](./strategist-image.md); Quick Generate resolves the same distinction in active context without creating planning artifacts:
+**Resource contract — the sheet and its elements are different row kinds.** A sliced element can only be placed if it exists in the active placeable-resource authority: `spec_lock.md images` in Default Generate or the current agent's prepared resource decision in Quick Generate. Default Generate keeps both row kinds in §VIII under [`strategist-image.md`](./strategist-image.md); Quick Generate resolves the same distinction in active context and its operational manifest without creating planning artifacts:
 
 - **Sheet row** — `Acquire Via: ai`, `Type: Illustration Sheet`, the intent prompt, named as the slice source with its intended cell shape and placement purpose (`Reference: landscape footer-vignette spot set`). It is generated in Step 5 but **never placed on a slide** — keep it **out of** `spec_lock.md images`. Image_Generator resolves the exact `aspect_ratio`, grid, and slice command from this intent.
 - **Element rows** — one per used element, `Acquire Via: slice`, filename matching a `--names` output, `Reference` naming the parent sheet + cell/element. These **are** placed — list every one in the active placeable-resource authority, normally with `crop=no-crop` (a tight-trimmed transparent spot should be fit, not cover-cropped). Their dimensions are filled in after slicing (the preparation pass re-runs `analyze_images.py`). Each row carries an owner-resolved layout recommendation; SVG authoring may realize it as a direct cutout or inside an appropriate container while preserving the resource and crop/content constraints.
@@ -303,6 +303,102 @@ python3 scripts/slice_images.py <project>/images/illus_sheet.png --grid 2x3 \
 **Reference — sliced-asset placement is not a constraint**: A transparent slice may remain an unboxed cutout or enter a card, evidence frame, label, panel, or other suitable container. The owner-resolved layout text is an expression recommendation; SVG authoring owns the actual geometry and treatment while preserving the resource role and crop/content constraints.
 
 **Through-line — one family, many roles.** A spot sheet pays off more when the same motif family also drives the cover and section dividers. A large cover / divider anchor is not a giant sheet cell—generate it as its own `hero_page` image sharing the sheet's `deck_rendering`, `color_scheme`, and subject world. Plan this only when the deck leans into illustration, never as a quota.
+
+---
+
+### 4.4 Registered reconstruction groups and shared plates
+
+Use this preparation when a person, product, creature, effect, or other scene
+element must cross native titles, panels, frames, cards, or shapes while the
+original scene remains behind it. A clean base plus one subject/foreground
+output is the minimum group; add layers only when overlap or independent
+editing requires them:
+
+| Output | Required content |
+|---|---|
+| Clean base | Full original canvas with every planned removable scene element removed and the hidden background reconstructed |
+| Optional midground | Full canvas with only the scene content that must sit between the base and primary subjects |
+| Subject / foreground | Full canvas with one subject or one z-order-compatible set visible on RGBA transparency |
+| Shared layer plate | Several mutually non-overlapping objects isolated together in one full-canvas or regular-cell output |
+
+**Mandatory — preserve registration**: derive every full-canvas member
+independently from the same canonical source. Preserve canvas dimensions,
+subject pose, scale, position, lighting, and visible style; do not trim or
+independently crop registered final outputs. Record the shared source and group
+relationship in the owning §VIII rows or Quick active-context resources.
+
+**Image to PPTX override — Codex required**: when
+[`image-to-pptx.md`](../workflows/profiles/image-to-pptx.md) is active, follow
+its §3 per-region decision. A complete, separable, final-resolution-sufficient
+region may remain source-derived. Otherwise use Codex's native reference-image
+capability for required editing or reconstruction. Inspect every prepared
+member plus the final recomposition. Do not adapt `image_gen.py`, its manifest,
+or provider backends for this profile. Other hosts are unsupported. The
+ordinary Path A / Path B procedure below applies outside this profile.
+
+**Preparation procedure**:
+
+1. From the canonical reference, remove every planned separate subject,
+   foreground object, source/data graphic, and editable text, then inpaint one
+   clean base without redesigning visible background content.
+2. From that same reference, prepare the subject/foreground content as an
+   exact source-derived layer or a reference reconstruction according to the
+   selected profile's source-sufficiency decision. Never derive a layer from
+   the generated base or another generated layer.
+3. Prefer one shared plate when several objects do not overlap and use the same
+   isolation treatment. Their padded bboxes, including visible shadows and
+   effects, must be pairwise disjoint. One object does not imply one generation
+   call.
+4. For a registered plate, retain the original full-canvas positions and use
+   one nested-SVG picture crop per recorded bbox under
+   [`svg-effects.md`](./svg-effects.md) §6.5. For a rearranged regular-cell
+   plate, follow §4.3 and run
+   `slice_images.py --grid ... --names ... --trim --alpha`; place each
+   resulting asset at its recorded source bbox.
+5. Prefer direct RGBA. When transparency is unavailable, use one exact flat
+   key color for the whole layer/plate, then run `slice_images.py` once as a
+   `1x1` sheet with `--alpha` and without `--trim` so full-canvas coordinates
+   remain unchanged. Do not generate one keyed image per object.
+6. Save final files under `<project>/images/`. Mark registered full-canvas
+   members `no-crop`; ordinary trimmed cell slices retain their own measured
+   dimensions.
+
+Objects that overlap one another or require different z-order use separate
+plates/layers. A shared output is valid only when every required final object
+still becomes an independent SVG/PPT picture object.
+
+**Shared registered-plate prompt core**:
+
+> Using the supplied canonical page as the only visual reference, isolate the
+> following foreground objects together on one full-canvas extraction plate:
+> {stable object ids/descriptions}. Preserve each object's visible identity,
+> silhouette, pose, scale, rotation, lighting, shadow, and exact original canvas
+> position. Keep the original aspect ratio and canvas registration. Retain only
+> those listed objects; remove the background and every unlisted element. Do not
+> rearrange, resize, merge, duplicate, or let the listed objects touch one
+> another. Retain an explicitly listed source graphic or wordmark exactly when
+> it is one of the requested objects; remove editable slide text and every
+> unlisted logo/source graphic. Return RGBA transparency if supported;
+> otherwise use one uniform exact {key HEX} matte with no gradient, texture,
+> spill, or extra marks.
+
+Outside Image to PPTX, Path A may use the existing single-image edit mode for
+each registered derivative; Path B may perform the same edits with the
+host-native image tool:
+
+```bash
+python3 scripts/image_gen.py "Remove the planned foreground subjects and reconstruct the hidden background; preserve the exact canvas" \
+  --reference-image <project>/images/<source>.png -o <project>/images -f <group>_base
+python3 scripts/image_gen.py "Isolate the planned non-overlapping foreground objects at their exact original positions on one flat #00FF00 plate" \
+  --reference-image <project>/images/<source>.png -o <project>/images -f <group>_plate_key
+python3 scripts/slice_images.py <project>/images/<group>_plate_key.png --grid 1x1 \
+  --names <group>_plate --alpha --bg "#00FF00"
+```
+
+These positional edit commands remain the declared derivation exception for
+already-planned group rows. Keep every final member in the ordinary resource
+authority and operational sidecar. SVG realization follows
+[`image-layout-patterns.md`](./image-layout-patterns.md) `#A2-03`.
 
 ---
 
@@ -523,7 +619,7 @@ The CLI validates the file behind every `Generated` row before skipping it, iter
 |---|---|---|---|
 | `--manifest` | - | Path to `image_prompts.json` | — |
 | `--concurrency` | - | Max concurrent requests; halves on rate-limit, min 1 | `IMAGE_CONCURRENCY` env or `3` |
-| `--image_size` | - | Default size (`512px`/`1K`/`2K`/`4K`); per-item `image_size` wins | `1K` |
+| `--image_size` | - | Default size (`512px`/`1K`/`2K`/`4K`); per-item `image_size` wins | Backend default; see `--list-backends` |
 | `--output` | `-o` | Output directory | Manifest's parent dir |
 | `--backend` | `-b` | Override `IMAGE_BACKEND` for this run | env |
 | `--model` | `-m` | Default model; per-item `model` wins | Backend default |
@@ -574,7 +670,7 @@ Triggered automatically when `IMAGE_BACKEND` is not configured (or Path A fails)
 - Do **not** run `image_gen.py --manifest` in Path B. That command is Path A and may use configured API/proxy backends even when the user confirmed host-native.
 - Still run `python3 scripts/image_gen.py --render-md project/images/image_prompts.json` so the human-readable sidecar exists without touching any backend.
 - **Batch for speed, mind the rate**: when the host can run independent tool calls in parallel (e.g. Claude Code issues independent calls concurrently), fire several generations together in modest groups — a few rows at a time (~3–4), not the whole manifest at once — so their latency overlaps without flooding the host's image quota. When the host only runs tools serially, generate one row at a time. This mirrors Path A's default concurrency of 3.
-- Outputs **must** land at `project/images/<filename-from-resource-list>`. Match the Image Resource List dimensions when the host supports arbitrary sizes. Hosts with **fixed native resolutions** (common — e.g. ~1672x941 landscape / ~1086x1448 portrait) generate at the closest native size and backfill the actual pixels into the resource list `Dimensions` column — same convention as formula rows ("actual dimensions from formula manifest") and slice rows ("dimensions filled after slicing"). Do **not** upscale the file to fake the requested size (interpolation adds no detail); minor display-side upscaling (up to ~1.3x in practice) may surface as a non-blocking quality-checker warning and requires no acknowledgement.
+- Outputs **must** land at `project/images/<filename-from-resource-list>`. Match the Image Resource List dimensions when the host supports arbitrary sizes. Hosts with **fixed native resolutions** (common — e.g. ~1672x941 landscape / ~1086x1448 portrait) generate at the closest native size and backfill the actual pixels into the resource list `Dimensions` column, as slice rows do after slicing. Do **not** upscale the file to fake the requested size (interpolation adds no detail); minor display-side upscaling (up to ~1.3x in practice) may surface as a non-blocking quality-checker warning and requires no acknowledgement.
 - Mark each item's `status` `Generated` in the manifest the moment its file lands — as each completes, not in one pass at the end (so an interrupted batch leaves accurate state)
 - Executor downstream is path-agnostic — no spec change required between Path A and Path B
 
@@ -593,14 +689,16 @@ Triggered automatically when `IMAGE_BACKEND` is not configured (or Path A fails)
    - Filenames awaiting manual generation
    - Pointer to `images/image_prompts.md` (paste-ready `### Image N:` block per item) or `image_prompts.json` (`items[].prompt`)
    - Target placement: `project/images/<filename>` matching the resource list exactly
-   - Resume: Default Generate re-runs Step 7; Quick Generate re-runs its resource gate, final checker, then `--quick-generate`
+   - Continuation: Default Generate re-runs Step 7; Quick may validate the supplied file, rerun its resource gate and final checker, then use `--quick-generate` only while the original active context remains available — otherwise start a clean Quick run
 
 **User-initiated**: When Strategist Step 4 captured `manual` in Default Generate, or the user explicitly requested `manual` in the Quick Generate active context, Path A is skipped from the start.
 
 > Default Generate tolerates `Needs-Manual` rows through authoring and resumes
-> at Step 7. Quick Generate preserves the same manifest and handoff but does not
-> run `--quick-generate` while a required row still says `Needs-Manual`; validate
-> a later supplied file and update it to `Generated` first.
+> at Step 7. Quick Generate preserves the same operational manifest and handoff
+> but does not run `--quick-generate` while a required row still says
+> `Needs-Manual`. If the original active context remains available, validate a
+> later supplied file and update it to `Generated`; otherwise start a clean
+> Quick run rather than treating the manifest as a resumable design record.
 
 #### AI-specific Failure Handling (extends image-base.md §6)
 

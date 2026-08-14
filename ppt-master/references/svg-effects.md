@@ -38,6 +38,13 @@ visual job.
 | Surface / select | Name the target, confirm its owning subsection and fidelity, then use the Router. Choose a compatible technique that fully performs the job; prefer simpler/native-stable alternatives only when communication is equal. `Approximate` requires review, not automatic rejection. |
 | Integrate / stop | Align paint, contour, light, hierarchy, and z-order; combine only techniques with different jobs. Check legibility, editability, density, fidelity, and style; simplify failures, use legal alternatives, and bake only the smallest pixel-dependent layer. Keep authoritative text/data native. |
 
+**Default — one dominant composition scaffold (may override when a second
+scaffold performs an independent communication job)**: Integrate the page-scale
+move and every active Structure / Image / Chart / Table branch into one dominant
+system, sharing direction, contour, baseline, and z-order as applicable. Make a
+branch-local system visibly subordinate when it cannot share that scaffold;
+simplify any competing scaffold without a separate communication job.
+
 #### Visual Job Router
 
 **Reference — not a quota**: route diagnosed problems through this table. A
@@ -50,7 +57,7 @@ different jobs.
 | Picture/card/overlay elevation or boundary is unclear | Object or picture/carrier shadow, restrained glow, or hairline | §6.4; equal peers stay flat; one light direction |
 | Native copy and image do not integrate | Scrim, fade, wash, vignette, off-center spotlight, or faux glass | §6.5 and the Image-Treatment Implementation Map; verify contrast; no backdrop blur |
 | Relationship state, direction, continuity, or boundary is unclear | Draft/optional/future → dash; direction → marker; undirected → solid; continuous flow → gradient stroke; repeated boundary → frame/contour/crop edge; exact grid → multi-subpath | §6.6 / §6.3; every line needs a job |
-| Short display text needs notation or silhouette | Removed/former → strike; eyebrow distinction → tracking; display silhouette → outline/gradient; luminous metric → glow; semantic list → native bullet | §6.7 / §6.4; no decorative body-copy treatment |
+| Short display text needs notation, silhouette, or material/image emphasis | Removed/former → strike; eyebrow distinction → tracking; display silhouette → outline/gradient; justified material/image emphasis → native picture/texture fill; luminous metric → glow; semantic list → native bullet | §6.7 / §6.3 / §6.4; no decorative body-copy treatment |
 | Tilt, repetition, or reversible asset direction helps composition | Rotate, translate/mirror, or local `<use>` | §6.8; never mirror text, logos, or directional evidence |
 | Resolved style needs hand, print, pixel, facets, layers, ribbon, or line-plus-area | Matching constructed recipe | §6.11; no generic decorative freeform |
 | Meaning needs an unmatched silhouette, radial hierarchy, gauge, or custom route | Freeform, explicit arc/sector, or calculated arrowhead | §6.9 / §6.10; prefer an equal stock shape/marker |
@@ -205,6 +212,40 @@ has both dimensions. Checker and exporter reject the degenerate stroke form.
       stroke="url(#flow)" stroke-width="12"/>
 ```
 
+**Native text picture/texture fill**:
+
+| Concern | Contract |
+|---|---|
+| Target | Direct `fill="url(#id)"` on `<text>` or a non-positional `<tspan>`; the text remains editable |
+| Definition | Direct `<pattern>` child of `<defs>` with unique `id` and exact `data-pptx-text-image-fill="stretch"` or `"tile"` |
+| Image | Exactly one direct SVG-namespace `<image>` child; project-local or data-URI source; explicit positive `width` / `height` |
+| Native result | `stretch` → run-level `a:blipFill/a:stretch`; `tile` → run-level `a:blipFill/a:tile` |
+| Alpha | Text `fill-opacity` multiplies the native picture-fill alpha |
+| Forbidden | Preset-pattern attributes; `patternTransform`; additional pattern children; image style/alpha/clip/filter/mask/transform; use outside text; unannotated custom image patterns; multi-image/layer knockout composites |
+
+Use this registered pattern when the design calls for a photograph, material,
+or texture inside editable glyphs. The pattern is an authoring carrier for a
+PowerPoint run picture fill, not a general SVG pattern promise. PowerPoint owns
+the final run bounding box: `stretch` is `Native-normalized`, while `tile` may
+normalize tile scale or phase and needs visual review. Forward SVG→PPTX export
+is native; PPTX→SVG does not reconstruct run-level picture fills yet.
+
+```xml
+<defs>
+  <pattern id="titleTexture" data-pptx-text-image-fill="stretch"
+           patternUnits="objectBoundingBox"
+           patternContentUnits="objectBoundingBox" width="1" height="1">
+    <image href="../images/cloud-texture.png"
+           x="0" y="0" width="1" height="1"
+           preserveAspectRatio="none"/>
+  </pattern>
+</defs>
+<text x="96" y="220" fill="url(#titleTexture)" fill-opacity="0.85"
+      font-family="Microsoft YaHei" font-size="72" font-weight="700">
+  国风之美
+</text>
+```
+
 Preset patterns are a separate PPT interface in [`native-data-interface.md`](./native-data-interface.md).
 
 ---
@@ -216,7 +257,7 @@ Filters are native-effect metadata, not a general pixel-filter surface.
 | Concern | Contract |
 |---|---|
 | Definition/reference | Direct `<defs><filter id="...">` child with unique id; direct `filter="url(#id)"` attribute, never inline style |
-| Public targets | `<rect>`, `<circle>`, `<image>`, `<path>`, `<text>`; an exact outer `<g filter>` is also registered when its sole visual child is one clipped `<image>` |
+| Public targets | `<rect>`, `<circle>`, `<image>`, `<path>`, `<text>`; one validated compact authored shape-preset `<g>` from [`native-shape-authoring.md`](./native-shape-authoring.md) §4; an exact outer `<g filter>` whose sole visual child is one clipped `<image>` |
 | Required primitive | `feDropShadow` or `feGaussianBlur` |
 | Generated glow form | Zero-offset `feDropShadow` with flood paint, or the complete blur + flood + composite + merge graph below; never bare blur |
 | Required parameters | Explicit `stdDeviation` on either effect primitive; explicit `dx`, `dy`, and `flood-opacity` on `feDropShadow`; explicit `flood-opacity` on `feFlood`; explicit `slope` on linear `feFuncA` |
@@ -235,13 +276,14 @@ Native export does not preserve filter-region, `in/in2/result`, merge order, or
 composite topology. Other primitives, multiple independent effects, filters on
 `<tspan>` / ordinary `<g>` / unsupported targets are forbidden; apply the
 effect to supported objects or use explicit layers.
-Special `<g filter>` carriers are limited to the exact single clipped-image
-form in §6.5, the hash-locked
+Special `<g filter>` targets are limited to the helper-authored compact shape
+preset above, the exact single clipped-image form in §6.5, the hash-locked
 `data-pptx-part="geometry-preview"` transport in §1.4—a direct child of an
 imported preset object referencing the hidden geometry carrier's filter—and the
 exact imported picture-crop carrier in §6.5, which keeps the effect outside its
-viewport. Neither authorizes ordinary group filters or creates a second
-PowerPoint object.
+viewport. The compact preset applies its filter once to the logical shape; its
+direct registry paths remain unfiltered. None of these cases authorizes ordinary
+group filters or creates a second PowerPoint object.
 PPTX import maps one classifiable shape/connector/picture outer shadow or glow
 to this contract. Unsupported effects and outer-shadow variants whose scale,
 skew, alignment, or rotation semantics cannot be retained become import
@@ -448,14 +490,18 @@ other value is invalid; the converter must not replace it with a default.
 | `font-style` | `normal` or `italic` | None | `italic` maps to `i="1"`; oblique, angle, relative, and CSS-wide values are invalid |
 | `text-anchor` | `start`, `middle`, or `end` on `<svg>`, `<g>`, or `<text>` | None | Maps to left/center/right paragraph alignment plus normalized frame position; it is invalid on `<tspan>` because run-level anchoring has no mapping |
 | `text-decoration` | `none`, `underline`, `line-through`, or `underline line-through` | `line-through underline` → canonical order | Maps to the single underline and strike run properties; unknown, repeated, or substring-like tokens are invalid |
+| `baseline-shift` | Exact direct `super` or `sub` on `<tspan>` | None | Maps to editable ordinary-text `a:rPr@baseline` at `30000` or `-25000`; it does not resize the run, is invalid as inline style or on any other element, and cannot combine with an inline formula marker |
 | `letter-spacing` | Finite unitless ordinary decimal SVG px | The same ordinary decimal with `px`, `pt`, or `em`; normalize to unitless px | Maps to `a:rPr@spc`; the final value must fit DrawingML `-400000..400000`, and negative tracking must leave every generated DrawingML run with a positive estimated advance and its text frame with a positive extent; keywords, percentages, exponents, leading plus signs, trailing decimal points, non-finite values, and other units are invalid |
 
-The registered text properties follow SVG inheritance, including declarations
-on the root `<svg>`: inline `style` overrides the same element's direct
-attribute, which overrides its ancestor. Relative font sizes and `em` tracking
-resolve against the same effective inherited size in Checker and converter.
-Every declaration is validated even when a later declaration overrides it, so
-hidden garbage cannot bypass preflight.
+The registered inheritable text properties follow SVG inheritance, including
+declarations on the root `<svg>`: inline `style` overrides the same element's
+direct attribute, which overrides its ancestor. `baseline-shift` is the narrow
+exception: declare it directly on the owning `<tspan>`; nested inline content
+inherits that run shift, while surrounding text keeps its own baseline.
+Relative font sizes and `em` tracking resolve against the same effective
+inherited size in Checker and converter. Every declaration is validated even
+when a later declaration overrides it, so hidden garbage cannot bypass
+preflight.
 
 The DrawingML character-spacing range is necessary but not sufficient for
 negative tracking. After run assembly, each output run must retain a positive
@@ -488,9 +534,10 @@ runs or a text frame from the SVG estimate.
   `transform`, `xml:space`, `id`, and project `data-*` metadata.
 - `<tspan>` accepts `x`, `y`, `dx`, `dy`, registered paint/alpha/run
   properties, `font-family`, `font-size`, `font-weight`, `font-style`,
-  `letter-spacing`, `text-decoration`, `xml:space`, `id`, and project `data-*`
-  metadata. It does not accept `text-anchor`, `filter`, or `transform`.
-- `word-spacing`, `dominant-baseline`, `alignment-baseline`, `baseline-shift`,
+  `letter-spacing`, `text-decoration`, direct `baseline-shift`, `xml:space`,
+  `id`, and project `data-*` metadata. It does not accept `text-anchor`,
+  `filter`, or `transform`.
+- `word-spacing`, `dominant-baseline`, `alignment-baseline`,
   font shorthand/variant/stretch/feature/variation/synthesis controls,
   `font-kerning`/`kerning`, `font-size-adjust`, `line-height`, text alignment,
   indent/shadow/rendering controls, white-space/word-break/hyphenation
@@ -528,6 +575,7 @@ respective sections; they do not weaken those contracts.
 |---|---|---|
 | Underline / strike / both | `text-decoration="underline"`, `line-through`, or both | `Native-stable`; both emits both run properties |
 | Mixed runs | Non-positional `<tspan>` | One `Native-normalized` editable frame; §4.2 |
+| Superscript / subscript | Direct `baseline-shift="super|sub"` on `<tspan>` | Editable ordinary-text run at PowerPoint's native baseline offset; set `font-size` on the same run when a smaller glyph is intended |
 | Font size | Generated default is a finite unitless SVG px value; compatible `px`, `pt`, `pc`/`pica`, `in`, `cm`, `mm`, `q`, `em`, and `rem` values receive a recommendation warning only | Converted to SVG px, then editable DrawingML point size; unsupported units/percentages error |
 | Tracking | §6.7 closed `letter-spacing` grammar | `Native-normalized`; compatible units normalize to SVG px before DrawingML conversion |
 | Transparency | `opacity` / `fill-opacity` on text/run | `Native-normalized` run alpha, not isolated compositing |
@@ -539,6 +587,8 @@ respective sections; they do not weaken those contracts.
 ```xml
 <text x="100" y="200" font-size="20" xml:space="preserve">Current <tspan
   fill="#999999" text-decoration="line-through">old</tspan> value</text>
+<text x="100" y="240" font-size="20">CO<tspan
+  baseline-shift="sub" font-size="14">2</tspan></text>
 ```
 
 Use strikethrough for removed/former values; it is ordinary notation, not a
@@ -627,6 +677,18 @@ least two.
 **Validation**: Checker and native export consume the same parser in
 [`paths.py`](../scripts/svg_to_pptx/drawingml/paths.py); native-object fallback
 bounds reuse its normalized commands rather than a second path grammar.
+
+**Reference — not a constraint**: use the fewest curve segments and control
+points that preserve the intended silhouette. Set endpoints and tangent
+directions first; use `S` after `C` or `T` after `Q` when reflected controls
+preserve deliberate tangent continuity.
+
+```xml
+<path d="M80 300 C180 180 300 180 400 300 S620 420 720 300"
+      fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
+<path d="M80 520 Q240 400 400 520 T720 520"
+      fill="none" stroke="#0F766E" stroke-width="4" stroke-linecap="round"/>
+```
 
 Command identity, relative coordinates, shorthand, arc parameters, and original
 handles are not retained. Geometry needs non-zero bounds. Before authoring a
