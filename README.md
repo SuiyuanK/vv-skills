@@ -4,6 +4,24 @@
 
 ## 自研 Skills
 
+### update-verible
+
+从官方 chipsalliance/verible GitHub Releases 读取全部版本，交互选择 Release，核对实际 Linux x86_64 资产名称，并将 Verible 安装到 ~/.local/bin。
+
+- scripts/update-verible.sh：提供全交互菜单，完成 Release 列举、资产校验、下载、升级、同版本重装、旧版本备份和备份清理。
+- 旧的 verible-* 命令在覆盖前备份到 ~/.local/share/verible-backups；清理时输入保留数量、显示删除目标并要求确认。
+- 仅支持 Linux x86_64，依赖 bash、curl、git、tar、find 和常用 GNU 工具；网络只访问官方 GitHub 仓库。
+- 以普通用户运行，不使用 sudo；临时下载和解压内容写入 /home/vv/TMP/tmp。
+
+### codex-html-mime-fix
+
+诊断并修复 Linux Codex/ChatGPT Desktop 启动后把 text/html 默认程序从 Google Chrome 改成 chatgpt.desktop 的问题。
+
+- scripts/setup-codex-html-fix.sh：安装用户级启动包装器和 ~/.local/share/applications/chatgpt.desktop 覆盖。
+- 启动 Codex 后监测 MIME 关联 15 秒，发现变化就恢复为 google-chrome.desktop。
+- 依赖 Debian/Ubuntu 的 chatgpt 包布局、Google Chrome、xdg-mime 和 update-desktop-database。
+- 只修改用户目录，不使用 sudo；APT 重装或升级通常不会覆盖该用户级修复。
+
 ### `codex-history-recovery`
 
 安全诊断、恢复、合并和修复 Codex Desktop 本地历史，包括会话、归档、SQLite 元数据、已保存项目与侧边栏标题。

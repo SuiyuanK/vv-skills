@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Verible"
+  short_description: "从官方 GitHub Release 安全升级 Verible 并管理备份"
+  default_prompt: "Use $update-verible to inspect, upgrade, or clean backups for my Verible installation."

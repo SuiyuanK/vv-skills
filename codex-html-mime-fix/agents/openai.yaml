@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex HTML MIME Fix"
+  short_description: "修复 Linux Codex 启动后篡改 HTML 默认程序的问题"
+  default_prompt: "Use $codex-html-mime-fix to diagnose and repair Codex changing the Linux HTML default application."
