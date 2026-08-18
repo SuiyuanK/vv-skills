@@ -128,6 +128,7 @@
 本地修复：
 
 - `hooks/hooks.json` 的 SessionStart 钩子在上游被指向 Windows 批处理 `hooks/run-hook.cmd`（首行 `@echo off`），Linux 下 shell 无法解析，导致每次启动会话报错 `@echo: 未找到命令` 且上下文注入失败。本仓库改为通过 `bash` 显式调用 Bash 脚本 `hooks/session-start` 并赋予其可执行权限；Cursor 版 `hooks-cursor.json` 上游本就用该脚本，不受影响。
+- 自 2026-08-18 起 SessionStart 钩子整体禁用：`hooks/hooks.json` 重命名为 `hooks/hooks.json.disabled`（文件保留，bash 修复仍然有效）。原因：该钩子在每次会话启动、`/clear` 和上下文压缩时无条件向上下文注入约 6.4KB 的强制路由指令（`skills/using-research-writing/SKILL.md` 全文），与实际任务无关，并导致小模型（如 deepseek-v4-flash）指令遵循崩溃、输出中英混杂。套件内全部子 skills 及入口 skill 仍可通过 Skill 工具按需调用，功能不受影响。如需恢复自动注入，将文件名改回 `hooks.json` 即可。
 
 ### `ppt-master`
 
@@ -169,7 +170,7 @@ python -m pip install -r ./ppt-master/requirements.txt
 
 - `codex-windows-fast-patch-skill`：同步上游可安装 skill 文件集（`SKILL.md`、`agents/`、`scripts/`、`references/` 和 `assets/`），不引入上游仓库级 `AGENTS.md`、README、SECURITY 或 Git 配置文件；不自动调用上游的就地更新脚本，统一通过本节流程审查上游。更新后重新应用和验证 Provider History 安全调整；数据层修复必须由用户手动关闭和重新打开 Codex，不得自动停止或拉起应用。
 - `ppt-master`：只同步上游的 `skills/ppt-master/`，保留该目录内的许可证，不复制上游网站、示例项目或其他工作区内容；不得覆盖或提交本机 `.venv`、缓存和生成产物。
-- `research-writing-skill`：保留上游许可证、README、多平台配置、模块、脚本和子 skills，并确认 CC Switch 对子 skills 的暴露配置仍然有效。每次更新时检查上游 `hooks/hooks.json` 的 SessionStart 钩子：若上游仍未修复（仍指向 `hooks/run-hook.cmd`），更新后重新应用本仓库的本地修复（见该条目下的"本地修复"说明）；若上游已修复，直接采用上游版本，并移除该条目下的"本地修复"说明。
+- `research-writing-skill`：保留上游许可证、README、多平台配置、模块、脚本和子 skills，并确认 CC Switch 对子 skills 的暴露配置仍然有效。每次更新时检查上游 `hooks/hooks.json` 的 SessionStart 钩子：若上游仍未修复（仍指向 `hooks/run-hook.cmd`），更新后重新应用本仓库的本地修复（见该条目下的"本地修复"说明）；若上游已修复，直接采用上游版本，并移除该条目下对应的"本地修复"说明。无论上游是否修复，更新后都应保持 SessionStart 钩子处于禁用状态（`hooks.json` 保持重命名为 `hooks.json.disabled`），除非用户明确要求恢复自动注入。
 
 ## 使用说明
 
