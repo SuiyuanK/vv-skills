@@ -125,6 +125,10 @@
 - 本目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
 - 保留上游的 `LICENSE`、README、多平台配置、模块、脚本和子 skills。
 
+本地修复：
+
+- `hooks/hooks.json` 的 SessionStart 钩子在上游被指向 Windows 批处理 `hooks/run-hook.cmd`（首行 `@echo off`），Linux 下 shell 无法解析，导致每次启动会话报错 `@echo: 未找到命令` 且上下文注入失败。本仓库改为通过 `bash` 显式调用 Bash 脚本 `hooks/session-start` 并赋予其可执行权限；Cursor 版 `hooks-cursor.json` 上游本就用该脚本，不受影响。
+
 ### `ppt-master`
 
 将 PDF、DOCX、URL、Markdown 等资料转换为可编辑的 PowerPoint，支持原生形状、图表、表格、模板、演讲者备注、动画和音频旁白工作流。
@@ -165,7 +169,7 @@ python -m pip install -r ./ppt-master/requirements.txt
 
 - `codex-windows-fast-patch-skill`：同步上游可安装 skill 文件集（`SKILL.md`、`agents/`、`scripts/`、`references/` 和 `assets/`），不引入上游仓库级 `AGENTS.md`、README、SECURITY 或 Git 配置文件；不自动调用上游的就地更新脚本，统一通过本节流程审查上游。更新后重新应用和验证 Provider History 安全调整；数据层修复必须由用户手动关闭和重新打开 Codex，不得自动停止或拉起应用。
 - `ppt-master`：只同步上游的 `skills/ppt-master/`，保留该目录内的许可证，不复制上游网站、示例项目或其他工作区内容；不得覆盖或提交本机 `.venv`、缓存和生成产物。
-- `research-writing-skill`：保留上游许可证、README、多平台配置、模块、脚本和子 skills，并确认 CC Switch 对子 skills 的暴露配置仍然有效。
+- `research-writing-skill`：保留上游许可证、README、多平台配置、模块、脚本和子 skills，并确认 CC Switch 对子 skills 的暴露配置仍然有效。每次更新时检查上游 `hooks/hooks.json` 的 SessionStart 钩子：若上游仍未修复（仍指向 `hooks/run-hook.cmd`），更新后重新应用本仓库的本地修复（见该条目下的"本地修复"说明）；若上游已修复，直接采用上游版本，并移除该条目下的"本地修复"说明。
 
 ## 使用说明
 
