@@ -104,14 +104,38 @@ export VCS_ARCH_OVERRIDE=linux
 ```
 强制走通用 `linux` 目标（x86_64 下 `-full64` 映射到 `linux64`），跳过 OS 探测。
 
+### 2.2.5 别名会被 `make` 绕过——必须让 wrapper 在 PATH 上
+
+**坑（已踩）**：别名对它生效的**交互式终端**有效，但 `make` 等**不做别名展开**的程序
+按 `PATH` 查找 `vcs`。默认 PATH 里 `/opt/EDA/Synopsys/vcs/X-2025.06/bin` 在各 Synopsys
+同名目录之前，会命中真身 `/…/vcs/bin/vcs`，绕过 wrapper → 复现 `--as-needed` 链接崩溃。
+
+修法：把 wrapper 脚本（`~/.local/bin/vcs`）放到 PATH **最前面**。由于 zsh 里各 Synopsys
+工具会把自身 bin `/prepend`，必须**在 PATH 断言之后**再前置一次 `~/.local/bin`。实际做法
+是把它放在 `~/.zshrc` **最末尾**的「最终 PATH 断言」块里，保证任何后续插入都不推翻：
+
+```zsh
+# 放在 ~/.zshrc 最末尾（source 完 oh-my-zsh 及各 EDA 之后）
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+这样 `~/.local/bin` 总是排第一，连 `make` 也命中 wrapper。`~/.local/bin/vcs` 内容同前
+（见下）；LC 的 `~/.local/bin/lc_shell` wrapper 同理。
+
+**验证**：新开 zsh，`unalias vcs; for d in $(echo $PATH|tr ':' $'\n'); do [ -e "$d/vcs" ] && { echo $d; break; }; done`
+应输出 `~/.local/bin/vcs`（不是 `/opt/…/vcs/bin/vcs`）。
+
 ### 2.3 完整 VCS 环境变量
 
 ```zsh
 export VCS_ARCH_OVERRIDE=linux
 export VCS_HOME=/opt/EDA/Synopsys/vcs/X-2025.06
 export PATH=$VCS_HOME/bin:$PATH
+# 别名只管交互式；make 等按 PATH 直取 vcs。务必把 wrapper 放 PATH 首位（见 2.2）。
 alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
 ```
+（alias `=vcs 'vcs ...'` 旧写法仍然有用，但它只解决交互式。若只要 wrapper 全场景生效，
+改用它做：`alias vcs='~/.local/bin/vcs'` + PATH 前置 wrapper。）
 
 ---
 
