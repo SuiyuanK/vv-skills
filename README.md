@@ -2,7 +2,7 @@
 
 这个仓库用于收录个人可复用的 agent skills、第三方 skill 镜像与自动化工作流，不限定只能用于 Codex。Windows 维护类 skills 重点强调只读诊断、备份和确认门控。
 
-## 原创 Skills
+## 个人 Skills
 
 ### update-verible
 
