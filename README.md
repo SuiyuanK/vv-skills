@@ -58,7 +58,7 @@
 
 主要修复范围：
 
-- 处理 Synopsys vendor scripts 的 `/bin/sh`/Bash 不兼容和 `csh` 前置依赖。
+- 把 Synopsys vendor 脚本的 shebang 统一改为 `#!/bin/bash -h`（230 个 `#!/bin/sh -h` + 39 个实际用 bash 特性的 `#!/bin/sh` 脚本；`/bin/sh` 保持系统默认 dash），并补装 `csh` 前置依赖。
 - 为 VCS 链接补充 `--no-as-needed`，修复 `vfs_fopen`、`snps_mem_*` 等 undefined reference。
 - 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
 - 为 Library Compiler 在 glibc 2.39 上的退出阶段崩溃提供结果校验与包装脚本。

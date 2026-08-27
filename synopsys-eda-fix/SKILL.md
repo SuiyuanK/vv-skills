@@ -3,8 +3,8 @@ name: synopsys-eda-fix
 description: >-
   Diagnose and fix Synopsys X-2025.06 EDA tools (VCS, Verdi, DC/syn, LC,
   SpyGlass, SCL 2025.03) on Linux Mint 22.3 (Ubuntu 24.04 base, glibc 2.39)
-  with Linux kernel 7.0.0. Covers the /bin/sh→bash shebang fix for 230
-  vendor scripts, VCS --as-needed linker undefined-reference crash,
+  with Linux kernel 7.0.0. Covers the vendor-script shebang fix (230 scripts to
+  #!/bin/bash -h while /bin/sh stays dash), VCS --as-needed linker undefined-reference crash,
   SpyGlass "Unknown platform Linux-7" detection failure, LC exit segfault
   (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure,
   and FlexLM lmgrd/snpslmd license setup (/usr/tmp, CRLF, systemd). Use when
@@ -28,7 +28,7 @@ description: >-
 
 | 工具 | 症状 | 修复 |
 |---|---|---|
-| 全部 | `#!/bin/sh -h` 脚本报 `Illegal option -h` | `/bin/sh → bash` |
+| 全部 | `#!/bin/sh -h` 脚本报 `Illegal option -h` | 改脚本 shebang 为 `#!/bin/bash -h` |
 | 全部 | `snps_platform: 无法执行` | 装 `csh` |
 | VCS | 链接 `undefined reference to vfs_fopen/snps_mem_*` | `-LDFLAGS "-Wl,--no-as-needed"` |
 | VCS | 启动刷「语法错误」OS 检测噪音 | `VCS_ARCH_OVERRIDE=linux` |
@@ -41,23 +41,51 @@ description: >-
 
 ## 1. 通用前置
 
-### 1.1 让 `/bin/sh` 指向 bash（最重要，一次修好 230 个脚本）
+### 1.1 改脚本 shebang 为 `#!/bin/bash -h`（最重要，一次修好 230 个脚本）
 
 Synopsys 有约 **230 个脚本** shebang 写成 `#!/bin/sh -h`，其中 `-h` 是 bash 专有参数。
-Mint/Ubuntu 的 `/bin/sh` 是 dash，dash 不认 `-h` → 直接 `Illegal option -h` 退出。
+Mint/Ubuntu 的 `/bin/sh` 默认是 dash，dash 不认 `-h` → 直接 `Illegal option -h` 退出。
 
-**非交互方式强制改**（推荐，避免交互对话框默认「是」不改）：
+**修正方案：不改系统 `/bin/sh`（保持 dash），把这 230 个脚本首行统一改为
+`#!/bin/bash -h`**，直接经 bash 解释，完全绕开 `/bin/sh` 指向哪种 shell。
+这样不动系统默认 shell，不影响其它软件的依赖语义，也便于整套流程在其他机器/CI 上复现。
+
+**批量修改**（脚本目录属主为当前用户，无需 sudo；改前先备份清单 tar）：
 ```bash
-echo "dash dash/sh boolean false" | sudo debconf-set-selections
-sudo dpkg-reconfigure -f noninteractive dash
-ls -l /bin/sh        # 必须变成 -> /bin/bash
-```
-兜底（若上面没变）：
-```bash
-sudo ln -sf /bin/bash /bin/sh
+grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | while read f; do
+  mode=$(stat -c %a "$f")
+  sed -i '1s|^#!.*|#!/bin/bash -h|' "$f"
+  chmod "$mode" "$f"
+done
 ```
 
-验证：`ls -l /bin/sh` 应指向 `bash`。
+230 个文件分布在：`vcs/*/bin`（含 dpo/cso/vcfca/auxx/seq 共 71）、
+`verdi/*/platform/verdi_supp/*/bin`（67，含 linux/linux64）、
+`ufe_optional_spyglass-vcs/*/SPYGLASS_HOME/lib/multi-vcst/*`（76，vcs-mx/hector/auxx/seq）。
+vcs/verdi/spyglass 三套的 bin 都要覆盖，不然 `vcs -id`、`verdi_supp` post_install 仍会报
+`Illegal option -h`。
+
+除上述 230 个 `#!/bin/sh -h` 外，还有约 **39 个 `#!/bin/sh`（不带 -h）的脚本实际用了
+bash 特性**（`[[`、`==` 等），它们同样依赖 `/bin/sh` 是 bash，也要统一改为
+`#!/bin/bash -h`。典型：verdi `bin/.wrapper`（`verdi` 入口是指向其的软链）、
+spyglass `bin/spyglass`、`spyglass_main`、`scmbrowser`、`spyon`、`ugo`、
+`scm_process_new`、`kdb_only_indp.sh` 等。
+
+判定要点：
+
+- `dash -n`（静态语法检查）抓不到 `[[`——dash 把它当普通命令，语法合法、运行时才报
+  `/bin/sh: NN: [[: not found`。别只信 dash -n。
+- 可靠判法：`dash -n` 失败 **且** `bash -n` 通过 → 真 bash 脚本（37/39）；
+  运行时报 `[[: not found` 的入口（spyglass 两套 `bin/spyglass`）直接补。
+- tcllib `tk8.4/.../configure`、Tcl demo 等 **两者都不通过**（不是 shell 语法），不要改。
+
+`verdi` 入口是软链（`bin/verdi -> .wrapper`），改 `.wrapper` 一层即可覆盖。
+
+验证：
+```bash
+ls -l /bin/sh        # 应仍是 -> dash（系统默认，不用改）
+grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l   # 应为 0
+```
 
 ### 1.2 装 csh（`snps_platform` 是 csh 脚本）
 
@@ -159,13 +187,14 @@ bash ./post_install.sh \
 成功标志：`[VERDI SUPPLEMENTARY INSTALL] Completed !!!`。脚本会把 `verdi_supp` 整体移进
 `verdi/platform/verdi_supp` 并在 aarch64/linux64/linux 三个平台建 `vcs` 软链（正常行为）。
 
-> 注意：若 `vcs -id` 报 `/bin/sh: 0: Illegal option -h`，先做第 1.1 步。
+> 注意：若 `vcs -id` 报 `/bin/sh: 0: Illegal option -h`，说明还有脚本没改成
+> `#!/bin/bash -h`，按 1.1 补齐即可。
 
 ---
 
 ## 4. DC (syn) / Design Compiler
 
-无需额外修复（做 1.1 的 `/bin/sh→bash` 和 1.2 的 csh 后即可用）。
+无需额外修复（做 1.1 的 shebang 修正和 1.2 的 csh 后即可用）。
 `dc_shell -f script.tcl` 批处理 `read_file -format verilog` + `elaborate` + `link` 正常。
 唯一无害噪音：`cat: /etc/upstream-release: 是一个目录`（Mint 上该路径是目录，脚本
 `cat /etc/*-release` 撞到，不影响）。用现代 `read_file -format verilog`，别用旧 `read_verilog`。
@@ -201,14 +230,20 @@ spyglass: INTERNAL-ERROR … Perl 5 installation … could not be validated
 **根因**：SpyGlass 的 perl 包装脚本（及另外两个脚本）里 `case "$PLAT" in Linux-2*|…|Linux-6*)`
 **没有 `Linux-7*`**，内核 7 掉进 `*)` 分支报 Unknown。
 
-**修复**：3 个文件的内核判断加 `Linux-7*`（改前先备份）：
-1. `perl/bin/perl`：`Linux-5* | Linux-6*)` → `Linux-5* | Linux-6* | Linux-7*)`
-2. `SPYGLASS_HOME/bin/spygenlib`：`Linux-3* | Linux-4*)` → 补全到 `Linux-7*)`
-3. `SPYGLASS_HOME/lib/SpyGlass/standard-environment.sh`：`Linux-6*)` → `Linux-6* | Linux-7*)`
+**修复**：内核判断加 `Linux-7*`（改前先备份）。**两套安装都要改**：
+独立版 `/opt/EDA/Synopsys/spyglass/X-2025.06/SPYGLASS_HOME/` 与 UFE 集成版
+`/opt/EDA/Synopsys/ufe_optional_spyglass-vcs/X-2025.06/SPYGLASS_HOME/`——
+UFE 版就是 `.zshrc` 里 `spyglass with optional VCS/UFE integration` 用的那套，
+只补独立版时 `spyglass -version` 仍报「SPYGLASS_HOME was not intuited correctly /
+Perl 5 installation could not be validated」。
+1. `{SPYGLASS_HOME}/lib/multi-perl/bin/perl`（UFE 版路径，SKILL 旧文写的 `perl/bin/perl` 是相对布局）：`Linux-2* | … | Linux-6*)` → 末尾加 ` | Linux-7*`
+2. `{SPYGLASS_HOME}/bin/spygenlib`：`Linux-2* | Linux-3* | Linux-4*)` → 补全到 ` | Linux-7*)`
+3. `{SPYGLASS_HOME}/lib/SpyGlass/standard-environment.sh`：`Linux-6*)` → `Linux-6* | Linux-7*)`
 
 可直接跑 `scripts/fix_spyglass_linux7.sh`（自动备份 + 修改 + 验证）。
 
-> bash shebang 不用改：因为第 1.1 步已把 `/bin/sh` 指向 bash。
+> bash 脚本不受影响：第 1.1 步已把 vendor 脚本统一为 `#!/bin/bash -h`，
+> `/bin/sh` 保持 dash 也不会再踩 `Illegal option -h`。
 
 ---
 
@@ -242,6 +277,11 @@ export SCL_HOME=/opt/EDA/Synopsys/scl/2025.03
 ## 验证
 
 ```bash
+# /bin/sh 应为系统默认 dash（本方案不改系统 shell）
+ls -l /bin/sh                              # -> dash
+# 不应再有 /bin/sh -h 的脚本残留
+grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l   # 应为 0
+
 # VCS 端到端
 cat > /tmp/t.v <<'EOF'
 module t; initial begin $display("VCS OK"); $finish; end endmodule
@@ -249,7 +289,7 @@ EOF
 vcs -full64 -sverilog -o simv t.v && ./simv          # 应打印 "VCS OK"，退出 0
 
 # Verdi
-verdi -version | grep 'Version X-2025.06'
+verdi -batch -version 2>&1 | grep 'Version X-2025.06'   # GUI 型命令：打印版本后进程挂起不退出属正常，看到版本行即可 Ctrl-C
 
 # DC
 dc_shell -f /dev/stdin <<'EOF'   # 或写 .tcl 文件
