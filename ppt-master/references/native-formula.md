@@ -19,8 +19,8 @@ construction, accent, or complex script.
 | Content form | Authoring choice |
 |---|---|
 | Short variables, percentages, simple assignments, or notation such as `O(n log n)` | Ordinary editable SVG text |
-| One-line structural math embedded in prose | Inline native marker |
-| Matrix, `cases`, `aligned`, multiline derivation, or standalone high-structure expression | Block native marker |
+| One-line structural math embedded in prose whose native-height envelope fits the reserved row/module space | Inline native marker |
+| Matrix, `cases`, `aligned`, multiline derivation, standalone high-structure expression, or vertically expanding math that cannot fit its prose row | Block native marker |
 
 The Strategist's `Mathematical content` field does not pre-decide this choice.
 Formula handling is not a user-confirmed policy, image resource, manifest, or
@@ -56,6 +56,14 @@ inside a structured Layout placeholder, a Master/Layout layer, imported
 preserved `txBody`, geometry transport subtree, another inline marker, or any
 `data-pptx-replace-with` subtree. Export keeps the surrounding text runs in the
 same `a:p` and replaces only the marker run with `a14:m > m:oMath`.
+
+**Hard rule — reserve native height**: Treat the parsed formula structure, not
+its flat SVG preview, as vertical layout truth. Keep adjacent content outside
+the native ascent/descent required by fractions, radicals, nested scripts,
+n-ary limits, accents, and other stacked structures. The exporter and SVG
+checker use the same structural envelope. If the prose row or root module
+cannot reserve that space without overlap, isolate the formula line or use the
+block marker.
 
 ### 2.2 Block formula
 
@@ -109,13 +117,35 @@ gate live in `scripts/svg_to_pptx/native_objects/formula_compiler.py` and
 names; only explicitly named commands and retained project aliases are
 contractual.
 
+Implementations:
+[`formula.py`](../scripts/svg_to_pptx/native_objects/formula.py),
+[`formula_ast.py`](../scripts/svg_to_pptx/native_objects/formula_ast.py),
+[`formula_parser.py`](../scripts/svg_to_pptx/native_objects/formula_parser.py),
+[`formula_run_properties.py`](../scripts/svg_to_pptx/native_objects/formula_run_properties.py),
+[`inline_formula.py`](../scripts/svg_to_pptx/native_objects/inline_formula.py).
+
 **Native normalization**: `\dfrac` / `\tfrac`, `\dbinom` / `\tbinom`, and
 continued-fraction alignment normalize to the corresponding OMML structure;
 explicit big-delimiter grades become auto-sizing delimiters; `\mathscr`
 normalizes to `\mathcal`; `smallmatrix` normalizes to `matrix`; PowerPoint array
 columns become centered; style/size commands and equation tags are accepted but
 not stored. Color is stored in generated formula runs and structural control
-properties. No reverse OMML-to-LaTeX build-down is implemented by PPT Master.
+properties.
+
+**Narrow reverse import**: `pptx_to_svg.py` rebuilds a block formula marker or
+same-paragraph inline marker only when one `a14:m` root passes this compiler's
+closed OMML validator and its normalized structure can be serialized back to
+LaTeX accepted by the same compiler. The reconstructed LaTeX is canonicalized;
+it is not the original spelling. A formula-only `m:oMathPara` text shape becomes
+one bounded block marker when its carrier also fits the unstyled rectangular
+native-formula contract; carrier grouping, paint, effects, rotation, hyperlink,
+or placeholder ownership force fallback instead of being silently discarded.
+Supported `m:oMath` zones remain inline among their surrounding text runs. Both
+forms receive a dependency-free linear SVG preview. This contract covers PPT
+Master-emitted vocabulary, not arbitrary third-party OMML. Tolerant import
+reports `formula-not-reconstructed`, renders readable formula text, and retains
+a relationship-free unchanged source `txBody` as opaque metadata; strict import
+stops instead.
 
 **Fail-closed boundary**: Input containing unknown commands or environments,
 Microsoft's explicitly unsupported commands, unsupported mhchem arrows,
@@ -139,5 +169,7 @@ versions are not the source-profile baseline. WPS, Keynote, LibreOffice, and
 other clients receive no embedded formula fallback and are outside the
 rendering/editability contract.
 
-**Validation**: The first-page/final SVG checker validates every marker and
-compiles its LaTeX before release; native export repeats validation.
+**Validation**: The first-page/final SVG checker validates every marker,
+compiles its LaTeX, and applies the shared native-height envelope to page/module
+text bounds before release; native export repeats validation and uses that
+envelope for the generated text frame.

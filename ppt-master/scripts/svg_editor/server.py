@@ -165,6 +165,7 @@ def _normalize_preview_hrefs(root: ET.Element) -> None:
 def _inline_icons(
     content: str,
     icons_dir: Path,
+    target_dir: Path,
     fallback_dir: Optional[Path] = None,
 ) -> tuple[str, list[dict]]:
     """Replace <use data-icon="..."/> with rendered <g> for browser preview.
@@ -190,7 +191,11 @@ def _inline_icons(
                 continue
             icon_path, _ = resolve_icon_path(icon_name, icons_dir, fallback_dir)
             color = str(attrs.get('fill', '#000000'))
-            elements, style, base_size = extract_paths_from_icon(icon_path, color)
+            elements, style, base_size = extract_paths_from_icon(
+                icon_path,
+                color,
+                target_dir=target_dir,
+            )
         except Exception as exc:
             warnings.append({'icon': icon_name, 'reason': f'{type(exc).__name__}: {exc}'})
             logger.warning('icon inline failed: name=%r reason=%s', icon_name, exc)
@@ -713,6 +718,7 @@ def create_app(
             content, warnings = _inline_icons(
                 content,
                 icons_dir,
+                svg_file.parent,
                 icons_fallback_dir,
             )
             if not pending_edits:
@@ -929,6 +935,7 @@ def create_app(
         annotations = app.config['ANNOTATIONS']
         pending_edits = app.config['PENDING_EDITS']
         modified = []
+        failures = []
 
         filenames = sorted(set(annotations.keys()) | set(pending_edits.keys()))
         for filename in filenames:
@@ -939,20 +946,29 @@ def create_app(
             # need to write so the on-disk data-edit-* attributes are cleared.
 
             svg_file = _safe_svg_path(filename)
-            if svg_file is None or not svg_file.exists():
+            if svg_file is None:
+                failures.append(f'{filename}: Invalid slide path')
+                continue
+            if not svg_file.exists():
+                failures.append(f'{filename}: Slide not found')
                 continue
 
             try:
                 tree = ET.parse(str(svg_file))
                 root = tree.getroot()
-            except ET.ParseError:
+            except ET.ParseError as exc:
+                failures.append(f'{filename}: Failed to parse SVG: {exc}')
+                continue
+            except OSError as exc:
+                failures.append(f'{filename}: Failed to read SVG: {exc}')
                 continue
 
             assign_temp_ids(root)
 
             ok, reason = _apply_edit_records(root, edits)
             if not ok:
-                return jsonify({'error': f'Failed to apply edits in {filename}: {reason}'}), 400
+                failures.append(f'{filename}: Failed to apply edits: {reason}')
+                continue
 
             old_annotations = {
                 item['element_id']: item['annotation']
@@ -975,7 +991,11 @@ def create_app(
             annotated_ids = set(anns.keys())
             strip_unused_temp_ids(root, annotated_ids)
 
-            tree.write(str(svg_file), encoding='UTF-8', xml_declaration=True)
+            try:
+                tree.write(str(svg_file), encoding='UTF-8', xml_declaration=True)
+            except OSError as exc:
+                failures.append(f'{filename}: Failed to write SVG: {exc}')
+                continue
             ts = time.time()
             for element_id, annotation_text in anns.items():
                 old_text = old_annotations.get(element_id)
@@ -1000,9 +1020,14 @@ def create_app(
                         'old': chg.get('old'), 'new': chg.get('new'),
                     })
             modified.append(filename)
+            annotations.pop(filename, None)
+            pending_edits.pop(filename, None)
 
-        app.config['ANNOTATIONS'] = {}
-        app.config['PENDING_EDITS'] = {}
+        if failures:
+            return jsonify({
+                'error': 'Failed to save: ' + '; '.join(failures),
+                'files_modified': modified,
+            }), 500
 
         return jsonify({'status': 'ok', 'files_modified': modified})
 

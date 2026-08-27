@@ -16,27 +16,32 @@
     "max_tokens": 555000
   },
   "file_budgets": {
-    "AGENTS.md": 2750,
+    "AGENTS.md": 3250,
     "skills/ppt-master/SKILL.md": 1250,
-    "skills/ppt-master/references/executor-base.md": 10000,
+    "skills/ppt-master/references/executor-base.md": 12000,
     "skills/ppt-master/references/executor-structured.md": 5500,
     "skills/ppt-master/references/executor-chart.md": 3500,
     "skills/ppt-master/references/executor-visualization.md": 1250,
-    "skills/ppt-master/references/executor-structure.md": 1500,
+    "skills/ppt-master/references/executor-structure.md": 2250,
+    "skills/ppt-master/references/topology-assembly.md": 3750,
     "skills/ppt-master/references/executor-table.md": 1000,
     "skills/ppt-master/references/executor-image.md": 2000,
     "skills/ppt-master/references/executor-web-image.md": 750,
     "skills/ppt-master/references/executor-notes.md": 1000,
     "skills/ppt-master/references/shared-standards.md": 500,
     "skills/ppt-master/references/shared-standards-core.md": 13000,
-    "skills/ppt-master/references/svg-effects.md": 15000,
-    "skills/ppt-master/references/native-data-interface.md": 6750,
+    "skills/ppt-master/references/svg-effects.md": 16000,
+    "skills/ppt-master/references/native-data-interface.md": 7500,
     "skills/ppt-master/references/pptx-structure-interface.md": 4750,
-    "skills/ppt-master/references/strategist.md": 16000,
-    "skills/ppt-master/references/strategist-image.md": 2750,
+    "skills/ppt-master/references/preset-shape-vocabulary.md": 2750,
+    "skills/ppt-master/references/strategist.md": 18000,
+    "skills/ppt-master/references/strategist-image.md": 3250,
     "skills/ppt-master/references/strategist-template.md": 3000,
     "skills/ppt-master/templates/design_spec_reference.md": 3750,
     "skills/ppt-master/templates/spec_lock_reference.md": 2750,
+    "skills/ppt-master/templates/charts/chart-vocabulary.md": 1250,
+    "skills/ppt-master/templates/tables/table-vocabulary.md": 500,
+    "skills/ppt-master/templates/sounds/sound-vocabulary.md": 6250,
     "skills/ppt-master/workflows/generate-pptx.md": 18000,
     "skills/ppt-master/workflows/stages/apply-template-workspace.md": 3500
   },
@@ -93,10 +98,10 @@
         "skills/ppt-master/templates/README.md",
         "skills/ppt-master/templates/styles/README.md"
       ],
-      "max_tokens": 37000
+      "max_tokens": 38000
     },
     "route.create-template.deck": {
-      "description": "Create Deck path through Template_Designer, SVG core, and the structured PPTX interface.",
+      "description": "Create Deck standard/fidelity path through Template_Designer, the strategy-triggered native-shape bundle, SVG core, and the structured PPTX interface; mirror excludes the authored bundle.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
@@ -105,16 +110,18 @@
         "skills/ppt-master/workflows/create-template.md",
         "skills/ppt-master/workflows/create-template/create-deck.md",
         "skills/ppt-master/references/template-designer.md",
+        "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md",
         "skills/ppt-master/references/shared-standards-core.md",
         "skills/ppt-master/references/pptx-structure-interface.md",
         "skills/ppt-master/references/canvas-formats.md",
         "skills/ppt-master/templates/README.md",
         "skills/ppt-master/templates/decks/README.md"
       ],
-      "max_tokens": 67000
+      "max_tokens": 83000
     },
     "route.create-template.layout": {
-      "description": "Create Layout path through Template_Designer, SVG core, and the structured PPTX interface.",
+      "description": "Create Layout standard/fidelity path through Template_Designer, the strategy-triggered native-shape bundle, SVG core, and the structured PPTX interface; mirror excludes the authored bundle.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
@@ -123,13 +130,15 @@
         "skills/ppt-master/workflows/create-template.md",
         "skills/ppt-master/workflows/create-template/create-layout.md",
         "skills/ppt-master/references/template-designer.md",
+        "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md",
         "skills/ppt-master/references/shared-standards-core.md",
         "skills/ppt-master/references/pptx-structure-interface.md",
         "skills/ppt-master/references/canvas-formats.md",
         "skills/ppt-master/templates/README.md",
         "skills/ppt-master/templates/layouts/README.md"
       ],
-      "max_tokens": 67000
+      "max_tokens": 76000
     },
     "route.enhance-native-pptx": {
       "description": "Finished-PPTX native enhancement route.",
@@ -151,10 +160,10 @@
       "files": [
         "skills/ppt-master/workflows/template-fill-pptx.md"
       ],
-      "max_tokens": 13000
+      "max_tokens": 14000
     },
     "route.generate.planning": {
-      "description": "Generate-PPTX planning through Strategist, including reference-first whole-document authoring, the three compact decision indexes, and a conservative audit envelope for only the exact custom bases selected after those indexes; schemas and optional scaffolds are tool-consumed.",
+      "description": "Generate-PPTX planning through Strategist, including the fixed capability-decision batch, complete Chart and Table expression vocabularies, and a conservative audit envelope for only the exact custom bases selected afterward; schemas and optional scaffolds are tool-consumed. Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
@@ -164,6 +173,9 @@
         "skills/ppt-master/references/artifact-ownership.md",
         "skills/ppt-master/references/strategist.md",
         "skills/ppt-master/references/strategist-image.md",
+        "skills/ppt-master/references/canvas-formats.md",
+        "skills/ppt-master/references/image-layout-spec.md",
+        "skills/ppt-master/references/image-layout-patterns.md",
         "skills/ppt-master/templates/design_spec_reference.md",
         "skills/ppt-master/templates/spec_lock_reference.md",
         "skills/ppt-master/references/modes/_index.md",
@@ -171,6 +183,8 @@
         "skills/ppt-master/references/image-renderings/_index.md",
         "skills/ppt-master/scripts/docs/confirm_ui.md",
         "skills/ppt-master/templates/icons/README.md",
+        "skills/ppt-master/templates/charts/chart-vocabulary.md",
+        "skills/ppt-master/templates/tables/table-vocabulary.md",
         {
           "glob": "skills/ppt-master/references/modes/*.md",
           "exclude": [
@@ -199,10 +213,10 @@
           "registry": "image-renderings"
         }
       ],
-      "max_tokens": 110000
+      "max_tokens": 130000
     },
     "route.generate.quick-generate": {
-      "description": "Self-contained one-pass Generate profile with source intake, the three compact decision indexes, a conservative audit envelope for only the resolved preset or exact custom bases, conditional resource preparation, and complete flat SVG visual-construction authorities.",
+      "description": "Self-contained one-pass Generate profile with source intake, the fixed planning-capability batch, a conservative audit envelope for only the resolved preset or exact custom bases, conditional resource preparation, and complete flat SVG visual-construction authorities. Ceiling raised after BUDGET_LOAD_SET reported 108610 tokens.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
@@ -213,11 +227,19 @@
         "skills/ppt-master/references/shared-standards-core.md",
         "skills/ppt-master/references/svg-effects.md",
         "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md",
         "skills/ppt-master/references/semantic-svg.md",
         "skills/ppt-master/references/executor-structure.md",
+        "skills/ppt-master/references/topology-assembly.md",
+        "skills/ppt-master/references/canvas-formats.md",
+        "skills/ppt-master/references/image-layout-spec.md",
+        "skills/ppt-master/references/image-layout-patterns.md",
         "skills/ppt-master/references/modes/_index.md",
         "skills/ppt-master/references/visual-styles/_index.md",
         "skills/ppt-master/references/image-renderings/_index.md",
+        "skills/ppt-master/templates/icons/README.md",
+        "skills/ppt-master/templates/charts/chart-vocabulary.md",
+        "skills/ppt-master/templates/tables/table-vocabulary.md",
         {
           "glob": "skills/ppt-master/references/modes/*.md",
           "exclude": [
@@ -246,17 +268,17 @@
           "registry": "image-renderings"
         }
       ],
-      "max_tokens": 92000
+      "max_tokens": 120000
     },
     "route.generate.quick-generate.beautify": {
-      "description": "Quick Generate with the shared strict 1:1 Beautify profile.",
+      "description": "Quick Generate with the shared strict 1:1 Beautify profile. Ceiling raised after BUDGET_LOAD_SET reported 116355 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "profile.generate.beautify-pptx"
       ],
       "files": [],
-      "max_tokens": 100000
+      "max_tokens": 130000
     },
     "route.generate.quick-generate.image-to-pptx": {
       "description": "Codex-supported Quick-only Image to PPTX with registered reference-image layers and shared plates.",
@@ -269,10 +291,10 @@
         "skills/ppt-master/references/image-base.md",
         "skills/ppt-master/references/image-generator.md"
       ],
-      "max_tokens": 130000
+      "max_tokens": 145000
     },
     "route.generate.quick-generate.video-design": {
-      "description": "Quick Generate with conditional video-delivery design, frozen-script notes, custom animation, and narration/audio delivery.",
+      "description": "Quick Generate with conditional video-delivery design, frozen-script notes, custom animation, and narration/audio delivery. Ceiling raised after BUDGET_LOAD_SET reported 154620 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
@@ -282,71 +304,69 @@
         "stage.shared.generate-audio"
       ],
       "files": [],
-      "max_tokens": 140000
+      "max_tokens": 175000
     },
     "route.generate.quick-generate.template-fusion": {
-      "description": "Quick Generate with the maximum Brand, Style, Layout, and Deck exact-root fusion loaded for flat authoring.",
+      "description": "Quick Generate with the maximum Brand, Style, Layout, and Deck exact-root fusion loaded for flat authoring. Ceiling raised after BUDGET_LOAD_SET reported 125689 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.template.fusion-brand-style-layout-deck"
       ],
       "files": [],
-      "max_tokens": 115000
+      "max_tokens": 140000
     },
     "route.generate.quick-generate.topic-research": {
-      "description": "Quick Generate with gap-targeted factual research before direct resource preparation and SVG authoring.",
+      "description": "Quick Generate with gap-targeted factual research before direct resource preparation and SVG authoring. Ceiling raised after BUDGET_LOAD_SET reported 111104 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.topic-research"
       ],
       "files": [],
-      "max_tokens": 94000
+      "max_tokens": 125000
     },
     "route.generate.quick-generate.icon": {
-      "description": "Quick Generate with project-local bundled icon selection and synchronization.",
+      "description": "Quick Generate with project-local bundled icon selection and synchronization; the icon capability contract is already in the fixed planning context. Ceiling raised after BUDGET_LOAD_SET reported 108610 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate"
       ],
-      "files": [
-        "skills/ppt-master/templates/icons/README.md"
-      ],
-      "max_tokens": 94000
+      "files": [],
+      "max_tokens": 120000
     },
     "route.generate.quick-generate.in-hand-image": {
-      "description": "Quick Generate with supplied, extracted, or placeholder image resources prepared before SVG authoring.",
+      "description": "Quick Generate with supplied, extracted, or placeholder image resources prepared before SVG authoring. Ceiling raised after BUDGET_LOAD_SET reported 113046 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.executor.image"
       ],
       "files": [],
-      "max_tokens": 110000
+      "max_tokens": 125000
     },
     "route.generate.quick-generate.formula": {
-      "description": "Quick Generate with direct PowerPoint-native formula marker authoring.",
+      "description": "Quick Generate with direct PowerPoint-native formula marker authoring. Ceiling raised after BUDGET_LOAD_SET reported 110614 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.executor.formula"
       ],
       "files": [],
-      "max_tokens": 110000
+      "max_tokens": 125000
     },
     "route.generate.quick-generate.hyperlink": {
-      "description": "Quick Generate with direct PowerPoint-native external and same-deck hyperlink authoring.",
+      "description": "Quick Generate with direct PowerPoint-native external and same-deck hyperlink authoring. Ceiling raised after BUDGET_LOAD_SET reported 110212 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.executor.hyperlink"
       ],
       "files": [],
-      "max_tokens": 110000
+      "max_tokens": 125000
     },
     "route.generate.quick-generate.ai-two-types": {
-      "description": "Quick Generate with AI resource preparation, representative rendering inputs, and two local image types.",
+      "description": "Quick Generate with AI resource preparation, representative rendering inputs, and two local image types. Ceiling raised after BUDGET_LOAD_SET reported 140175 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
@@ -354,21 +374,22 @@
         "stage.generate.executor.image"
       ],
       "files": [],
-      "max_tokens": 135000
+      "max_tokens": 155000
     },
     "route.generate.quick-generate.web-image": {
-      "description": "Quick Generate with web resource preparation, provenance, attribution, and image execution.",
+      "description": "Quick Generate with web resource preparation, provenance, attribution, and image execution. Ceiling raised after BUDGET_LOAD_SET reported 115146 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.image.web",
+        "stage.generate.image.web-review",
         "stage.generate.executor.web-image"
       ],
       "files": [],
-      "max_tokens": 115000
+      "max_tokens": 145000
     },
     "route.generate.quick-generate.visualization": {
-      "description": "Quick Generate with bounded Chart/Table recall, their data-object branches, optional native-data metadata, and chart-coordinate verification before the final checker; the fixed Quick context already carries Shape Composition Grammar.",
+      "description": "Quick Generate with complete Chart/Table expression vocabularies already in the fixed planning context, their data-object branches, optional native-data metadata, and chart-coordinate verification before the final checker; the fixed Quick context already carries Shape Composition Grammar. Ceiling raised after BUDGET_LOAD_SET reported 126726 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
@@ -378,38 +399,35 @@
         "stage.generate.executor.native-data",
         "stage.generate.verify-charts"
       ],
-      "files": [
-        "skills/ppt-master/scripts/docs/visualization-recall.md"
-      ],
-      "max_tokens": 120000
+      "files": [],
+      "max_tokens": 140000
     },
     "route.generate.planning-image": {
-      "description": "Generate-PPTX planning context after a non-none image source is proposed or confirmed, including the compact layout math and vocabulary.",
-      "scope": "cumulative",
-      "include": [
-        "route.generate.planning",
-        "stage.generate.strategist.image"
-      ],
-      "files": [],
-      "max_tokens": 115000
-    },
-    "route.generate.planning-formula": {
-      "description": "Formula-bearing planning context; Strategist records exact mathematics without loading image-layout or formula-rendering resources.",
+      "description": "Generate-PPTX planning context after a non-none image source is proposed or confirmed; image decision and layout authorities are already in the fixed planning context. Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning"
       ],
       "files": [],
-      "max_tokens": 110000
+      "max_tokens": 130000
+    },
+    "route.generate.planning-formula": {
+      "description": "Formula-bearing planning context; Strategist records exact mathematics while using the fixed planning-capability context. Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
+      "scope": "cumulative",
+      "include": [
+        "route.generate.planning"
+      ],
+      "files": [],
+      "max_tokens": 130000
     },
     "route.generate.planning-ai": {
-      "description": "Generate-PPTX planning after AI imagery is confirmed, adding image-layout and resource-planning authorities to the rendering index and already-selected rendering bases.",
+      "description": "Generate-PPTX planning after AI imagery is confirmed; the fixed context already carries image-layout and resource-planning decision authorities. Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-image"
       ],
       "files": [],
-      "max_tokens": 115000
+      "max_tokens": 130000
     },
     "stage.generate.apply-template-workspace": {
       "description": "Post-Stage-1 Default or Quick exact-root workspace validation, installation, and fusion framework.",
@@ -437,7 +455,7 @@
       "max_tokens": 7500
     },
     "stage.generate.template.style": {
-      "description": "Conditional roster-free Style workspace application.",
+      "description": "Conditional roster-free Style workspace application. Ceiling raised after BUDGET_LOAD_SET reported 9019 tokens.",
       "scope": "incremental",
       "include": [
         "stage.generate.apply-template-workspace"
@@ -450,7 +468,7 @@
           "load_event": "template-application"
         }
       ],
-      "max_tokens": 9000
+      "max_tokens": 10000
     },
     "stage.generate.template.layout": {
       "description": "Conditional Layout workspace application with one selected Layout spec.",
@@ -466,7 +484,7 @@
           "load_event": "template-application"
         }
       ],
-      "max_tokens": 9000
+      "max_tokens": 10000
     },
     "stage.generate.template.deck": {
       "description": "Conditional Deck workspace application with one selected Deck spec.",
@@ -535,7 +553,7 @@
       "max_tokens": 19000
     },
     "route.generate.flat-no-image": {
-      "description": "Default fixed Generate-PPTX context with no image-acquisition role.",
+      "description": "Default fixed Generate-PPTX context with no image-acquisition role. Ceiling raised after BUDGET_LOAD_SET reported 177085 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning",
@@ -543,10 +561,10 @@
         "stage.generate.executor.notes"
       ],
       "files": [],
-      "max_tokens": 165000
+      "max_tokens": 195000
     },
     "route.generate.flat-formula": {
-      "description": "Default flat Generate-PPTX context with direct PowerPoint-native formula marker authoring and no image branch.",
+      "description": "Default flat Generate-PPTX context with direct PowerPoint-native formula marker authoring and no image branch. Ceiling raised after BUDGET_LOAD_SET reported 179089 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-formula",
@@ -555,10 +573,10 @@
         "stage.generate.executor.notes"
       ],
       "files": [],
-      "max_tokens": 170000
+      "max_tokens": 200000
     },
     "route.generate.flat-hyperlink": {
-      "description": "Default flat Generate-PPTX context with PowerPoint-native external and same-deck hyperlink authoring.",
+      "description": "Default flat Generate-PPTX context with PowerPoint-native external and same-deck hyperlink authoring. Ceiling raised after BUDGET_LOAD_SET reported 178236 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning",
@@ -567,10 +585,10 @@
         "stage.generate.executor.notes"
       ],
       "files": [],
-      "max_tokens": 170000
+      "max_tokens": 200000
     },
     "route.generate.flat-ai-two-types": {
-      "description": "Generate-PPTX context with AI images, the selected preset or exact custom rendering bases, and two local types.",
+      "description": "Generate-PPTX context with AI images, the selected preset or exact custom rendering bases, and two local types. Ceiling raised after BUDGET_LOAD_SET reported 208650 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-ai",
@@ -580,10 +598,10 @@
         "stage.generate.image.ai-two-types"
       ],
       "files": [],
-      "max_tokens": 205000
+      "max_tokens": 230000
     },
     "route.generate.flat-in-hand-image": {
-      "description": "Generate-PPTX context with provided or placeholder images and no acquisition role.",
+      "description": "Generate-PPTX context with provided or placeholder images and no acquisition role. Ceiling raised after BUDGET_LOAD_SET reported 181521 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-image",
@@ -592,20 +610,21 @@
         "stage.generate.executor.notes"
       ],
       "files": [],
-      "max_tokens": 180000
+      "max_tokens": 200000
     },
     "route.generate.flat-web-image": {
-      "description": "Generate-PPTX context with web image acquisition.",
+      "description": "Generate-PPTX context with web image acquisition. Ceiling raised after BUDGET_LOAD_SET reported 192432 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-image",
         "stage.generate.executor.flat",
         "stage.generate.executor.web-image",
         "stage.generate.executor.notes",
-        "stage.generate.image.web"
+        "stage.generate.image.web",
+        "stage.generate.image.web-review"
       ],
       "files": [],
-      "max_tokens": 190000
+      "max_tokens": 215000
     },
     "route.enhance-native-pptx.audio": {
       "description": "Enhance Native PPTX with the shared narration-audio stage.",
@@ -615,20 +634,20 @@
         "stage.shared.generate-audio"
       ],
       "files": [],
-      "max_tokens": 19000
+      "max_tokens": 21000
     },
     "route.generate.beautify-flat-no-image": {
-      "description": "Generate-PPTX 1:1 beautify profile on the flat no-image path.",
+      "description": "Generate-PPTX 1:1 beautify profile on the flat no-image path. Ceiling raised after BUDGET_LOAD_SET reported 184830 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.flat-no-image",
         "profile.generate.beautify-pptx"
       ],
       "files": [],
-      "max_tokens": 175000
+      "max_tokens": 205000
     },
     "route.generate.flat-no-image.video-design": {
-      "description": "Default flat Generate-PPTX path with conditional video-delivery design, custom animation, and narration/audio delivery.",
+      "description": "Default flat Generate-PPTX path with conditional video-delivery design, custom animation, and narration/audio delivery. Ceiling raised after BUDGET_LOAD_SET reported 222116 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.flat-no-image",
@@ -637,25 +656,24 @@
         "stage.shared.generate-audio"
       ],
       "files": [],
-      "max_tokens": 215000
+      "max_tokens": 245000
     },
     "route.generate.flat-no-image-visualization": {
-      "description": "Default flat Generate-PPTX path with visualization-reference consumption, all three information-model branches, optional native-data replacement, and chart verification.",
+      "description": "Default flat Generate-PPTX path with visualization-reference consumption, all three information-model branches from the fixed Executor core, optional native-data replacement, and chart verification. Ceiling raised after BUDGET_LOAD_SET reported 194079 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.flat-no-image",
         "stage.generate.executor.visualization",
         "stage.generate.executor.chart",
-        "stage.generate.executor.structure",
         "stage.generate.executor.table",
         "stage.generate.executor.native-data",
         "stage.generate.verify-charts"
       ],
       "files": [],
-      "max_tokens": 185000
+      "max_tokens": 215000
     },
     "route.generate.brand-flat-no-image": {
-      "description": "Brand-preset flat Generate-PPTX path without image acquisition.",
+      "description": "Brand-preset flat Generate-PPTX path without image acquisition. Ceiling raised after BUDGET_LOAD_SET reported 187138 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-template",
@@ -664,10 +682,10 @@
         "stage.generate.template.brand"
       ],
       "files": [],
-      "max_tokens": 180000
+      "max_tokens": 210000
     },
     "route.generate.style-flat-no-image": {
-      "description": "Style-workspace flat Generate-PPTX path without image acquisition.",
+      "description": "Style-workspace flat Generate-PPTX path without image acquisition. Ceiling raised after BUDGET_LOAD_SET reported 188870 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-template",
@@ -676,10 +694,10 @@
         "stage.generate.template.style"
       ],
       "files": [],
-      "max_tokens": 180000
+      "max_tokens": 210000
     },
     "route.generate.deck-structured-no-image": {
-      "description": "Deck-preset structured Generate-PPTX path without image acquisition.",
+      "description": "Deck-preset structured Generate-PPTX path without image acquisition. Ceiling raised after BUDGET_LOAD_SET reported 197186 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-template",
@@ -688,10 +706,10 @@
         "stage.generate.template.deck"
       ],
       "files": [],
-      "max_tokens": 190000
+      "max_tokens": 220000
     },
     "route.generate.layout-structured-no-image": {
-      "description": "Layout-preset structured Generate-PPTX path without image acquisition.",
+      "description": "Layout-preset structured Generate-PPTX path without image acquisition. Ceiling raised after BUDGET_LOAD_SET reported 197888 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-template",
@@ -700,29 +718,30 @@
         "stage.generate.template.layout"
       ],
       "files": [],
-      "max_tokens": 190000
+      "max_tokens": 220000
     },
     "route.generate.topic-only-flat-no-image": {
-      "description": "Topic research followed by the default flat no-image Generate-PPTX path.",
+      "description": "Topic research followed by the default flat no-image Generate-PPTX path. Ceiling raised after BUDGET_LOAD_SET reported 179579 tokens.",
       "scope": "cumulative",
       "include": [
         "stage.generate.topic-research",
         "route.generate.flat-no-image"
       ],
       "files": [],
-      "max_tokens": 170000
+      "max_tokens": 200000
     },
     "stage.generate.executor.flat": {
-      "description": "Incremental flat Executor core with complete visual-construction authorities, the compact mode/style indexes, and a conservative audit envelope for only the locked preset or exact custom references.",
+      "description": "Incremental flat Executor core with complete visual-construction authorities and a conservative audit envelope for only the locked preset or exact custom references; selection indexes remain planning-only.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/executor-base.md",
         "skills/ppt-master/references/shared-standards-core.md",
         "skills/ppt-master/references/svg-effects.md",
         "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md",
         "skills/ppt-master/references/semantic-svg.md",
-        "skills/ppt-master/references/modes/_index.md",
-        "skills/ppt-master/references/visual-styles/_index.md",
+        "skills/ppt-master/references/executor-structure.md",
+        "skills/ppt-master/references/topology-assembly.md",
         {
           "glob": "skills/ppt-master/references/modes/*.md",
           "exclude": [
@@ -744,7 +763,7 @@
           "allow_repeat": true
         }
       ],
-      "max_tokens": 64000
+      "max_tokens": 71000
     },
     "stage.generate.executor.structured": {
       "description": "Structured template execution layered on the flat/shared core.",
@@ -756,10 +775,10 @@
         "skills/ppt-master/references/executor-structured.md",
         "skills/ppt-master/references/pptx-structure-interface.md"
       ],
-      "max_tokens": 74000
+      "max_tokens": 85000
     },
     "stage.generate.image.ai-two-types": {
-      "description": "Incremental AI-image role with the selected preset or exact custom rendering bases and two selected local types.",
+      "description": "Incremental AI-image role with the selected preset or exact custom rendering bases and two selected local types. Ceiling raised after BUDGET_LOAD_SET reported 26216 tokens.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/image-base.md",
@@ -790,16 +809,24 @@
           "registry": "image-type-templates"
         }
       ],
-      "max_tokens": 26000
+      "max_tokens": 29000
     },
     "stage.generate.image.web": {
-      "description": "Incremental web-image acquisition role.",
+      "description": "Incremental web-image acquisition role. Ceiling raised after BUDGET_LOAD_SET reported 9341 tokens.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/image-base.md",
         "skills/ppt-master/references/image-searcher.md"
       ],
-      "max_tokens": 8000
+      "max_tokens": 11000
+    },
+    "stage.generate.image.web-review": {
+      "description": "Compact isolated-or-local multimodal review contract for bounded web-image thumbnail pages.",
+      "scope": "incremental",
+      "files": [
+        "skills/ppt-master/workflows/stages/web-image-review.md"
+      ],
+      "max_tokens": 1000
     },
     "stage.generate.resume-execute": {
       "description": "Fresh-session resume plus the flat Executor core and post-SVG notes rules.",
@@ -814,7 +841,7 @@
         "skills/ppt-master/workflows/stages/resume-execute.md",
         "skills/ppt-master/references/artifact-ownership.md"
       ],
-      "max_tokens": 97000
+      "max_tokens": 115000
     },
     "stage.generate.resume-execute-image": {
       "description": "Fresh-session resume when the locked resource plan contains image rows.",
@@ -824,7 +851,7 @@
         "stage.generate.executor.image"
       ],
       "files": [],
-      "max_tokens": 115000
+      "max_tokens": 130000
     },
     "stage.generate.topic-research": {
       "description": "Gap-targeted factual intake stage.",
@@ -832,7 +859,7 @@
       "files": [
         "skills/ppt-master/workflows/stages/topic-research.md"
       ],
-      "max_tokens": 2000
+      "max_tokens": 2750
     },
     "profile.generate.beautify-pptx": {
       "description": "Strict 1:1 wording, order, and page-count profile with Default and explicit Quick branches.",
@@ -913,6 +940,14 @@
       ],
       "max_tokens": 35000
     },
+    "stage.generate.sound-selection": {
+      "description": "Complete post-motion sound identity vocabulary after a concrete auditory cue job exists.",
+      "scope": "incremental",
+      "files": [
+        "skills/ppt-master/templates/sounds/sound-vocabulary.md"
+      ],
+      "max_tokens": 6250
+    },
     "stage.generate.video-motion-plan": {
       "description": "Conditional resolved animation-to-video handoff contract.",
       "scope": "incremental",
@@ -951,7 +986,7 @@
       "files": [
         "skills/ppt-master/scripts/docs/conversion.md"
       ],
-      "max_tokens": 6750
+      "max_tokens": 7500
     },
     "stage.shared.troubleshooting": {
       "description": "Conditional troubleshooting reference for generation failures.",
@@ -962,22 +997,23 @@
       "max_tokens": 1000
     },
     "stage.create-template.authored-preset": {
-      "description": "Conditional native preset and Boolean shape authoring reference for Create Layout/Create Deck.",
+      "description": "Conditional native-shape and complete preset-vocabulary bundle loaded when Create Layout/Create Deck resolves to standard/fidelity, before any contour selection; mirror excludes it. Ceiling raised after BUDGET_LOAD_SET reported 9139 tokens.",
       "scope": "incremental",
       "files": [
-        "skills/ppt-master/references/native-shape-authoring.md"
+        "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md"
       ],
-      "max_tokens": 5000
+      "max_tokens": 10000
     },
     "route.generate.planning-template": {
-      "description": "Generate-PPTX planning context after an explicit template workspace is installed.",
+      "description": "Generate-PPTX planning context after an explicit template workspace is installed. Ceiling raised after BUDGET_LOAD_SET reported 119170 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning",
         "stage.generate.strategist.template"
       ],
       "files": [],
-      "max_tokens": 110000
+      "max_tokens": 135000
     },
     "route.generate.planning-template-ai": {
       "description": "Explicit template workspace plus confirmed AI-image planning.",
@@ -1005,14 +1041,6 @@
       ],
       "max_tokens": 1250
     },
-    "stage.generate.executor.structure": {
-      "description": "Conditional page-local qualitative-topology construction rules.",
-      "scope": "incremental",
-      "files": [
-        "skills/ppt-master/references/executor-structure.md"
-      ],
-      "max_tokens": 1500
-    },
     "stage.generate.executor.table": {
       "description": "Conditional semantic cell-grid construction rules.",
       "scope": "incremental",
@@ -1020,15 +1048,6 @@
         "skills/ppt-master/references/executor-table.md"
       ],
       "max_tokens": 1000
-    },
-    "stage.generate.strategist.image": {
-      "description": "Conditional Strategist image layout math and compact composition vocabulary; the rendering decision core is already in base planning.",
-      "scope": "incremental",
-      "files": [
-        "skills/ppt-master/references/image-layout-spec.md",
-        "skills/ppt-master/references/image-layout-patterns.md"
-      ],
-      "max_tokens": 11000
     },
     "stage.generate.strategist.template": {
       "description": "Conditional Strategist module for an explicitly installed template workspace.",
@@ -1039,12 +1058,12 @@
       "max_tokens": 3000
     },
     "stage.generate.executor.native-data": {
-      "description": "Conditional preset-pattern and native chart/table metadata interface.",
+      "description": "Conditional preset-pattern and native chart/table metadata interface. Ceiling raised after BUDGET_FILE and BUDGET_LOAD_SET reported 6774 tokens.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/native-data-interface.md"
       ],
-      "max_tokens": 6750
+      "max_tokens": 7500
     },
     "stage.generate.executor.formula": {
       "description": "Conditional direct authoring contract for PowerPoint-native inline and block formulas.",
@@ -1052,7 +1071,7 @@
       "files": [
         "skills/ppt-master/references/native-formula.md"
       ],
-      "max_tokens": 2000
+      "max_tokens": 2250
     },
     "stage.generate.executor.hyperlink": {
       "description": "Conditional direct authoring contract for PowerPoint-native external and same-deck click hyperlinks.",
@@ -1063,7 +1082,7 @@
       "max_tokens": 1250
     },
     "stage.generate.executor.image": {
-      "description": "Conditional image embedding and execution rules with the always-read layout math and compact composition vocabulary.",
+      "description": "Conditional image embedding and execution rules with the always-read layout math and compact composition vocabulary. Ceiling raised after BUDGET_LOAD_SET reported 13167 tokens.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/executor-image.md",
@@ -1071,7 +1090,7 @@
         "skills/ppt-master/references/image-layout-patterns.md",
         "skills/ppt-master/references/svg-image-embedding.md"
       ],
-      "max_tokens": 13000
+      "max_tokens": 15000
     },
     "stage.generate.executor.web-image": {
       "description": "Conditional sourced-image attribution layered on image execution.",
@@ -1093,12 +1112,13 @@
       "max_tokens": 1000
     },
     "stage.generate.executor.native-shape": {
-      "description": "Stock PowerPoint shape selection and Boolean materialization authority, always included in Generate Executor contexts.",
+      "description": "Complete stock PowerPoint shape vocabulary, selection, and Boolean materialization authority, always included in Generate Executor contexts. Ceiling raised after BUDGET_LOAD_SET reported 9139 tokens.",
       "scope": "incremental",
       "files": [
-        "skills/ppt-master/references/native-shape-authoring.md"
+        "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md"
       ],
-      "max_tokens": 5000
+      "max_tokens": 10000
     },
     "stage.shared.svg-effects": {
       "description": "Advanced SVG paint, effects, transforms, and geometry authority, always included in Generate Executor contexts and conditionally loaded by other SVG-authoring routes.",
@@ -1106,7 +1126,7 @@
       "files": [
         "skills/ppt-master/references/svg-effects.md"
       ],
-      "max_tokens": 15000
+      "max_tokens": 16000
     }
   },
   "duplicates": {
@@ -1336,7 +1356,7 @@
       },
       {
         "kind": "exact",
-        "fingerprint": "99d8baf1be58",
+        "fingerprint": "272bdc60fa52",
         "paths": [
           "skills/ppt-master/workflows/create-template/create-brand.md",
           "skills/ppt-master/workflows/create-template/create-style.md"
@@ -1517,12 +1537,12 @@
       "prefix_counts": {
         "P1": 13,
         "P2": 10,
-        "P3": 23,
-        "M1": 11,
+        "P3": 24,
+        "M1": 12,
         "M2": 9,
         "M3": 7,
         "A1": 4,
-        "A2": 3,
+        "A2": 4,
         "A3": 3,
         "C1": 1,
         "C2": 2,
@@ -1620,6 +1640,10 @@
       "kind": "json_collection",
       "source": "skills/ppt-master/templates/charts/charts_index.json",
       "key": "charts",
+      "projection": {
+        "source": "skills/ppt-master/templates/charts/chart-vocabulary.md",
+        "entry_pattern": "^\\|\\s*`chart/(?P<id>[a-z0-9_]+)`\\s*\\|"
+      },
       "reference_terms": [
         "charts_index.json",
         "chart catalog",
@@ -1637,12 +1661,39 @@
       ]
     },
     {
+      "name": "preset-shape-vocabulary",
+      "kind": "line_collection",
+      "source": "skills/ppt-master/scripts/pptx_shapes/data/shape_type_values.txt",
+      "projection": {
+        "source": "skills/ppt-master/references/preset-shape-vocabulary.md",
+        "entry_pattern": "(?:\\|\\s|,\\s)`(?P<id>[A-Za-z][A-Za-z0-9]*)`(?=[^\\n]*\\|\\s*$)"
+      },
+      "reference_terms": [
+        "preset-shape-vocabulary.md",
+        "preset shape vocabulary",
+        "native preset shape vocabulary"
+      ],
+      "claim_nouns": [
+        "preset",
+        "presets",
+        "shape",
+        "shapes",
+        "name",
+        "names"
+      ]
+    },
+    {
       "name": "table-templates",
       "kind": "json_collection",
       "source": "skills/ppt-master/templates/tables/tables_index.json",
       "key": "tables",
+      "projection": {
+        "source": "skills/ppt-master/templates/tables/table-vocabulary.md",
+        "entry_pattern": "^\\|\\s*`table/(?P<id>[a-z0-9_]+)`\\s*\\|"
+      },
       "reference_terms": [
         "tables_index.json",
+        "table-vocabulary.md",
         "table catalog"
       ],
       "claim_nouns": [
@@ -1654,6 +1705,29 @@
         "templates",
         "type",
         "types"
+      ]
+    },
+    {
+      "name": "sound-cues",
+      "kind": "json_collection",
+      "source": "skills/ppt-master/templates/sounds/sounds_index.json",
+      "key": "sounds",
+      "id_field": "id",
+      "projection": {
+        "source": "skills/ppt-master/templates/sounds/sound-vocabulary.md",
+        "entry_pattern": "^\\|\\s*`(?P<id>[a-z0-9-]+/[a-z0-9_]+)`\\s*\\|"
+      },
+      "reference_terms": [
+        "sound-vocabulary.md",
+        "sounds_index.json",
+        "sound catalog",
+        "sound cue vocabulary"
+      ],
+      "claim_nouns": [
+        "sound",
+        "sounds",
+        "cue",
+        "cues"
       ]
     }
   ],
@@ -2006,13 +2080,13 @@
             {
               "path": "skills/ppt-master/references/strategist.md",
               "role": "producer",
-              "fingerprint": "feb2b322c7ce",
+              "fingerprint": "e267f1759749",
               "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "9d35b546fb2d",
+              "fingerprint": "ebbb28e8b7e7",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -2073,6 +2147,14 @@
         "reason": "Standalone image-tool command reference; generation roles load the owning image contracts directly, and its formula renderer section is legacy-only."
       },
       {
+        "glob": "skills/ppt-master/templates/charts/charts_index.json",
+        "reason": "Machine registry consumed by visualization validation and optional recall; planning roles load chart-vocabulary.md instead."
+      },
+      {
+        "glob": "skills/ppt-master/templates/tables/tables_index.json",
+        "reason": "Machine registry consumed by visualization validation and optional recall; planning roles load table-vocabulary.md instead."
+      },
+      {
         "glob": "skills/ppt-master/scripts/docs/mask-gradient-smoke.md",
         "reason": "Maintainer-only executable smoke; never loaded by generation roles."
       },
@@ -2090,7 +2172,11 @@
       },
       {
         "glob": "skills/ppt-master/scripts/docs/chart-recall.md",
-        "reason": "Legacy compatibility note; current generation loads visualization-recall.md."
+        "reason": "Legacy compatibility note; current planning reads the live Chart/Table registries directly."
+      },
+      {
+        "glob": "skills/ppt-master/scripts/docs/visualization-recall.md",
+        "reason": "Optional diagnostic-tool documentation; runtime planning reads the complete live registries directly and uses only canonical validation."
       },
       {
         "glob": "skills/ppt-master/scripts/pptx_shapes/data/NOTICE.md",
@@ -2115,14 +2201,6 @@
       {
         "glob": "skills/ppt-master/templates/scaffolds/*.md",
         "reason": "Optional versioned tool-copy assets; normal Generate authoring reads the reference guides and writes complete artifacts from scratch."
-      },
-      {
-        "glob": "skills/ppt-master/templates/charts/charts_index.json",
-        "reason": "Machine-consumed chart-family registry; Strategist receives only bounded visualization-recall candidates."
-      },
-      {
-        "glob": "skills/ppt-master/templates/tables/tables_index.json",
-        "reason": "Machine-consumed table-family registry; Strategist receives only bounded visualization-recall candidates."
       },
       {
         "glob": "skills/ppt-master/templates/schemas/*.json",

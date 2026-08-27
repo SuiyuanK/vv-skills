@@ -113,30 +113,23 @@ Use these exact subsections and field shapes:
 
 ## V. Layout Principles
 
-### Page Structure
+### Deck-wide Direction
 
-- **Header area**: <rule>
-- **Content area**: <rule>
-- **Footer area**: <rule>
-
-### Spacing Specification
-
-| Element | Current Project |
-| --- | --- |
-| Safe margin | <value> |
-| Content block gap | <value> |
-| Icon-text gap | <value> |
+- **Hierarchy direction**: <how attention should move across a typical page>
+- **Composition tendency**: <non-binding macro direction; no coordinates or authoring method>
+- **Cross-page continuity**: <what may recur or vary across the roster>
+- **Spacing posture**: <dense, open, or variable behavior by page rhythm; no fixed gaps>
 
 ## VI. Icon Usage Specification
 
 - **Primary bundled library**: <one of chunk-filled / tabler-filled / tabler-outline / phosphor-duotone, or none>
-- **Brand-logo library**: <simple-icons when selected for real brand marks; omit otherwise>
+- **Brand-logo library**: <simple-icons when actual content requires prepared real brand marks; omit otherwise>
 
 | Icon Path | Suitable Scenarios |
 | --- | --- |
 ```
 
-Preserve Title/Body characters and resolved stacks; omit blank Typography upgrade and never place it in a stack. For each justified recurring family override, add the role to Font Plan plus `- **<Role> stack**: <complete ordered stack>`. Possible roles are `Annotation`, `Footer`, `Footnote`, `Data`, `Emphasis`, `Quote`, and `Code`; add only recurring, intentional differences. Add non-locked `Role rationale` only for an extra family. Do not collapse distinct Title/Body stacks or discard a declared optional role. Each Font Size Hierarchy value is a role anchor: Executor may vary one occurrence `±2px`; a short non-structural Hero/Display size may stay unlisted only while the same value is planned at most twice, and its third occurrence needs a named row. Add every recurring palette role and typography-size anchor established by the plan; do not enumerate one-off paint or font-family garnish. For confirmed custom directions, add the applicable `Mode References`, `Mode Behavior`, `Visual Style References`, and `Visual Style Behavior` lines under Theme Style. Include `Stroke Width` under §VI only for a stroke library. `simple-icons` may accompany the one primary bundled library and is recorded only when real brand marks were selected. The icon table records the curated synced pool and broad semantic scenarios, not exact page placement or mandatory use. User-provided, template-carried, imported, custom, and other prepared SVGs under the project `icons/` directory remain usable without being forced into that bundled selection. Leave the §VI table empty when no bundled or brand icons are prepared.
+Preserve Title/Body characters and resolved stacks; omit blank Typography upgrade and never place it in a stack. For each justified recurring family override, add the role to Font Plan plus `- **<Role> stack**: <complete ordered stack>`. Possible roles are `Annotation`, `Footer`, `Footnote`, `Data`, `Emphasis`, `Quote`, and `Code`; add only recurring, intentional differences. Add non-locked `Role rationale` only for an extra family. Do not collapse distinct Title/Body stacks or discard a declared optional role. Each Font Size Hierarchy value is a role anchor: Executor may vary one occurrence `±2px`; a short non-structural Hero/Display size may stay unlisted only while the same value is planned at most twice, and its third occurrence needs a named row. Add every recurring palette role and typography-size anchor established by the plan; do not enumerate one-off paint or font-family garnish. For confirmed custom directions, add the applicable `Mode References`, `Mode Behavior`, `Visual Style References`, and `Visual Style Behavior` lines under Theme Style. Include `Stroke Width` under §VI only for a stroke library. `simple-icons` may accompany the one primary bundled library and is recorded only when actual content requires real brand marks; it is never a separate confirmation choice. The icon table records the curated synced SVG pool and broad semantic scenarios, not exact page placement or mandatory use. User-provided, template-carried, imported, custom, and other prepared SVGs under the project `icons/` directory remain usable without being forced into that bundled selection. Leave the §VI table empty when no bundled or brand SVG icons are prepared. Illustrated icons are AI image resources: their production sheet and placed slice rows belong in §VIII, and only placed slices project to `spec_lock.md images`.
 
 When §VIII contains any `Acquire Via: ai` row, add this subsection under §III and preserve the complete confirmed AI direction:
 
@@ -174,11 +167,12 @@ PowerPoint structure. Omit empty §VII and recall diagnostics; legacy rows stay
 readable, while new specs use four columns.
 
 In §IX `Visualization`, key every independent data chart/pure text-grid table
-in `kebab-case` and add one `Native-ready` map: `<key>=yes|no; ...`. Use `yes`
-only when editable native output helps. Qualitative relationships/read order
-remain unkeyed prose, as do incidental microvisuals.
+in `kebab-case` and add one `Native-ready` map: `<key>=yes|no; ...`. Decide
+`yes` by default; use `no` only when the native payload cannot express that
+object. Qualitative relationships/read order remain unkeyed prose, as do
+incidental microvisuals.
 
-In §VIII, author every planned or explicitly required resource from the confirmed source boundary. Write one concise, non-empty `Layout pattern` suggestion in ordinary language; optionally cite hierarchical ids from the layout library when they help recall a technique. Set `Crop Policy` to `adaptive` or `no-crop`; set `Acquire Via` to `ai`, `web`, `user`, `placeholder`, or `slice`. Preserve unresolved required assets as `Pending` or `Needs-Manual` instead of dropping or reclassifying them. Native formulas never enter this table or `spec_lock.md images`.
+In §VIII, author every planned or explicitly required resource from the confirmed source boundary. Write one concise, non-empty `Layout pattern` suggestion in ordinary language; optionally cite hierarchical ids from the layout library when they help recall a technique. An image-led `adaptive` row names the page job the image resolves next to the composition serving it; a `no-crop` or supporting row keeps the concise suggestion alone. Set `Crop Policy` to `adaptive` or `no-crop`; set `Acquire Via` to `ai`, `web`, `user`, `placeholder`, or `slice`. Preserve unresolved required assets as `Pending` or `Needs-Manual` instead of dropping or reclassifying them. Native formulas never enter this table or `spec_lock.md images`.
 
 §VIII `Layout pattern` is a per-resource preference. When a page uses several images, repeats one image in multiple views, or combines an image with native overlays, describe the page-level relationship and participating resources in §IX `Layout` / `Images`; do not duplicate an unchanged resource row merely to encode animation sequencing.
 
@@ -196,7 +190,7 @@ Write one ordered Slide block per page. Slide count and order must equal §I `Pa
 #### Slide 01 - <page name>
 
 - **Audience move**: <audience state before → after>
-- **Layout**: <composition; include the chosen prototype when template-active>
+- **Layout**: <non-binding macro composition, hierarchy, and visual focus; include the chosen prototype when template-active>
 - **Title**: <preferred page title>
 - **Core message**: <one governing assertion>
 - **Content**: <complete intended on-slide content and hierarchy>
@@ -220,17 +214,16 @@ When an explicit final/literal narration script will become notes or generated
 audio, make §X `Content` name that source and say `preserve verbatim`; keep the
 full segmented script in `notes/total.md`, not in §IX or this Design Spec.
 
-Append either or both optional lines only when the capability earns a place;
-never write an empty or `none` placeholder:
+Append the optional line only when the capability earns a place; never write an
+empty or `none` placeholder:
 
 ```markdown
-- **Native shape suggestion**: <semantic object/result plus candidate preset/Connector family or Boolean operation/operand roles>
 - **Motion suggestion**: <communication job plus desired page-entry or reveal relationship/order>
 ```
 
-Add `Mathematical content` whenever a Slide needs a mathematical expression preserved exactly. Store the expression body as valid LaTeX without `$...$`, `$$...$$`, `\(...\)`, or `\[...\]` source delimiters; the field does not classify inline versus structural use. This is content authority for [`native-formula.md`](../references/native-formula.md), not a formula policy, marker, or implementation request; Executor chooses ordinary text, inline native math, or block native math. Add `Visualization` / `Images` when a Slide consumes §VII/§VIII or uses a page-local visual model. Name every value-driven geometry, qualitative relationship, cell grid, and child visual here; only independent Chart/Table entries use object keys. Describe qualitative order, linkage, hierarchy, grouping, contrast, overlap, and reading path freely—not as a model name or grammar enum. §IX may choose a custom Chart/Table fallback. Add `Native shape suggestion` only when a preset, stock Connector, or compound silhouette/cutout/intersection/fragment may help; name the semantic result plus candidate family or Boolean operands, never implementation geometry or keys. Executor chooses the primitive, preset, Boolean construction, or necessary freeform. Add `Motion suggestion` whenever transition/reveal advice strengthens communication, regardless of the Custom Animations outcome; state purpose and semantic order/relationship, not registry keys, options, timing, ids, or coverage. The suggestion never activates animation execution by itself, creates content, or binds implementation. Describe required visible image states in `Layout` / `Images` only for an explicit motion requirement or an enabled Custom Animations outcome. Add keyed `Native-ready` only for independent data charts or pure text-grid tables, `Fact IDs` for sourced claims, and `Data class: scenario` for invented demo values. Except on preservation paths, `Cover impact` carries a binding hook and adaptable composition; apply the same split to `Closing impact` only when the deck genuinely resolves. Roster/order/content stay authoritative. §VIII image layout is non-empty free prose with optional library ids; §VII Chart/Table rows are references. Executor owns geometry, hierarchy, treatment, and sparse local garnish.
+Add `Mathematical content` whenever a Slide needs a mathematical expression preserved exactly. Store the expression body as valid LaTeX without `$...$`, `$$...$$`, `\(...\)`, or `\[...\]` source delimiters; the field does not classify inline versus structural use. This is content authority for [`native-formula.md`](../references/native-formula.md), not a formula policy, marker, or implementation request; Executor chooses ordinary text, inline native math, or block native math. Add `Visualization` / `Images` when a Slide consumes §VII/§VIII or uses a page-local visual model. Name every value-driven geometry, qualitative relationship, cell grid, and child visual here; only independent Chart/Table entries use object keys. Describe qualitative order, linkage, hierarchy, grouping, contrast, overlap, and reading path freely—not as a model name or grammar enum. §IX may choose a custom Chart/Table fallback. Native construction creates no Design Spec field; Executor discovers and selects it independently during realization. Add `Motion suggestion` whenever transition/reveal advice strengthens communication, regardless of the Custom Animations outcome; state purpose and semantic order/relationship, not registry keys, options, timing, ids, or coverage. The suggestion never activates animation execution by itself, creates content, or binds implementation. Describe required visible image states in `Layout` / `Images` only for an explicit motion requirement or an enabled Custom Animations outcome. Add keyed `Native-ready` only for independent data charts or pure text-grid tables, `Fact IDs` for sourced claims, and `Data class: scenario` for invented demo values. Except on preservation paths, `Cover impact` carries a binding hook and adaptable composition; apply the same split to `Closing impact` only when the deck genuinely resolves. Roster/order/content stay authoritative. §V/§IX layout, cover/closing composition, capability, motif, §VIII image-layout, and §VII Chart/Table directions remain References unless an explicit user/template/resource constraint promotes the named property; Executor considers each and may adopt, adapt, or decline it without upstream repair. Executor owns final geometry, hierarchy, treatment, and sparse local garnish.
 
-For free-design pages, describe `Layout` through relationships, hierarchy, regions, and column spans; do not prescribe element-level `x`, `y`, `width`, or `height` or duplicate the global geometry in §II/§V. Exact coordinates belong to Executor SVG authoring. Preserve literal geometry only when the user explicitly requires it or a mirror/template preservation contract owns it.
+For free-design pages, describe `Layout` through relationships, hierarchy, visual focus, and optional macro region/span suggestions; do not prescribe element-level `x`, `y`, `width`, or `height`, fixed gaps, or an authoring method. Executor owns the final page composition and may depart from the recommendation while preserving its semantic job. Preserve literal geometry only when the user explicitly requires it or a mirror/template preservation contract owns it.
 
 ---
 

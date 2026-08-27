@@ -113,6 +113,7 @@ Checks:
 - If the log says `reason=local-patched`, the Desktop availability gate is open; continue by checking the Chrome extension, native host manifest, and plugin cache.
 - If the log still says `statsig-disabled`, re-extract the ASAR and inspect targets for `featureName:\`browser_use_external\``, `featureName:\`browser_use\``, `browser-sidebar-availability-*.js`, `browser_use_availability_resolved`, and `.vite\build\main-*.js`.
 - In Codex 26.707.3748.0, inspect whether the sender object includes `findShortcuts` between `externalBrowserUseAllowed` and `computerUse`. The patcher must preserve that field instead of requiring those fields to be adjacent.
+- In Codex 26.818.2872.0, the sender and the Electron receiver both insert `browserExtensions` between `browserPane` and `externalBrowserUse`. The sender rewrite is value-only, so the new key survives into the patched text and the old adjacency-based patched-state literal stops matching: a second patch run on an already-patched install reports `browser-use-desktop-feature-sender-patch-target-not-found` even though the install is correct. Keep a bounded key slot on both sides of `browserPane` in the rewrite, the patched-state check, and the candidate-file detector. `scripts/test-desktop-feature-slot-patterns.ps1` pins the slot and no-slot shapes.
 - In Codex 26.707.8479.0, the Electron receiver can compute the Windows override with parameterized minified variables instead of the older fixed `i` platform variable. Match the `CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE` conditional by structure and preserve its Computer Use behavior while adding the browser-use overrides.
 - In Codex 26.707.8479.0, the plugin page can insert workspace/account-derived assignments between the `authMethod` hook and the auth-blocked variable. Use the subsequent `kind===\`manage\`` route assignment as a bounded structural anchor instead of requiring the blocked call to be adjacent to `authMethod`.
 - Check the native messaging host manifest at `%LOCALAPPDATA%\OpenAI\extension\com.openai.codexextension.json` and the registry key `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.openai.codexextension`.
@@ -135,9 +136,11 @@ Symptoms:
 
 Checks:
 
-- Do not classify the task as unprivileged from the root cell's `nodeRepl` properties alone. The current Node REPL injects the privileged bridge only into a browser-client module whose SHA-256 matches `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S`.
+- Do not classify the task as unprivileged from the root cell's `nodeRepl` properties alone. Legacy Node REPL builds inject the privileged bridge only into a browser-client module whose SHA-256 matches `NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S`; `26.814`-style Desktop builds instead deliver the packaged client path through the official Chrome native host.
 - Compare the installed package's `plugins\chrome\scripts\browser-client.mjs` SHA-256 with the active stable marketplace and versioned cache copies. Any byte rewrite changes the hash and makes the browser client run in the ordinary untrusted module context.
-- Confirm the packaged browser-client SHA-256 appears in the current installed `app.asar` trusted browser-client list. In Codex 26.803.10989.0, the packaged hash was `8676FACA...C3B8FC`; a prior local rewrite that replaced `import{env as ...}from"node:process"` with `processShim.env` produced `0E1F364D...6AFF7A0` and caused this exact failure.
+- On a legacy build, confirm the packaged browser-client SHA-256 appears in the current installed `app.asar` trusted browser-client list. In Codex 26.803.10989.0, the packaged hash was `8676FACA...C3B8FC`; a prior local rewrite that replaced `import{env as ...}from"node:process"` with `processShim.env` produced `0E1F364D...6AFF7A0` and caused this exact failure.
+- On a `26.814`-style build with no ASAR hash, require all native-host contract markers (`browserClientPath`, `browserServicePath`, `codex-host-chunked-message-v1`, and the native-host missing-path diagnostic). Then verify that `extension-host-config.json` points to the stable current-version packaged client and that both schema-2 state files bind `browserClientPath` plus `browserServicePath` to that same stable cache. A partial marker set or client-only v2 entry is not enough.
+- If the failure names `Trusted RPC dependency must resolve within a configured trusted code path` and the named C-drive cache is a junction, resolve the junction target before comparing roots. Node validates the physical D-drive target, while an unpatched `26.814` Desktop regenerates `NODE_REPL_TRUSTED_CODE_PATHS` from only `CODEX_HOME` and runtime `node_modules`, overwriting a one-time config edit on restart.
 - Run the current Chrome plugin's read-only diagnostics with the matching current CUA Node runtime: `scripts\chrome-is-running.js --browser chrome --check`, `scripts\installed-browsers.js --json`, `scripts\check-extension-installed.js --browser chrome --json`, and `scripts\check-native-host-manifest.js --browser chrome --json`.
 - If the side panel previously reported a missing `nodePath`, separately verify the current `extension-host-config.json` contains existing `codexCliPath`, `nodePath`, and `nodeReplPath` values, and rerun `install-computer-use-local.ps1 -StrictVerifyOnly`.
 - Keep this error distinct from `Chrome browser is unavailable`, a missing or disabled extension, a bad native-host registry path, missing origins, and the side-panel `nodePath` manifest error. A missing privileged task capability occurs before those transports are used.
@@ -145,7 +148,8 @@ Checks:
 Action:
 
 - Do not patch `browser-client.mjs`, fabricate `nodeRepl.config`, or add the modified hash to `app.asar`. Preserve the vendor trust contract instead.
-- Run `install-computer-use-local.ps1 -VerifyOnly`. The repair restores the exact packaged browser-client bytes into the stable marketplace and versioned cache; `-StrictVerifyOnly` requires those hashes to match and requires the packaged hash to exist in the installed `app.asar` trust list.
+- Run `install-computer-use-local.ps1 -VerifyOnly`. The repair restores the exact packaged browser-client bytes into the stable marketplace and versioned cache; `-StrictVerifyOnly` requires those hashes to match and validates either the legacy ASAR hash contract or the complete `26.814` native-host path contract.
+- For an external physical cache root, require the installer to set the resolved marketplace/cache roots in the user-level `NODE_REPL_TRUSTED_CODE_PATHS`, then run the full MSIX patcher and require `CODEX_NODE_REPL_TRUSTED_PATHS_V1` in the installed ASAR. After restart, the Desktop-generated config must contain the original roots plus the physical external roots; only then retry browser setup.
 - Reset the current Node REPL kernel after repair, import the active cached browser client, require `setupBrowserRuntime()` to succeed, and confirm `agent.browsers.get("chrome")` returns the real Chrome extension backend.
 - Finish with a real controlled page smoke test: open `https://example.com/`, verify the final URL, title `Example Domain`, exactly one `h1`, and heading text `Example Domain`, then close the temporary tab.
 - If the official diagnostics fail, repair the concrete extension/native-host problem instead and rerun the same diagnostics before attempting browser-client setup again.
@@ -169,6 +173,7 @@ Checks:
 - Inspect running `extension-host` processes whose paths are under `%USERPROFILE%\.codex\plugins\cache\openai-bundled`.
 - Inspect `%USERPROFILE%\.codex\chrome-native-hosts.json`; remove stale entries whose `extensionHostPath` or `browserClientPath` points to a missing file.
 - If the browser files and versioned cache exist but `codex plugin list` still reports `browser@openai-bundled` as `not installed`, do not treat another direct TOML write as a durable install. Desktop reconciliation can prune that enabled entry again because the CLI install record was never created.
+- If `codex plugin marketplace add` fails with `invalid marketplace file ...marketplace.json: expected value at line 1 column 1`, read the first three bytes of that file before suspecting its contents. A UTF-8 BOM makes the Rust JSON parser reject the whole document, and comparing the file with its source is misleading because PowerShell reads a BOM-prefixed file back without complaint.
 
 Action:
 
@@ -176,6 +181,7 @@ Action:
 - Stop only those bundled `extension-host` processes when they are locking the bundled marketplace mirror.
 - Rerun `scripts\install-computer-use-local.ps1`.
 - Let the repair register `browser@openai-bundled` through `codex plugin add ... --json` after the local marketplace is complete. On Windows, invoke a user-accessible CLI shim such as the npm `codex.cmd`; do not execute the protected `WindowsApps\...\resources\codex.exe` path directly.
+- Write every marketplace JSON as BOM-less UTF-8. `Set-Content -Encoding UTF8` emits a BOM on PowerShell 5.1, so a rewrite step can corrupt the registered copy while the source file stays valid; use `[System.IO.File]::WriteAllText` with `UTF8Encoding($false)`.
 - If the copy fails because a file under `.tmp\bundled-marketplaces\openai-bundled` disappears mid-read, treat it as Desktop reconciliation racing the repair. Stable plugin caches must be sourced from the installed package; only the locally modified Computer Use runtime is overlaid afterward.
 - Restart Codex Desktop.
 - Confirm the latest Desktop log ends with `computer-use native pipe startup ready`.

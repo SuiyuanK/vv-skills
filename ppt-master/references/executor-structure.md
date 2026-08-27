@@ -4,7 +4,9 @@
 
 Runtime grammar for Slide-local qualitative relationships built from editable shapes; it is not a diagram/template catalog.
 
-**Load**: Quick reads this grammar once before all SVG authoring and reuses it for every per-page decision. Default loads it before realizing the first page whose Structure decision is yes, then reuses it in that execution context.
+**Load**: Default and Quick read this grammar once with their fixed construction
+bundle before all SVG authoring and reuse it for every per-page decision. Loading
+the grammar does not select `Structure=yes` or create a geometry quota.
 
 **Hard rule — no Structure catalog**: never recall or resolve `structure/<key>`. Compose from authoritative content, §IX relationships, the communication move, and the active visual system.
 
@@ -14,16 +16,46 @@ Runtime grammar for Slide-local qualitative relationships built from editable sh
 
 ## 1. Relationship Atoms
 
-| Atom | Meaning | Encode with |
-|---|---|---|
-| `order` | Sequence, progression, or rank | Position, numbering, direction, shared path |
-| `link` | Dependency, exchange, influence, transition | Proximity/alignment when unmistakable; otherwise an edge |
-| `parent` | One unit governs or decomposes into children | Branching, indentation, nesting, scale |
-| `membership` | Units belong to a group, stage, lane, or region | Containment, shared field, band, repetition |
-| `contrast` | Peers, states, options, or positions compare | Shared baseline, opposing regions, parallel framing |
-| `overlap` | Units share a meaningful subset or duty | Intersecting regions plus a clear common area |
+**Mandatory — relationship → topology before contour**: For each active atom,
+resolve only the path, junctions, enclosure, field partition, shared region,
+scale change, and entry / endpoint that carry meaning. Adapt that topology to
+the actual units, text load, page role, and active visual system before
+selecting contours.
 
-Combine atoms as needed; never force a named business model. Numbers used only as labels do not create a chart. Value-derived position/length/angle/area/radius/width/color routes to [`executor-chart.md`](./executor-chart.md); row-header × column-header facts route to [`executor-table.md`](./executor-table.md). Qualitative lanes use this grammar, but date/duration-driven task-bar `x`/`width` is Gantt Chart geometry.
+| Atom | Meaning | Encode with | Generate topology from |
+|---|---|---|---|
+| `order` | Sequence, progression, or rank | Position, numbering, direction, shared path | One reading path: open / closed; straight / bent / stepped / switchback / coiled; level / rising / falling; constant / expanding / contracting; turns, milestones, endpoint |
+| `link` | Dependency, exchange, influence, transition | Proximity / alignment when unmistakable; otherwise an edge | Sources, targets, and junctions: direct, hub, chain, split, merge, exchange, or feedback; let the relationship determine the fewest necessary edges |
+| `parent` | One unit governs or decomposes into children | Branching, indentation, nesting, scale | Root, depth, and sibling groups: branch, indent, nest, radiate, or scale; let child roles set fan-out and weight |
+| `membership` | Units belong to a group, stage, lane, or region | Containment, shared field, band, repetition | Owning fields: enclose, band, lane, cluster, repeat, or nest; let content set field shape and occupancy |
+| `contrast` | Peers, states, options, or positions compare | Shared baseline, opposing regions, parallel framing | Shared invariants plus separation: one or more semantic axes / baselines, opposing or parallel fields, counterweight, divergence, or a before / after boundary |
+| `overlap` | Units share a meaningful subset or duty | Intersecting regions plus a clear common area | Exact exclusive / shared regions: paired, chained, or layered intersections; keep every owner and common area legible |
+
+**Reference — not a constraint**: `Generate topology from` names common
+transform axes rather than an exhaustive set. Combine, deform, or invent
+page-fit topologies from the active atoms; never recall a named diagram or
+reproduce a listed form by default.
+
+**Mandatory — combined-atom spatial relation before contour**: Combine atoms as
+needed; never force a named business model. When multiple atoms share one
+construct, resolve whether their topologies share a field, nest, run in
+parallel, cross orthogonally, or intersect. Orthogonal overlay applies when
+independent dimensions occupy one field, including but not limited to an
+`order` path across `membership` lanes and two independent `contrast`
+dimensions; preserve each atom's ownership and reading direction. The overlay
+never implies equal partitions.
+
+**Hard rule — no topology from balance alone**: Node count and text fit may
+change spacing, route, or wrap. They never justify equal shapes, gaps, or
+partitions, mirroring, radial symmetry, or closure that invents peer weight,
+centrality, reciprocity, or recurrence.
+
+Numbers used only as labels do not create a chart. Value-derived position,
+length, angle, area, radius, width, or color routes to
+[`executor-chart.md`](./executor-chart.md); row-header × column-header facts
+route to [`executor-table.md`](./executor-table.md). Qualitative lanes use this
+grammar, but date / duration-driven task-bar `x` / `width` is Gantt Chart
+geometry.
 
 ---
 
@@ -49,9 +81,9 @@ Combine atoms as needed; never force a named business model. Numbers used only a
 
 **Hard rule — realization enters the construction gate**: Decide whether each
 role is implicit/direct content or drawn geometry. Every drawn field, spine,
-node carrier, or edge uses the first faithful tier under
-[`native-shape-authoring.md`](./native-shape-authoring.md) §1: primitive → exact
-preset → Boolean → necessary freeform. Text styling/rules cannot replace
+node carrier, or edge follows [`native-shape-authoring.md`](./native-shape-authoring.md)
+§§1–2.1: contour before encoding → simplest exact native form → independent
+compound → required Boolean → necessary freeform. Text styling cannot replace
 required geometry; implicit/direct roles need no container. Decoration cannot
 invent a relationship.
 
@@ -93,7 +125,7 @@ inapplicable operations; implicit/direct roles remain container-free.
 | Attachment | Labels/evidence belong to the correct node, edge, or region |
 | Removal | Without color/effects/icons/garnish, placement still communicates |
 | Fidelity | All required units, qualifiers, values, and caveats remain |
-| Construction | Drawn fields/spines/node carriers/edges pass §2; implicit/direct roles need no carrier; freeform follows failed primitive/preset/Boolean tiers |
+| Construction | Drawn roles pass §2; implicit/direct roles need no carrier; freeform follows failed exact-native/independent-compound/Boolean routes |
 | Composition | Every used contact, void, overlap, cutout, occlusion, or canvas-edge crossing maps to an atom/role or remains removable garnish; none obscures ownership or reading path |
 
 Load Chart/Table branches independently for embedded objects. Keep one dominant reading path while allowing secondary atoms whose ownership stays clear.

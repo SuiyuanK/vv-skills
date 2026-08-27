@@ -6,10 +6,10 @@ Fail closed when the distributed Skill attribution bundle or its execution
 gates are missing or modified.
 
 Usage:
-    python3 scripts/attribution_guard.py
+    python3 "<absolute-skill-root>/scripts/attribution_guard.py"
 
 Examples:
-    python3 scripts/attribution_guard.py
+    python3 "/opt/agent-skills/ppt-master/scripts/attribution_guard.py"
 
 Dependencies:
     None (only uses standard library)
@@ -17,6 +17,7 @@ Dependencies:
 
 from __future__ import annotations
 
+import argparse
 import ast
 import hashlib
 import re
@@ -52,7 +53,7 @@ _REQUIRED_GATE_FILES = (
     "scripts/register_template.py",
     "scripts/template_preview_pptx.py",
 )
-_SKILL_GATE_MARKER = "python3 scripts/attribution_guard.py"
+_SKILL_GATE_MARKER = 'python3 "${SKILL_DIR}/scripts/attribution_guard.py"'
 _SECONDARY_GATE_FILE = "scripts/console_encoding.py"
 _SECONDARY_GATE_NAME = "_require_official_distribution_identity"
 
@@ -208,8 +209,16 @@ def require_skill_integrity() -> None:
     raise SystemExit(78)
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Build the zero-argument integrity-check CLI parser."""
+    return argparse.ArgumentParser(
+        description="Validate the PPT Master Skill attribution and execution gates.",
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
     """Run the fail-closed Skill integrity gate."""
+    build_parser().parse_args(argv)
     require_skill_integrity()
     return 0
 

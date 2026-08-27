@@ -1,19 +1,24 @@
 # Visualization Candidate Recall
 
-`visualization_recall.py` gives Default Strategist or the Quick Generate main
-agent one bounded deterministic shortlist across the live Chart and Table
-family registries. It exposes the selected full catalog only when the
-caller explicitly requests semantic review. The tool reads these indexes on
-every invocation and maintains no second category or keyword index:
+Default Strategist and the Quick Generate main agent read the complete Chart
+and Table expression vocabularies before planning.
+`visualization_recall.py validate` resolves their selected canonical
+references. Its `recall` command remains an optional deterministic diagnostic
+across the machine Chart and Table registries; it is not the runtime
+capability-discovery gate and cannot replace the complete planning review. The
+tool reads these indexes on every invocation and maintains no second category
+or keyword index:
 
+- `templates/charts/chart-vocabulary.md` — planning capability map, not read by this tool
 - `templates/charts/charts_index.json`
+- `templates/tables/table-vocabulary.md` — planning capability map, not read by this tool
 - `templates/tables/tables_index.json`
 
 Qualitative Structure does not enter recall. Default records its relationship
 model in §IX; Quick keeps the same decision in active context. Both load
 `executor-structure.md` and compose the shapes for the current page.
 
-## Recall candidates
+## Optional recall diagnostics
 
 Describe one page's information shape with 3-8 concise English semantic tags.
 Translate source-language or industry terms into structural meaning first.
@@ -33,11 +38,10 @@ boundary certain; the default `all` preserves unified Chart/Table recall.
 `tail`, `head`, `grep`, or another truncator can discard higher-ranked
 candidates. `confidence` reports lexical strength only and never decides fit.
 
-At `high` / `medium`, retain `no-template-match` when none fits. At `low` /
-`none`, select a fitting bounded candidate directly; otherwise rerun the same
-command once with `--semantic-fallback`, compare the returned selection rules
-semantically, and only then retain `no-template-match`. The full-catalog review
-is a narrow low-confidence no-match gate, not a routine recall step.
+At any confidence, compare the diagnostic candidates against the complete
+planning maps already loaded. `--semantic-fallback` only exposes another
+diagnostic payload; it never requires a selection. Retain `no-template-match`
+when none fits.
 
 | Field | Contract |
 |---|---|
@@ -82,6 +86,9 @@ it without catalog lookup.
 
 ## Selection boundary
 
+- Runtime selection comes from the complete loaded Chart vocabulary and Table
+  registry; recall output is optional diagnostic evidence, while `validate`
+  resolves positive selections.
 - Default records `Page | Family | Template | Usage` for each positive
   selection and projects `family/key` into `page_visualizations`.
 - Usage is one concise page-local purpose; detailed adaptation remains in §IX.

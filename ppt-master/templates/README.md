@@ -49,11 +49,13 @@ specified candidates. Ordinary requests default to free design; explicit
 template intent or any supplied root defaults to template mode. Exactly one root
 may be preselected, while multiple roots remain unselected candidates. The user
 can always switch modes. The page accepts one registered choice per kind plus
-one supplied-root choice. A registered exact root is `library`; any other exact
-root is `explicit`. After that combined confirmation,
+one supplied-root choice, but the complete selection contains at most one
+contribution per kind. All four kinds may combine; Layout owns structure when
+both Layout and Deck are present. A supplied multi-kind root is atomic. A registered exact root is `library`; any other exact root is
+`explicit`. After that combined confirmation,
 [`apply-template-workspace`](../workflows/stages/apply-template-workspace.md)
-validates and installs every selected workspace into the current
-project as its own `design_spec.<kind>.<id>.md` before Stage 2 starts. Template-aware reading begins in final Stage 2 from
+validates and maps every distinct selected root once, preserving each
+contribution as `design_spec.<kind>.<id>.md` before Stage 2 starts. Template-aware reading begins in final Stage 2 from
 that project-local copy. Quick skips the page, applies supplied exact roots, and
 otherwise uses free design.
 
@@ -79,28 +81,32 @@ initialized project:
 
 ```text
 <template_workspace>/
-├── templates/                # design_spec.md; optional Layout/Deck SVG prototypes and native_payloads.json.gz store
+├── templates/                # the Design Spec (naming below); optional Layout/Deck SVGs and native_payloads.json.gz store
 ├── images/                   # optional bitmaps
 ├── icons/
 │   └── imported/             # optional imported vectors, one canonical copy
 └── exports/                  # optional review evidence; never a template input
 ```
 
+**Hard rule — the container disambiguates, the filename carries the rest**: one
+schema serves both layers. A library root keeps `templates/design_spec.md`, since
+`<kind_dir>/<template_id>/` already names its kind and id. A project root shares
+one flat `templates/`, so it keeps one `design_spec.<kind>.<id>.md` per kind;
+filename kind/id MUST equal frontmatter `kind`/`<kind>_id`. The shapes never
+mix. One `templates/`
+holds one active SVG roster: Layout when present, otherwise Deck. Both specs may
+coexist because Layout overrides only Deck structure. Either shape is a
+workspace root, and selecting it takes every kind it exposes.
+
 Empty optional directories are omitted. Template SVGs reference bitmaps through
 `../images/<name>` and imported vectors through `data-icon="imported/<name>"`.
-Style narrows this shared routing shape to `templates/design_spec.md` only and
-does not carry asset or review payloads; initialized-project sibling scaffolding
-may exist but is not Style input.
-The conditional [`apply-template-workspace`](../workflows/stages/apply-template-workspace.md)
-stage owns installation after a non-free Default Stage-1 selection or
-on the Quick exact-root branch. Brand/Layout/Deck consume package-owned
-`templates/`, `images/`, and `icons/`; Style consumes only
-`templates/design_spec.md` and ignores sibling project scaffolding. Every kind
-ignores `exports/`. Compatible legacy-flat Brand/Layout/Deck packages remain
-readable; Style has no legacy-flat form, and directory shape alone does not
-indicate legacy Master/Layout semantics. Default Strategist, Quick's current
-agent, and all later consumers use the installed project-local files, never the
-original library or explicit root.
+Style contributes only its own Design Spec and no asset or review payload;
+sibling scaffolding and other kinds' files are not Style input.
+Every kind ignores `exports/`. The conditional
+[`apply-template-workspace`](../workflows/stages/apply-template-workspace.md)
+stage owns the rest: when installation runs, which roots each kind consumes,
+legacy-flat readability, and the boundary that every later consumer reads the
+installed project-local files rather than the original root.
 
 ## Design specification references
 
@@ -119,19 +125,21 @@ effects and PowerPoint interfaces loaded only when triggered.
 Page-local Shape-first references are catalog families, not reusable template
 kinds:
 
-| Family | Owns | Directory | Index |
+| Family | Owns | Planning map | Machine index |
 |---|---|---|---|
-| Chart | Value-driven geometry (33) | [`charts/`](./charts/) | [`charts_index.json`](./charts/charts_index.json) |
-| Table | Row × column fact grid (6) | [`tables/`](./tables/) | [`tables_index.json`](./tables/tables_index.json) |
+| Chart | Value-driven geometry (33) | [`chart-vocabulary.md`](./charts/chart-vocabulary.md) | [`charts_index.json`](./charts/charts_index.json) |
+| Table | Row × column fact grid (6) | [`table-vocabulary.md`](./tables/table-vocabulary.md) | [`tables_index.json`](./tables/tables_index.json) |
 
 [`VISUALIZATION_TEMPLATE_AUTHORING.md`](./VISUALIZATION_TEMPLATE_AUTHORING.md)
-is the shared authoring contract. Each index owns family membership and
-selection rules.
+is the shared authoring contract. Each machine index owns family membership;
+the Chart and Table vocabularies are their complete objective planning
+projections.
 
 Qualitative Structure is a Slide-local Executor method rather than a catalog:
 Default and Quick both derive its relationship model and compose shapes for the
-current page. Only [`layouts/`](./layouts/) owns reusable Master/Layout, page
-types, slots, and placeholders.
+current page. Only Layout and Deck workspaces own reusable Master/Layout, page
+types, slots, and placeholders. When both are present, Layout supplies the
+active SVG roster and overrides only Deck's structure segment.
 
 ## Icon Library
 
@@ -151,5 +159,7 @@ The `icons/` directory contains 12,027 vector icons across five libraries:
 
 ## Sound Library
 
-[`sounds/`](./sounds/) is post-motion discovery, not a template or
-Strategist resource. Sync selected cues only; see [usage](./sounds/README.md).
+[`sounds/`](./sounds/) is a post-motion selection resource, not a template or
+Strategist resource. Its complete
+[cue vocabulary](./sounds/sound-vocabulary.md) is read only after a concrete
+auditory job exists; sync selected cues only. See [usage](./sounds/README.md).

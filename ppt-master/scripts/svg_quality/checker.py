@@ -219,6 +219,7 @@ except ImportError:
 try:
     from svg_to_pptx.native_objects import (
         INLINE_FORMULA_ATTR as _INLINE_FORMULA_ATTR,
+        estimate_inline_formula_vertical_extent as _estimate_inline_formula_vertical_extent,
         native_fallback_kind as _native_fallback_kind,
         inline_formula_marker_errors as _inline_formula_marker_errors,
         native_marker_legacy_warnings as _native_marker_legacy_warnings,
@@ -227,6 +228,7 @@ try:
     )
 except ImportError:
     _INLINE_FORMULA_ATTR = 'data-pptx-inline-formula'
+    _estimate_inline_formula_vertical_extent = None
     _native_fallback_kind = None
     _inline_formula_marker_errors = None
     _native_marker_legacy_warnings = None
@@ -790,13 +792,77 @@ SPARSE_UNDECLARED_FONT_SIZE_MAX_OCCURRENCES = 2
 IMAGE_DOWNSIZE_WARN_RATIO = 4.0
 IMAGE_DOWNSIZE_WARN_MIN_BYTES = 1024 * 1024
 
+_TEMPLATE_SPEC_NAME_RE = re.compile(
+    r'design_spec\.(?P<kind>brand|style|layout|deck)\.(?P<id>[^/\\]+)\.md'
+)
+
+
+def _template_spec_paths(directory: Path) -> list[Path]:
+    """Return every template Design Spec directly inside one directory.
+
+    A library workspace keeps the exact ``design_spec.md`` because its parent
+    directory already names the kind and id. A project workspace root shares one
+    ``templates/`` across kinds, so it keeps ``design_spec.<kind>.<id>.md`` and
+    may hold one spec per kind side by side.
+    """
+    if not directory.is_dir():
+        return []
+    exact = directory / 'design_spec.md'
+    qualified = sorted(
+        path
+        for path in directory.glob('design_spec.*.md')
+        if _TEMPLATE_SPEC_NAME_RE.fullmatch(path.name)
+    )
+    if exact.is_file():
+        # Mixing both shapes hides one of them from every reader that stops at
+        # the first match, so it is reported rather than silently resolved.
+        return [exact] + qualified
+    return qualified
+
+
+def _spec_declared_kind(spec_path: Path) -> str | None:
+    """Return one spec's kind, from its filename when it carries one."""
+    match = _TEMPLATE_SPEC_NAME_RE.fullmatch(spec_path.name)
+    if match is not None:
+        return match.group('kind')
+    return _design_spec_kind(spec_path)
+
+
+def _roster_spec_paths(directory: Path) -> list[Path]:
+    """Return every spec in one directory that owns an SVG roster."""
+    roster = []
+    for spec in _template_spec_paths(directory):
+        match = _TEMPLATE_SPEC_NAME_RE.fullmatch(spec.name)
+        if match is not None:
+            if match.group('kind') in {'layout', 'deck'}:
+                roster.append(spec)
+        elif _design_spec_kind(spec) not in {'brand', 'style'}:
+            roster.append(spec)
+    return roster
+
+
+def _roster_spec_path(directory: Path) -> Path | None:
+    """Return the effective spec that owns this directory's SVG roster.
+
+    A project root may carry both Layout and Deck. Layout owns reusable
+    structure when present; Deck owns it only when no Layout is installed.
+    """
+    roster = _roster_spec_paths(directory)
+    for spec in roster:
+        if spec.name == 'design_spec.md':
+            return spec
+    for kind in ('layout', 'deck'):
+        for spec in roster:
+            if _spec_declared_kind(spec) == kind:
+                return spec
+    return None
+
+
 def _design_spec_kind(spec_path: Path) -> str | None:
-    """Return a roster-free ``kind`` declared in design_spec.md frontmatter.
+    """Return ``kind`` declared in Design Spec frontmatter.
 
     Lightweight detector that does not require PyYAML — scans only the
-    frontmatter block (``---`` delimited). Used by ``check_directory`` to
-    select schema-only validation for Brand and Style workspaces instead of
-    SVG-roster validation.
+    frontmatter block (``---`` delimited).
     """
     try:
         text = spec_path.read_text(encoding='utf-8')
@@ -811,7 +877,8 @@ def _design_spec_kind(spec_path: Path) -> str | None:
     for line in fm_block.splitlines():
         stripped = line.strip()
         match = re.fullmatch(
-            r'''kind\s*:\s*(?:(['"])(brand|style)\1|(brand|style))'''
+            r'''kind\s*:\s*(?:(['"])(brand|style|layout|deck)\1|'''
+            r'''(brand|style|layout|deck))'''
             r'''(?:\s+#.*)?\s*''',
             stripped,
         )
@@ -823,7 +890,9 @@ def _design_spec_kind(spec_path: Path) -> str | None:
 def _declared_template_structure_mode(target_path: Path) -> str | None:
     """Return a template directory's explicit native structure mode."""
     directory = target_path.parent if target_path.is_file() else target_path
-    spec_path = directory / 'design_spec.md'
+    spec_path = _roster_spec_path(directory)
+    if spec_path is None:
+        return None
     try:
         text = spec_path.read_text(encoding='utf-8')
     except OSError:
@@ -844,7 +913,9 @@ def _declared_template_structure_mode(target_path: Path) -> str | None:
 def _declared_template_canvas_viewbox(target_path: Path) -> str | None:
     """Return a template design spec's locked root-canvas value."""
     directory = target_path.parent if target_path.is_file() else target_path
-    spec_path = directory / 'design_spec.md'
+    spec_path = _roster_spec_path(directory)
+    if spec_path is None:
+        return None
     try:
         text = spec_path.read_text(encoding='utf-8')
     except OSError:
@@ -1177,6 +1248,7 @@ class SVGQualityChecker:
                     expected_viewbox_label=expected_viewbox_label,
                 )
                 self._check_legacy_pptx_attributes(root, svg_path, result)
+                self._record_carrier_receipt(root, result)
 
                 # 1a. Validate exact importer transport before compatible
                 # inline geometry is materialized on the shared tree.
@@ -1437,6 +1509,208 @@ class SVGQualityChecker:
                     allow_template_placeholders=self.template_mode,
                 )
             )
+
+    def _record_carrier_receipt(
+        self,
+        root: ET.Element,
+        result: Dict,
+    ) -> None:
+        """Record factual visible-carrier use without grading the design."""
+        parent_by_id = {
+            id(child): parent
+            for parent in root.iter()
+            for child in list(parent)
+        }
+        geometry_tags = (
+            'rect',
+            'circle',
+            'ellipse',
+            'line',
+            'polyline',
+            'polygon',
+            'path',
+        )
+        geometry_counts = Counter({tag: 0 for tag in geometry_tags})
+        preset_names: Counter[str] = Counter()
+        native_objects = Counter({
+            'chart': 0,
+            'table': 0,
+            'formula_block': 0,
+            'formula_inline': 0,
+            'other': 0,
+        })
+        marker_counts = Counter({'start': 0, 'mid': 0, 'end': 0})
+        text_count = 0
+        icon_count = 0
+        page_frame_geometry = 0
+
+        for element in root.iter():
+            if (
+                element is root
+                or self._is_hidden_element(element, parent_by_id)
+                or self._has_non_visual_ancestor(element, root, parent_by_id)
+                or self._has_zero_opacity(element, parent_by_id)
+            ):
+                continue
+
+            tag = _local_name(element)
+            if tag == 'text':
+                text_count += 1
+            elif tag == 'use' and element.get('data-icon') is not None:
+                icon_count += 1
+
+            if element.get(_INLINE_FORMULA_ATTR) is not None:
+                native_objects['formula_inline'] += 1
+            replacement_kind = self._carrier_native_replacement_kind(element)
+            if replacement_kind:
+                key = (
+                    'formula_block'
+                    if replacement_kind == 'formula'
+                    else replacement_kind
+                )
+                native_objects[key if key in native_objects else 'other'] += 1
+
+            preset = (element.get('data-pptx-prst') or '').strip()
+            if preset:
+                preset_names[preset] += 1
+                if self._carrier_page_frame_role(element, root, parent_by_id):
+                    page_frame_geometry += 1
+                continue
+            if tag not in geometry_counts or self._has_preset_ancestor(
+                element,
+                root,
+                parent_by_id,
+            ):
+                continue
+
+            geometry_counts[tag] += 1
+            if self._carrier_page_frame_role(element, root, parent_by_id):
+                page_frame_geometry += 1
+            style_values = (
+                _parse_inline_style(element.get('style'))
+                if _parse_inline_style is not None
+                else {}
+            )
+            for position in ('start', 'mid', 'end'):
+                raw_marker = (
+                    style_values.get(f'marker-{position}')
+                    or element.get(f'marker-{position}')
+                    or ''
+                ).strip().lower()
+                if raw_marker and raw_marker != 'none':
+                    marker_counts[position] += 1
+
+        image_receipt = self._carrier_image_receipt(root)
+        result['info']['carrier_receipt'] = {
+            'text_elements': text_count,
+            'images': image_receipt,
+            'icons': icon_count,
+            'geometry': {
+                'svg_elements': dict(geometry_counts),
+                'preset_shapes': sum(preset_names.values()),
+                'preset_names': dict(sorted(preset_names.items())),
+                'page_frame_elements': page_frame_geometry,
+                'marker_uses': dict(marker_counts),
+            },
+            'native_objects': dict(native_objects),
+        }
+
+    @staticmethod
+    def _carrier_native_replacement_kind(element: ET.Element) -> str:
+        """Return one native replacement kind without turning bad data into a check."""
+        if _native_replacement_kind is not None:
+            try:
+                return (_native_replacement_kind(element) or '').strip().lower()
+            except ValueError:
+                pass
+        return (
+            element.get('data-pptx-replace-with')
+            or element.get('data-pptx-native')
+            or ''
+        ).strip().lower()
+
+    @staticmethod
+    def _has_preset_ancestor(
+        element: ET.Element,
+        root: ET.Element,
+        parent_by_id: Dict[int, ET.Element],
+    ) -> bool:
+        """Return whether geometry is only the visible detail of a preset atom."""
+        current = parent_by_id.get(id(element))
+        while current is not None and current is not root:
+            if (current.get('data-pptx-prst') or '').strip():
+                return True
+            current = parent_by_id.get(id(current))
+        return False
+
+    @staticmethod
+    def _carrier_page_frame_role(
+        element: ET.Element,
+        root: ET.Element,
+        parent_by_id: Dict[int, ET.Element],
+    ) -> bool:
+        """Return whether an element belongs to declared page framing."""
+        current: ET.Element | None = element
+        while current is not None:
+            role = (current.get('data-pptx-role') or '').strip().lower()
+            if role in {'background', 'decoration'}:
+                return True
+            if current is root:
+                break
+            current = parent_by_id.get(id(current))
+        return False
+
+    def _carrier_image_receipt(self, root: ET.Element) -> Dict:
+        """Summarize visible image placements and their frame share."""
+        working_root, parent_by_id, images = self._visible_image_elements(root)
+        viewbox = _parse_viewbox_values(working_root.get('viewBox') or '')
+        canvas_area = (
+            abs(viewbox[2] * viewbox[3])
+            if viewbox is not None and viewbox[2] and viewbox[3]
+            else 0.0
+        )
+        frame_shares: List[float] = []
+        filenames = set()
+
+        for image in images:
+            href = image.get('href') or image.get(f'{{{XLINK_NS}}}href') or ''
+            if href.startswith('data:'):
+                filenames.add('(embedded)')
+            elif href:
+                path_name = Path(unquote(urlsplit(href).path)).name
+                filenames.add(path_name or href[:80])
+
+            display_owner = image
+            parent = parent_by_id.get(id(image))
+            if (
+                parent is not None
+                and parent is not working_root
+                and _local_name(parent) == 'svg'
+            ):
+                display_owner = parent
+            try:
+                x = float(display_owner.get('x') or '0')
+                y = float(display_owner.get('y') or '0')
+                width = float(display_owner.get('width') or '0')
+                height = float(display_owner.get('height') or '0')
+            except (TypeError, ValueError):
+                continue
+            if width <= 0 or height <= 0 or canvas_area <= 0:
+                continue
+            transformed = self._transformed_rect_edge_lengths(
+                display_owner,
+                (x, y, width, height),
+                parent_by_id,
+            )
+            if transformed is not None:
+                width, height = transformed
+            frame_shares.append(abs(width * height) / canvas_area)
+
+        return {
+            'placements': len(images),
+            'files': sorted(filenames),
+            'max_frame_share': round(max(frame_shares), 4) if frame_shares else 0.0,
+        }
 
     def _check_fonts(self, content: str, result: Dict):
         """Check font usage.
@@ -1743,6 +2017,7 @@ class SVGQualityChecker:
                     parent_by_id,
                 ) or '1',
                 'opacity_chain': tuple(reversed(opacity_chain)),
+                'inline_formula': owner.get(_INLINE_FORMULA_ATTR),
             })
         return cls._coalesce_checker_text_runs(resolved)
 
@@ -1775,6 +2050,10 @@ class SVGQualityChecker:
         merged: List[Dict] = []
         previous_signature: Tuple | None = None
         for run in runs:
+            if run.get('inline_formula') is not None:
+                merged.append(run)
+                previous_signature = None
+                continue
             current_signature = signature(run)
             if merged and current_signature == previous_signature:
                 candidate = {
@@ -1792,6 +2071,29 @@ class SVGQualityChecker:
             merged.append(run)
             previous_signature = current_signature
         return merged
+
+    @staticmethod
+    def _text_line_vertical_extent(
+        runs: List[Dict],
+        font_size: float,
+    ) -> Tuple[float, float]:
+        """Return native-math-aware ascent/descent for checker bounds."""
+        ascent = font_size * 0.85
+        descent = font_size * 0.35
+        if _estimate_inline_formula_vertical_extent is None:
+            return ascent, descent
+        for run in runs:
+            latex = run.get('inline_formula')
+            if latex is None:
+                continue
+            try:
+                run_font_size = float(run.get('font_size', font_size))
+                extent = _estimate_inline_formula_vertical_extent(str(latex))
+            except (TypeError, ValueError):
+                continue
+            ascent = max(ascent, run_font_size * extent.ascent_em)
+            descent = max(descent, run_font_size * extent.descent_em)
+        return ascent, descent
 
     def _check_text_output_geometry(
         self,
@@ -1988,8 +2290,9 @@ class SVGQualityChecker:
             right = x + width
         else:
             return None
-        top = y - font_size * 0.85
-        bottom = y + font_size * 0.35
+        ascent, descent = cls._text_line_vertical_extent(runs, font_size)
+        top = y - ascent
+        bottom = y + descent
 
         return cls._transformed_rect_bounds(
             line_el,
@@ -2445,7 +2748,7 @@ class SVGQualityChecker:
         root: ET.Element,
         result: Dict,
     ) -> None:
-        """Validate direct root module boundaries in the SVG canvas."""
+        """Validate ordinary direct-root module boundaries in the SVG canvas."""
         parent_by_id = {
             id(child): parent
             for parent in root.iter()
@@ -2549,6 +2852,11 @@ class SVGQualityChecker:
         for group in root_groups:
             if self._is_hidden_element(group, parent_by_id):
                 continue
+            if (
+                _authored_preset_encoding is not None
+                and _authored_preset_encoding(group) == 'compact'
+            ):
+                continue
             raw_bounds = group.get(_BOUNDS_ATTR)
             if raw_bounds is None:
                 missing.append(_element_label(group))
@@ -2586,9 +2894,9 @@ class SVGQualityChecker:
             bucket.append(
                 f'{prefix} {len(missing)} visible root-level <g> '
                 f'module(s) without explicit {_BOUNDS_ATTR} '
-                f'({sample}{suffix}); every final-page/template root <g> declares '
-                'its root-coordinate layout subcanvas even when it also carries '
-                'data-pptx-frame or native chart/table coordinates'
+                f'({sample}{suffix}); every final-page/template root <g> other '
+                'than a compact authored-preset atom declares its root-coordinate '
+                'layout subcanvas even when it also carries native coordinates'
             )
 
     def _check_text_bounds(
@@ -2660,7 +2968,7 @@ class SVGQualityChecker:
                 parent_by_id,
                 font_sizes,
                 letter_spacings,
-                include_headroom=True,
+                include_headroom=False,
             )
             if estimated is not None:
                 estimated_by_id[id(text_element)] = estimated
@@ -5019,17 +5327,103 @@ class SVGQualityChecker:
         # registration, while keeping project scope independent of global
         # indexes and directory names.
         if self.template_mode and dir_path.is_dir():
-            nested_spec = dir_path / 'templates' / 'design_spec.md'
-            spec = nested_spec if nested_spec.is_file() else dir_path / 'design_spec.md'
-            spec_kind = _design_spec_kind(spec) if spec.exists() else None
-            if spec_kind in {'brand', 'style'}:
+            nested = dir_path / 'templates'
+            spec_dir = nested if _template_spec_paths(nested) else dir_path
+            specs = _template_spec_paths(spec_dir)
+            bare = [spec for spec in specs if spec.name == 'design_spec.md']
+            qualified = [spec for spec in specs if spec.name != 'design_spec.md']
+            if bare and qualified:
+                self._template_issues.append((
+                    'error',
+                    'spec_naming',
+                    'design_spec.md and design_spec.<kind>.<id>.md cannot share '
+                    f'{spec_dir}; rename the bare spec to its kind-qualified name',
+                ))
+                return self.results
+            try:
+                from register_template import (
+                    SpecParseError,
+                    validate_qualified_spec_identity,
+                )
+                for spec in qualified:
+                    validate_qualified_spec_identity(spec)
+            except ImportError as exc:
+                self._template_issues.append((
+                    'error',
+                    'spec_naming',
+                    f'Qualified Design Spec validator could not be imported: {exc}',
+                ))
+                return self.results
+            except (OSError, SpecParseError) as exc:
+                self._template_issues.append((
+                    'error',
+                    'spec_naming',
+                    str(exc),
+                ))
+                return self.results
+            declared_kinds = [
+                kind
+                for spec in qualified
+                for kind in [_spec_declared_kind(spec)]
+                if kind is not None
+            ]
+            duplicate_kinds = sorted({
+                kind for kind in declared_kinds
+                if declared_kinds.count(kind) > 1
+            })
+            if duplicate_kinds:
+                self._template_issues.append((
+                    'error',
+                    'spec_naming',
+                    f'{spec_dir} declares the same kind more than once: '
+                    + ', '.join(duplicate_kinds),
+                ))
+                return self.results
+            active_roster_spec = _roster_spec_path(spec_dir)
+            shadowed_deck_specs = [
+                spec
+                for spec in _roster_spec_paths(spec_dir)
+                if spec != active_roster_spec
+                and _spec_declared_kind(spec) == 'deck'
+            ]
+            for spec in shadowed_deck_specs:
+                try:
+                    from register_template import (
+                        SpecParseError,
+                        validate_shadowed_deck_spec,
+                    )
+                    declared_pages = self._extract_spec_roster(
+                        spec.read_text(encoding='utf-8')
+                    )
+                    validate_shadowed_deck_spec(spec, declared_pages)
+                except ImportError as exc:
+                    self._template_issues.append((
+                        'error',
+                        'deck_contract',
+                        f'Shadowed Deck validator could not be imported: {exc}',
+                    ))
+                    return self.results
+                except (OSError, SpecParseError) as exc:
+                    self._template_issues.append((
+                        'error',
+                        'deck_contract',
+                        str(exc),
+                    ))
+                    return self.results
+            roster_free = [
+                (spec, kind)
+                for spec in _template_spec_paths(spec_dir)
+                for kind in [_spec_declared_kind(spec)]
+                if kind in {'brand', 'style'}
+            ]
+            for spec, spec_kind in roster_free:
                 self._spec_only_template_kind = spec_kind
                 self.summary['total'] += 1
                 spec_valid = True
                 pretty_kind = spec_kind.title()
                 print(
-                    f"[INFO] {pretty_kind} directory detected "
-                    f"(kind: {spec_kind}) — "
+                    f"[INFO] {pretty_kind} spec detected "
+                    f"({spec.name}) — "
                     f"validating its portable workspace contract."
                 )
                 workspace_root = (
@@ -5064,6 +5458,9 @@ class SVGQualityChecker:
                     ))
                 if spec_valid:
                     self.summary['passed'] += 1
+            # A roster-bearing Layout/Deck spec may sit beside those in one
+            # project workspace; only then does SVG validation still apply.
+            if roster_free and _roster_spec_path(spec_dir) is None:
                 return self.results
 
         # Find all SVG files
@@ -6552,8 +6949,12 @@ class SVGQualityChecker:
         Issues are aggregated and printed in :py:meth:`print_summary` so the
         per-file report stays focused on intrinsic SVG validity.
         """
-        spec_path = dir_path / 'design_spec.md'
-        spec_text = spec_path.read_text(encoding='utf-8') if spec_path.exists() else ""
+        spec_path = _roster_spec_path(dir_path)
+        spec_text = (
+            spec_path.read_text(encoding='utf-8')
+            if spec_path is not None and spec_path.exists()
+            else ""
+        )
         declared_structure_mode = _declared_template_structure_mode(dir_path)
         mode_error_recorded = False
         if declared_structure_mode != 'structured':
@@ -6681,7 +7082,7 @@ class SVGQualityChecker:
                     'roster_missing',
                     f"design_spec.md Page Roster lists {page} but {page}.svg is missing on disk",
                 ))
-        elif spec_path.exists():
+        elif spec_path is not None and spec_path.exists():
             # design_spec.md is present but the roster parser found nothing —
             # reusable template workspaces always fail closed.
             self._template_issues.append((
@@ -6694,7 +7095,7 @@ class SVGQualityChecker:
             self._template_issues.append((
                 'error',
                 'spec_missing',
-                f"{spec_path.name} not found — required for every library template",
+                "one Layout or Deck Design Spec is required for every SVG roster",
             ))
 
         # Per-file placeholder coverage. Variants reuse the parent type's set
@@ -6941,6 +7342,7 @@ class SVGQualityChecker:
             f"  [ERROR] With errors: {self.summary['errors']} ({self._percentage(self.summary['errors'])}%)")
 
         self._print_provenance_category_summary()
+        self._print_carrier_receipt_summary()
 
         if self.issue_types:
             print(f"\nIssue categories:")
@@ -6980,6 +7382,119 @@ class SVGQualityChecker:
             )
             print(f"  4. foreignObject: Use <text> + <tspan> for manual line breaks")
             print(f"  5. Font issues: use PPT-safe exported typefaces (e.g. Microsoft YaHei / Arial / Consolas)")
+
+    def _carrier_receipt_summary(self) -> Dict:
+        """Aggregate factual per-page carrier receipts for compact review."""
+        receipts = [
+            result.get('info', {}).get('carrier_receipt')
+            for result in self.results
+            if result.get('info', {}).get('carrier_receipt')
+        ]
+        totals = Counter({
+            'text_elements': 0,
+            'image_placements': 0,
+            'icons': 0,
+            'svg_geometry_elements': 0,
+            'preset_shapes': 0,
+            'page_frame_elements': 0,
+            'marker_uses': 0,
+        })
+        pages_with = Counter({
+            'images': 0,
+            'icons': 0,
+            'presets': 0,
+            'charts': 0,
+            'tables': 0,
+            'formulas': 0,
+        })
+        geometry_counts: Counter[str] = Counter()
+        preset_names: Counter[str] = Counter()
+        native_objects: Counter[str] = Counter()
+        image_frame_shares: List[float] = []
+
+        for receipt in receipts:
+            images = receipt['images']
+            geometry = receipt['geometry']
+            native = receipt['native_objects']
+            totals['text_elements'] += receipt['text_elements']
+            totals['image_placements'] += images['placements']
+            totals['icons'] += receipt['icons']
+            totals['preset_shapes'] += geometry['preset_shapes']
+            totals['page_frame_elements'] += geometry['page_frame_elements']
+            totals['marker_uses'] += sum(geometry['marker_uses'].values())
+            geometry_counts.update(geometry['svg_elements'])
+            preset_names.update(geometry['preset_names'])
+            native_objects.update(native)
+
+            if images['placements']:
+                pages_with['images'] += 1
+                image_frame_shares.append(images['max_frame_share'])
+            if receipt['icons']:
+                pages_with['icons'] += 1
+            if geometry['preset_shapes']:
+                pages_with['presets'] += 1
+            if native.get('chart'):
+                pages_with['charts'] += 1
+            if native.get('table'):
+                pages_with['tables'] += 1
+            if native.get('formula_block') or native.get('formula_inline'):
+                pages_with['formulas'] += 1
+
+        totals['svg_geometry_elements'] = sum(geometry_counts.values())
+        frame_share_range = (
+            [round(min(image_frame_shares), 4), round(max(image_frame_shares), 4)]
+            if image_frame_shares
+            else []
+        )
+        return {
+            'scope': 'informational-not-a-quota',
+            'pages': len(receipts),
+            'totals': dict(totals),
+            'pages_with': dict(pages_with),
+            'geometry_elements': dict(sorted(geometry_counts.items())),
+            'preset_names': dict(sorted(preset_names.items())),
+            'native_objects': dict(sorted(native_objects.items())),
+            'image_page_max_frame_share_range': frame_share_range,
+        }
+
+    def _print_carrier_receipt_summary(self) -> None:
+        """Print a compact actual-use receipt without a score or threshold."""
+        if self.template_mode:
+            return
+        receipt = self._carrier_receipt_summary()
+        if not receipt['pages']:
+            return
+        totals = receipt['totals']
+        native = receipt['native_objects']
+        print("\n[CARRIERS] Actual-use receipt (informational; not a quota)")
+        print(
+            f"  Pages: {receipt['pages']} | text: {totals['text_elements']} | "
+            f"images: {totals['image_placements']} | icons: {totals['icons']}"
+        )
+        print(
+            f"  Geometry: SVG elements {totals['svg_geometry_elements']} | "
+            f"native presets {totals['preset_shapes']} | "
+            f"page-frame elements {totals['page_frame_elements']} | "
+            f"marker uses {totals['marker_uses']}"
+        )
+        print(
+            f"  Native objects: charts {native.get('chart', 0)} | "
+            f"tables {native.get('table', 0)} | formulas "
+            f"{native.get('formula_block', 0) + native.get('formula_inline', 0)}"
+        )
+        presets = receipt['preset_names']
+        preset_text = (
+            ', '.join(f'{name} x{count}' for name, count in presets.items())
+            if presets
+            else '(none)'
+        )
+        print(f"  Presets: {preset_text}")
+        image_range = receipt['image_page_max_frame_share_range']
+        if image_range:
+            print(
+                "  Largest image-frame share on image pages: "
+                f"{image_range[0] * 100:.1f}%–{image_range[1] * 100:.1f}%"
+            )
 
     def _print_provenance_category_summary(self):
         """Print compact JSON-equivalent counts for token-safe gate handling."""
@@ -7386,6 +7901,7 @@ class SVGQualityChecker:
                 },
             },
             'drift': drift,
+            'carrier_receipt': self._carrier_receipt_summary(),
             'project_issues': project_issues,
             'files': self.results,
         }

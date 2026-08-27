@@ -6,7 +6,7 @@ Magazine-grade hierarchy. Columns, hairline rules, a serif / sans interplay, str
 
 ## 1. Shape & decoration
 
-- Shape language: rectilinear; thin rules and column dividers instead of cards. Rounding, when used, stays visually minimal.
+- Shape language: a rectilinear editorial scaffold favors thin rules and column dividers over repeated cards. Outlined, compound, or exact native contours remain available when they clarify ownership, contrast, sequence, or emphasis; restraint controls their visual weight, not the contour vocabulary. Rounding, when used, stays visually minimal.
 - Composition geometry: an oversized drop cap or numeral anchoring the page; a pull quote breaking across columns; a full-height vertical rule the content hangs from; an asymmetric column split instead of mechanically even columns; a figure deliberately crossing a column edge.
 - Decoration: hairline rules, kickers / eyebrows, pull quotes, drop-style emphasis — typographic, not graphic. Sparing.
 - Whitespace: structured by columns and baseline rhythm; comfortable but information-rich.
@@ -17,7 +17,7 @@ Magazine-grade hierarchy. Columns, hairline rules, a serif / sans interplay, str
 - Serif / sans interplay: a serif for headlines or pull quotes against a clean sans body (or the reverse). Clear role contrast.
 - Strong vertical hierarchy: kicker → headline → standfirst → body. Generous leading.
 
-> Families are chosen at confirmation `g`; this style asks for an editorial serif/sans *pairing*, not specific fonts.
+> Families are chosen at confirmation `g`; this style asks for an editorial serif/sans *pairing*, not specific fonts. This governs editable native text; decorative-lettering eligibility remains a separate carrier decision.
 
 ## 3. Using the deck's colors
 
@@ -36,4 +36,4 @@ Magazine-grade hierarchy. Columns, hairline rules, a serif / sans interplay, str
 
 ## 6. Illustration propensity
 
-**supportive** — editorial spot illustrations beside articles are classic here; use them where they lift a section or break text density, kept restrained. With no user steer this is the default lean; an explicit user request wins either way, and `image_usage: none` writes no illustration rows.
+**supportive** — when illustration is selected, editorial elements can anchor, frame, pace, or clarify a page while typography and evidence retain authority. Role, scale, reuse, and placement stay Strategist judgment; an explicit user request wins either way, and `image_usage: none` writes no illustration rows.

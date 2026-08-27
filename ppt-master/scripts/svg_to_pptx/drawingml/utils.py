@@ -16,6 +16,13 @@ from collections.abc import Iterator
 from decimal import Decimal, ROUND_HALF_UP
 from xml.etree import ElementTree as ET
 
+from pptx_gradients import (
+    NATIVE_GRADIENT_ATTR,
+    NATIVE_GRADIENT_PREVIEW_SHA256_ATTR,
+    NATIVE_GRADIENT_SHA256_ATTR,
+    preserved_native_gradient_xml,
+)
+
 from pptx_shapes import (
     OOXML_COORDINATE_MAX,
     resolve_preset_preview_hash,
@@ -57,7 +64,7 @@ EA_FONTS = {
     'Hiragino Kaku Gothic ProN', 'Hiragino Kaku Gothic Pro',
     'Hiragino Mincho Pro',
     'Noto Sans SC', 'Noto Sans TC', 'Noto Serif SC', 'Noto Serif TC',
-    'Noto Sans CJK SC',
+    'Noto Sans CJK SC', 'Noto Serif CJK SC',
     'Noto Sans JP', 'Noto Serif JP', 'Noto Sans CJK JP',
     'Source Han Sans SC', 'Source Han Sans TC',
     'Source Han Serif SC', 'Source Han Serif TC',
@@ -106,6 +113,7 @@ FONT_FALLBACK_WIN = {
     'Noto Sans CJK SC': 'Microsoft YaHei',
     'Noto Sans TC': 'Microsoft JhengHei',
     'Noto Serif SC': 'SimSun',
+    'Noto Serif CJK SC': 'SimSun',
     'Noto Serif TC': 'PMingLiU',
     # Japanese: keep as-is if user specified (PowerPoint will fallback if uninstalled)
     # 'Noto Sans JP': → keep as 'Noto Sans JP' (do not map)
@@ -2142,6 +2150,17 @@ def project_marker_errors(root: ET.Element) -> list[str]:
             else:
                 marker_channel = 'fill'
                 marker_paint = marker_fill
+            gradient_id = resolve_url_id(stroke_value)
+            gradient = definitions.get(gradient_id) if gradient_id else None
+            if gradient is not None:
+                try:
+                    native_gradient = preserved_native_gradient_xml(gradient)
+                except ValueError:
+                    native_gradient = None
+                if native_gradient is not None:
+                    # The original DrawingML line owns both gradient stroke
+                    # and arrowhead paint; the solid SVG marker is its preview.
+                    continue
             stroke_color, _stroke_alpha = parse_svg_color(stroke_value or '')
             marker_color, _marker_alpha = parse_svg_color(marker_paint)
             if stroke_color is None or marker_color is None:
@@ -2407,6 +2426,21 @@ def project_gradient_errors(root: ET.Element) -> list[str]:
             continue
         gradient_id = gradient.get('id')
         label = f'<{tag} id="{gradient_id}">' if gradient_id else f'<{tag}>'
+        if any(
+            gradient.get(name) is not None
+            for name in (
+                NATIVE_GRADIENT_ATTR,
+                NATIVE_GRADIENT_SHA256_ATTR,
+                NATIVE_GRADIENT_PREVIEW_SHA256_ATTR,
+            )
+        ):
+            try:
+                native = preserved_native_gradient_xml(gradient)
+            except ValueError as exc:
+                errors.add(f'{label} has invalid imported gradient payload: {exc}')
+                continue
+            if native is not None:
+                continue
         attribute_names = {
             name.rsplit('}', 1)[-1]
             for name in gradient.attrib
@@ -3495,6 +3529,11 @@ def resolve_text_run_fonts(text: str, fonts: dict[str, str]) -> dict[str, str]:
 
 
 def _estimate_character_width(ch: str, font_size: float) -> float:
+    if (
+        0xFF00 <= ord(ch) <= 0xFFEF
+        and unicodedata.east_asian_width(ch) == 'H'
+    ):
+        return font_size * 0.5
     if is_cjk_char(ch):
         return font_size
     if ch == ' ':
@@ -3532,12 +3571,16 @@ def estimate_text_cluster_widths(
     font_weight: str = '400',
 ) -> list[float]:
     """Estimate each project text cluster without inserting tracking."""
+    clusters = split_project_text_clusters(text)
     widths = [
         _estimate_grapheme_width(cluster, font_size)
-        for cluster in split_project_text_clusters(text)
+        for cluster in clusters
     ]
     if font_weight in ('bold', '600', '700', '800', '900'):
-        widths = [width * 1.05 for width in widths]
+        widths = [
+            width if any(is_cjk_char(ch) for ch in cluster) else width * 1.05
+            for cluster, width in zip(clusters, widths)
+        ]
     return widths
 
 

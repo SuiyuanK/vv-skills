@@ -254,14 +254,13 @@ copy its global-library file into the project and reference that local copy.
 
 | Source | Action |
 |---|---|
-| Bundled CC0 library | Discover ids with `sound_sync.py list`, sync only the selected ids, then use the corresponding `sounds/<namespace>/<file>.wav` paths |
+| Bundled CC0 library | Read the complete objective [`sound-vocabulary.md`](../templates/sounds/sound-vocabulary.md), select one exact id from the resolved auditory job, sync only that selection, then use the corresponding `sounds/<namespace>/<file>.wav` path |
 | User-provided audio already inside the project | Reference its existing project-relative `.m4a`, `.mp3`, or `.wav` path for object animation; a transition sound uses `.wav` |
 | External absolute file | The low-level object-animation path remains compatible, but new generated projects should copy or sync the intended file into the project and use a relative path |
 | No concrete auditory cue job | Keep `sound` omitted; do not create `<project>/sounds/` and do not copy the library |
 
 ```bash
-# Inspect ids only after the visual motion solution exists
-python3 skills/ppt-master/scripts/sound_sync.py list
+# Optional exact filtering only after the complete vocabulary is in context
 python3 skills/ppt-master/scripts/sound_sync.py list --query <term>
 
 # Materialize only the chosen ids
@@ -555,10 +554,12 @@ uses for group-select / group-move. Do not split or merge units to hit a target
 count.
 
 **Chrome stays static.** `data-pptx-layer` and explicit static
-role/placeholder markers are absolute. For marker-free legacy SVGs, chrome-like
-ids (background, header/footer, decor, watermark, page number, nav, logo, rule)
-are skipped; an explicit sidecar entry may override only this name heuristic.
-Keep wrappers and use `effect: none` for static content.
+role/placeholder markers are absolute. The legacy chrome-like ID heuristic
+(background, header/footer, decor, watermark, page number, nav, logo, rule)
+applies only to a top-level group that itself lacks `data-pptx-layer`,
+`data-pptx-role`, and `data-pptx-placeholder` semantics; an explicit sidecar
+entry may override only this name heuristic. Keep wrappers and use
+`effect: none` for static content.
 
 **Fallback for flat SVGs** (no top-level `<g>` wrappers, only raw `<rect>` / `<text>` / `<path>` at the root):
 
@@ -594,6 +595,22 @@ Direct-PPTX routes fingerprint source
 object-animation timing before and after their allowed edits, then run
 structural package validation; they do not author or normalize animation
 effects.
+
+`pptx_to_svg.py` uses the same generated-transition read-back validator to
+project supported source `p:transition` into canonical `animations.json` rows.
+It retains the registry effect, effective options, exact duration, automatic
+advance, and supported WAV sound; the sidecar defaults to `none` so absent
+source transitions remain absent on re-export. Unknown or inexact native
+carriers stay diagnosed/direct-preserve. This is a closed PPT Master-owned
+contract, not an arbitrary OOXML transition normalizer.
+
+For source `p:timing`, the importer accepts only current generated behavior
+trees whose registry effect/options, pane order, Start trigger, exact duration,
+relative delay, and target/optional trigger shape map to unique top-level slide
+SVG groups. It emits one group row or `effects[]` in the same sidecar. Rows
+without a native duration, advanced timing modifiers, sounds, builds/media
+commands, unknown behavior trees, and unmapped targets remain diagnosed/direct-
+preserve; no timing value is inferred.
 
 **Validation boundary**: these checks prove PPTX timing, relationships, and
 embedded sound parts. They are not final-video audio acceptance. The
@@ -639,7 +656,8 @@ playback instead and does not consume the trace for sound mixing.
 
 ## 9. Implementation References
 
-See [`svg-pipeline.md`](../scripts/docs/svg-pipeline.md),
+See [`pptx_transitions.py`](../scripts/pptx_transitions.py),
+[`svg-pipeline.md`](../scripts/docs/svg-pipeline.md),
 [`pptx-transitions.md`](../scripts/docs/pptx-transitions.md),
 [`pptx-animations.md`](../scripts/docs/pptx-animations.md), and
 [`video-motion-plan.md`](../scripts/docs/video-motion-plan.md).

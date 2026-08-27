@@ -15,14 +15,14 @@ Enter this child workflow only after [`Create Template`](../create-template.md) 
 
 **Hard rule — child workflow, not a top-level route**: Create Style executes only inside Create Template. It uses the parent workflow's single shared confirmation/preflight/registration contract and never creates a competing entry route or second confirmation gate.
 
-**Hard rule — method and defaults only**: A Style owns a reusable way to argue, express evidence, and coordinate non-binding design defaults. It owns no current-project communication contract, reusable brand identity, page geometry, canvas, SVG prototype, Master/Layout graph, placeholder contract, application contract, or visible asset inventory.
+**Hard rule — method and defaults only**: A Style owns a reusable way to argue, express evidence, and coordinate non-binding design defaults. It owns no current-project communication contract, reusable brand identity, page geometry, canvas, SVG prototype, Master/Layout graph, placeholder contract, application contract, visible asset inventory, carrier eligibility, image source, or local authoring-capability whitelist.
 
-**Hard rule — no page prototypes**: A Style workspace contains only `templates/design_spec.md`. Do not create page SVGs, a review PPTX, or empty `images/`, `icons/`, or `exports/` directories.
+**Hard rule — no page prototypes**: Style contributes only its own Design Spec. Do not create page SVGs, a review PPTX, or empty `images/`, `icons/`, or `exports/` directories. In a project workspace shared with another kind, files that kind owns are not Style output and are left untouched.
 
 ## Invocation Points
 
 1. Use §1–2 below for Style analysis and brief fields, then execute Create Template Steps 2–3 with those child-owned fields.
-2. After Create Template Step 4 resolves and preflights `<template_workspace>`, use §3 to materialize the confirmed Style.
+2. After Create Template Step 4 resolves and preflights `<template_workspace>` and `<design_spec_path>`, use §3 to materialize the confirmed Style.
 3. Run §4, then return its evidence to Create Template Steps 5, 7, and 8. Create Style always skips the shared structured-preview step.
 
 ## 1. Style Input Interpretation
@@ -54,8 +54,8 @@ Add these child-owned requirements to Create Template Step 2:
 | Communication method | Required; argument flow, page-message discipline, and claim/evidence treatment; a preferred mode is optional |
 | Page-role vocabulary | Required; reusable semantic roles and their jobs, evidence obligations, and composition tendencies; no order or inclusion policy |
 | Evidence and data expression | Required; chart, table, source, and editability guidance without numeric content quotas |
-| Visual-system defaults | Required; composition, density, decoration, color behavior, and typography character; catalog seeds and literal fallbacks are optional |
-| Image and icon direction | Required; rendering, usage, and treatment defaults without asset inventory or page mapping |
+| Visual-system defaults | Required; composition, density, decoration, color behavior, and native-text character; catalog seeds and literal fallbacks are optional, while carrier and native-construction eligibility remain downstream |
+| Image and icon direction | Required; rendering, centrality, recurrence, and treatment defaults without source restrictions, asset inventory, or page mapping |
 | Review focus | Required; extra checks to apply only if the user explicitly activates visual review |
 
 Write this roster-free schema:
@@ -139,16 +139,22 @@ keywords: [<three-to-five discovery tags>]
 
 `Preferred Mode`, `Preferred Visual Style`, and `Preferred Image Rendering` are recommendation seeds. The current project's confirmed Stage-2 values remain authoritative. A preset value must be a real ID in its matching catalog. For `custom`, retain only real catalog references actually used as a comma-separated ID list and include the matching behavior prose.
 
+**Hard rule — Style never becomes a capability policy**: Style prose may tune
+treatment, visual weight, density, recurrence, and coherence. It never bans a
+carrier or requires carrier coverage, never selects image source, and never
+narrows primitives, Office presets, independent composition, Boolean, or
+necessary freeform. Explicit current-project requirements remain upstream.
+
 `Page Role Vocabulary` is a semantic vocabulary, not a Page Roster. Do not assign order, required/optional/repeatable status, page count, filenames, Master/Layout identities, slots, or fixed/replaceable/example-only content policy.
 
 ## 3. Materialize the Confirmed Style
 
-Create Template supplies an already resolved and collision-checked `<template_workspace>`. Write only:
+Create Template supplies an already resolved and collision-checked `<template_workspace>` and `<design_spec_path>`. Write only:
 
 ```text
 <template_workspace>/
 └── templates/
-    └── design_spec.md
+    └── design_spec.md          # project scope: design_spec.style.<style_id>.md
 ```
 
 Do not create or adopt images, icons, SVGs, native payloads, or review exports. References remain textual provenance; they are not portable Style assets.
@@ -157,7 +163,7 @@ Do not create or adopt images, icons, SVGs, native payloads, or review exports. 
 
 Return these facts to Create Template:
 
-- `templates/design_spec.md` contains non-empty `style_id`, `kind: style`, `summary`, and three-to-five `keywords`; no other frontmatter field exists.
+- The Design Spec contains non-empty `style_id`, `kind: style`, `summary`, and three-to-five `keywords`; no other frontmatter field exists.
 - `style_id` matches the confirmed workspace ID in library scope.
 - Required sections I–VII exist; preset seeds resolve to real catalog IDs, while custom seeds include behavior prose and only real comma-separated catalog references.
 - No `*.svg`, optional asset directory, review export, or native payload was created.

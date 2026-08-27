@@ -230,7 +230,7 @@ TIER_ORDER = {"core": 0, "extended": 1, "experimental": 2}
 SUPPORTED_BACKENDS = tuple(sorted(BACKEND_REGISTRY))
 
 
-def _load_image_env_file() -> None:
+def _load_image_env_file() -> Path | None:
     """
     Load image generation config from the resolved `.env` as a fallback layer.
 
@@ -248,7 +248,10 @@ def _load_image_env_file() -> None:
         )
         for key, replacement in replacements.items()
     }
-    load_prefixed_env_file(IMAGE_ENV_PREFIXES, deprecated_keys=deprecated_messages)
+    return load_prefixed_env_file(
+        IMAGE_ENV_PREFIXES,
+        deprecated_keys=deprecated_messages,
+    )
 
 
 def _validate_runtime_config() -> None:
@@ -304,6 +307,44 @@ def _load_backend(canonical_name: str) -> tuple[object, str]:
     return module, canonical_name
 
 
+def _print_backend_resolution() -> None:
+    """Print the effective Path A backend without exposing credentials."""
+    backend_from_process = "IMAGE_BACKEND" in os.environ
+    try:
+        env_path = _load_image_env_file()
+    except ValueError as exc:
+        print("Resolved backend: invalid configuration")
+        print(f"Configuration source: {ENV_PATH}")
+        print(f"Configuration error: {exc}")
+        return
+
+    try:
+        _validate_runtime_config()
+    except ValueError as exc:
+        print("Resolved backend: invalid configuration")
+        print("Configuration source: process environment")
+        print(f"Configuration error: {exc}")
+        return
+
+    backend_name = os.environ.get("IMAGE_BACKEND", "").strip().lower()
+    if not backend_name:
+        if backend_from_process:
+            source = "process environment (empty)"
+        elif env_path is not None:
+            source = f"none (checked {env_path})"
+        else:
+            source = "none (no .env found)"
+        print("Resolved backend: not configured (Path A unavailable)")
+        print(f"Configuration source: {source}")
+        return
+
+    canonical = BACKEND_ALIASES.get(backend_name)
+    resolved = canonical or f"invalid ({backend_name})"
+    source = "process environment" if backend_from_process else str(env_path or ENV_PATH)
+    print(f"Resolved backend: {resolved}")
+    print(f"Configuration source: {source}")
+
+
 def _print_backend_list() -> None:
     """Print supported backends grouped by support tier."""
     print("Supported image backends:\n")
@@ -327,7 +368,7 @@ def _print_backend_list() -> None:
             )
         print()
     print("Recommendation: prefer CORE backends for everyday PPT generation.")
-    print(f"Config fallback file: {ENV_PATH}")
+    _print_backend_resolution()
 
 
 def _resolve_backend() -> tuple[object, str]:
@@ -835,6 +876,8 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
         and not retried within this run. `Failed` remains retryable and
         non-terminal; the Step 5 gate must resolve it by rerunning this
         manifest or marking the item `Needs-Manual`.
+      - Global auth or billing errors stop new batches; untouched rows remain
+        retryable. Permanent model or request errors fail only their own row.
       - Status is written back to the manifest file after each completion;
         a Ctrl-C in the middle still preserves done items.
       - `Needs-Manual` items are skipped (user processes them externally).
@@ -850,6 +893,8 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
     output_dir = str(manifest_output_dir)
 
     from image_backends.backend_common import (
+        is_global_permanent_error,
+        is_permanent_error,
         is_rate_limit_error,
         validate_image_file,
     )
@@ -899,6 +944,7 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
     current = max(1, initial_concurrency)
     state_lock = threading.Lock()
     rate_limit_attempts: dict[int, int] = {}
+    stopped_for_global_error = False
     stopped_for_rate_limit = False
 
     def _one(idx: int):
@@ -942,6 +988,23 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
                         item.pop("last_error", None)
                         ok_count += 1
                         print(f"  [OK]   {item['filename']}")
+                    elif isinstance(exc, ValueError) or is_permanent_error(exc):
+                        global_error = is_global_permanent_error(exc)
+                        item["status"] = STATUS_FAILED
+                        error_scope = "Global" if global_error else "Permanent"
+                        repair_target = (
+                            "backend access" if global_error else "model or request"
+                        )
+                        item["last_error"] = (
+                            f"{error_scope} backend error: {exc}"
+                        )[:500]
+                        fail_count += 1
+                        if global_error:
+                            stopped_for_global_error = True
+                        print(
+                            f"  [FAIL] {item['filename']}: {exc} "
+                            f"(status=Failed; repair {repair_target} before retry)"
+                        )
                     elif is_rate_limit_error(exc):
                         rate_limited = True
                         attempts = rate_limit_attempts.get(idx, 0) + 1
@@ -983,6 +1046,12 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
                         )
                     save_manifest(manifest_path, manifest)
 
+        if stopped_for_global_error:
+            print(
+                "\n  Backend authentication or billing requires repair. "
+                "Stopping new batches; untouched items remain retryable.\n"
+            )
+            break
         if stopped_for_rate_limit:
             print(
                 "\n  Persistent rate limit reached the run boundary. "
@@ -1000,9 +1069,10 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
         elif queue:
             time.sleep(2)
 
-    run_state = "Stopped" if stopped_for_rate_limit else "Done"
+    stopped_early = stopped_for_global_error or stopped_for_rate_limit
+    run_state = "Stopped" if stopped_early else "Done"
     remaining_note = ""
-    if stopped_for_rate_limit:
+    if stopped_early:
         remaining = sum(
             1 for item in items if item["status"] in RETRYABLE_STATUSES
         )
@@ -1015,8 +1085,9 @@ def _run_manifest(manifest: dict, manifest_path: str, backend_module, *,
     if fail_count:
         print(
             "[Manifest] Failed is retryable and non-terminal. "
-            "Resolve failed item(s) by rerunning this manifest or marking them "
-            "Needs-Manual before entering Executor."
+            "Repair permanent backend errors before rerunning; retry transient "
+            "failures or follow the owning manual recovery before entering "
+            "Executor."
         )
     return ok_count, fail_count, skipped
 
@@ -1198,8 +1269,8 @@ def main() -> None:
         help=(
             "Source image for image-to-image editing (single-image mode only). "
             "When set, the prompt is used as the edit instruction. Only backends "
-            "that support editing accept this (currently: openai). Not valid with "
-            "--manifest / --render-md / --list-backends."
+            "that support editing accept this (currently: gemini, openai). Not "
+            "valid with --manifest / --render-md / --list-backends."
         ),
     )
 
@@ -1327,7 +1398,8 @@ def main() -> None:
         if not getattr(backend, "SUPPORTS_REFERENCE_IMAGE", False):
             print(
                 f"Error: backend '{backend_name}' does not support image editing "
-                "(--reference-image). Use a backend that does (currently: openai)."
+                "(--reference-image). Use a backend that does "
+                "(currently: gemini, openai)."
             )
             sys.exit(1)
         gen_kwargs["reference_image"] = args.reference_image

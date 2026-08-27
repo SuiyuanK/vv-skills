@@ -6,7 +6,7 @@ Whiteboard-ink minimalism — a pale field, confident black hand-ink line work, 
 
 ## 1. Shape & decoration
 
-- Shape language: hand-drawn line work with slight, intentional wobble — boxes, arrows, dividers and brackets sketched as if on a thoughtful whiteboard; never mechanically straight — realize it as `<path>` / `<polyline>` with off-grid points, not `<rect>` / `<line>` primitives. Line defines structure; no filled cards.
+- Shape language: hand-drawn line work with slight, intentional wobble — boxes, arrows, dividers and brackets sketched as if on a thoughtful whiteboard. When a mark must read as hand-inked, realize it as `<path>` / `<polyline>` with off-grid points rather than a pristine primitive. Functional native contours remain eligible; line defines structure, while repeated filled-card grids are not the default grammar.
 - Composition geometry: a circled central concept with branch arrows carrying the page; a hand-drawn Venn or overlap sketch as the argument; strike-through-and-replace geometry for before/after; one oversized bracket grouping the evidence under the claim.
 - Decoration: minimal — a few doodle marks (stars, dashes, dots, underlines) for emphasis. Restraint is the look; clutter breaks the "considered" feel.
 - Whitespace: generous and empty; the pale field carries most of the canvas, elements float with room around them.
@@ -16,7 +16,7 @@ Whiteboard-ink minimalism — a pale field, confident black hand-ink line work, 
 - Hand-lettered / humanist character for titles — bold, slightly oversized, confident. Plain legible sans for body.
 - Reads as written-by-hand-but-deliberate, not corporate-precise.
 
-> Families are chosen at confirmation `g`; this style asks for a humanist / hand-lettered title *character*.
+> Families are chosen at confirmation `g`; this style asks for a humanist / hand-lettered title *character*. This governs editable native text; decorative-lettering eligibility remains a separate carrier decision.
 
 ## 3. Using the deck's colors
 
@@ -35,4 +35,4 @@ Whiteboard-ink minimalism — a pale field, confident black hand-ink line work, 
 
 ## 6. Illustration propensity
 
-**supportive** — the style is already sparse and considered; a few hand-ink spots fit, but restraint is its temperament — use only where one genuinely earns its place. With no user steer this is the default lean; an explicit user request wins either way, and `image_usage: none` writes no illustration rows.
+**supportive** — when illustration is selected, hand-ink elements can anchor, annotate, or connect a composition while the style's considered restraint remains intact. Role, scale, reuse, and placement stay Strategist judgment; an explicit user request wins either way, and `image_usage: none` writes no illustration rows.

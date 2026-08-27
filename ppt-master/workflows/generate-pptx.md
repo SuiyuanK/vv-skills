@@ -8,6 +8,10 @@ description: Default Generate PPTX authority for source intake, planning, SVG au
 > Beautify profile. This file owns that runtime's Step 1–7 sequence, gates, role
 > switching, and mandatory commands. Explicit Quick loads its own profile instead.
 
+**Hard rule — runtime paths**: Resolve every linked or abbreviated package path
+below from the entry-time `SKILL_DIR` anchor and expand it inside each tool
+call. Never change CWD or inherit a prior shell working directory.
+
 **Default Core Pipeline**: `Initial Materials → [Fact Research] → Create Project → Template Candidate Preparation → Stage-1 Communication + Template Confirmation → [Template Installation] → Stage-2 Solution → [Image Acquisition] → Executor Live Preview → Quality Check → Post-processing → Export`
 
 **Generate-specific execution discipline**:
@@ -50,7 +54,9 @@ request does not explicitly select Quick.
 
 🚧 **GATE**: The user has provided a topic / desired outcome and any available initial material.
 
-> **Topic-only**: run [`topic-research`](stages/topic-research.md) immediately, then use its factual supplement as source content.
+> **Topic-only**: run [`topic-research`](stages/topic-research.md) immediately,
+> then use its research pair as source content; Step 2 imports that pair without
+> expanding the facts JSON's webpage URLs.
 
 When the user provides non-Markdown content, convert immediately through the
 unified dispatcher. It preserves the backend converters' existing behavior,
@@ -83,7 +89,12 @@ After reading direct and converted content, assess factual sufficiency:
 | Required externally verifiable claims remain unsupported | Run [`topic-research`](stages/topic-research.md) for those gaps only |
 | Closed corpus / source-only / no external enrichment | Stay within supplied material |
 
-**Sufficiency test**: research only to avoid inventing, omitting, or leaving unsupported a factual claim the requested outcome requires; file presence or length is irrelevant. It gathers facts only. Step 5 acquires Strategist-selected images after final confirmation.
+**Sufficiency test**: research only to avoid inventing, omitting, or leaving
+unsupported a factual claim the requested outcome requires; file presence or
+length is irrelevant. It records the needed facts and adopted webpage URLs in
+the research pair. Step 2 fetches no adopted page; Step 5
+acquires only Strategist-selected independent AI / web / slice assets after
+final confirmation.
 
 > **Office vector assets (EMF/WMF) from DOCX/PPTX sources**:
 > Source conversion extracts embedded Office vector images (.emf/.wmf)
@@ -99,7 +110,7 @@ After reading direct and converted content, assess factual sufficiency:
 > Browser-based live preview cannot render EMF (will show blank) — this is expected;
 > the PPTX output is the source of truth.
 
-**✅ Checkpoint — Confirm source content and any factual supplement are ready, proceed to Step 2.**
+**✅ Checkpoint — Confirm source content and any factual supplement/provenance pair are ready, proceed to Step 2.**
 
 ---
 
@@ -108,8 +119,13 @@ After reading direct and converted content, assess factual sufficiency:
 🚧 **GATE**: Step 1 complete; source content is ready (Markdown file, user-provided text, or requirements described in conversation are all valid).
 
 ```bash
-python3 ${SKILL_DIR}/scripts/project_manager.py init <project_name> --format <format>
+python3 ${SKILL_DIR}/scripts/project_manager.py init <project_name>
 ```
+
+**Hard rule — truthful canvas token**: append
+`--format <registered_format>` only when an explicit user/source fact already
+establishes an exact registered canvas before initialization. Otherwise omit
+the flag; Stage 1 confirms the canvas and `spec_lock.md` records its viewBox.
 
 Project initialization creates `<project_path>/validation/workflow.log` and
 records the initialization milestone. After the project exists, run each
@@ -149,6 +165,10 @@ Import source content (choose based on the situation):
 |-----------|--------|
 | Has source files (PDF/MD/etc.) | `python3 ${SKILL_DIR}/scripts/project_manager.py import-sources <project_path> <source_files_or_dirs...>` |
 | User provided text directly in conversation | No import needed — content is already in conversation context; subsequent steps can reference it directly |
+
+When Topic Research ran, include only its research pair. `project_manager.py`
+imports the facts JSON as an ordinary file and never expands its `source_url`
+values, so project initialization fetches no adopted page.
 
 For PPTX sources, `import-sources` automatically runs the standard intake enrichment:
 
@@ -246,7 +266,8 @@ a deck's larger identity/slide-library files only when the specific need below
 arises.
 
 ```
-Read references/strategist.md
+Read ${SKILL_DIR}/references/strategist.md
+Read ${SKILL_DIR}/references/canvas-formats.md
 ```
 
 Then load only the extra role modules triggered by the current plan:
@@ -255,16 +276,31 @@ Then load only the extra role modules triggered by the current plan:
 |---|---|
 | Stage 1 is confirmed and its template choice installed a selected Brand/Style/Layout/Deck workspace into this project | `references/strategist-template.md` before Stage 2 |
 | The confirmed Stage-1 `delivery_context` identifies recorded/self-running/video delivery, or input is an explicit final/literal narration script | `references/video-design.md` before the three Stage-2 whole solutions and page roster |
-| The confirmed Stage 2 `image_usage` contains a source other than `none`, or the user supplied an explicit non-`none` image constraint | `references/image-layout-spec.md` + `references/image-layout-patterns.md` before production detail or §VIII |
 
-After Stage 1 and template handoff, load `strategist-image.md` plus only the
-three `_index.md` files. Author the three whole solution intents before mapping
-any component basis. Freeze every referenced mode/style/rendering id from the
-indexes, then read once only the deduplicated union of those exact detail files
-and finish the three custom behaviors. A novel custom reads no detail file.
-Confirmed non-`none` loads the layout references and continues into resource
-planning; confirmed `none` writes no image rows while retaining
-recommendation-only rendering candidates. Only an installed
+After Stage 1 and template handoff, load the fixed planning-capability block
+below in one batch before authoring any Stage-2 whole-solution intent, image
+source recommendation, or page roster:
+
+```
+Read ${SKILL_DIR}/references/strategist-image.md
+Read ${SKILL_DIR}/references/image-layout-spec.md
+Read ${SKILL_DIR}/references/image-layout-patterns.md
+Read ${SKILL_DIR}/references/modes/_index.md
+Read ${SKILL_DIR}/references/visual-styles/_index.md
+Read ${SKILL_DIR}/references/image-renderings/_index.md
+Read ${SKILL_DIR}/templates/icons/README.md
+Read ${SKILL_DIR}/templates/charts/chart-vocabulary.md
+Read ${SKILL_DIR}/templates/tables/table-vocabulary.md
+```
+
+This is a capability map, not a usage checklist: retain zero-use outcomes and
+the Strategist/Executor ownership boundary. Author the three whole solution
+intents before mapping any component basis. Freeze every referenced
+mode/style/rendering id from the indexes, then read once only the deduplicated
+union of those exact detail files and finish the three custom behaviors. A novel
+custom reads no detail file. Confirmed non-`none` uses the already-loaded image
+layout references and continues into resource planning; confirmed `none` writes
+no image rows while retaining recommendation-only rendering candidates. Only an installed
 project-local template state loads the template module, and only after Stage 1
 is confirmed; a bare template/style name does not.
 
@@ -352,11 +388,10 @@ or `templates` with at least one server-resolved root.
    it. The server requires this handoff before Stage 2.
 
 2. Only now inspect installed template state and apply
-   `strategist-template.md` when active. Read `strategist-image.md` plus only
-   `modes/_index.md`, `visual-styles/_index.md`, and
-   `image-renderings/_index.md`; author three whole solution intents, freeze
-   their exact component references from those indexes, then read only the
-   referenced detail files and complete the custom projections. Derive the
+   `strategist-template.md` when active. Load the fixed Stage-2 planning-capability
+   block above, author three whole solution intents, freeze their exact component
+   references from its indexes, then read only the referenced detail files and
+   complete the custom projections. Derive the
    remaining production defaults and create
    `confirm_ui/recommendations.stage2.json` without changing Stage 1; declare
    `stage: "stage2"`, then wait for the final confirmation:
@@ -484,7 +519,7 @@ state and §X records its source/verbatim policy. After Gate 2, before Step 5 or
 split handoff, write the exact segments once to `notes/total.md`; split them only
 in Step 7.1. This is frozen production input, not a third planning artifact.
 
-**✅ Internal checkpoint — Phase deliverables complete**: facts read; confirmation consumed once; final Stage-2 production fields resolved (generation mode, refine-spec, proactive choices, and conditional AI path); mathematical content recorded where applicable; Design Spec passed Gate 1; enabled refinement approved; lock derived from it; split handling resolved; communication and every §IX `Audience move` validated. Do not print this checklist; auto-proceed.
+**✅ Internal checkpoint — Phase deliverables complete**: facts read; confirmation consumed once; final Stage-2 production fields resolved (generation mode, refine-spec, proactive choices, and conditional AI path); mathematical content recorded where applicable; every §IX page resolved its one-pass carrier mix and §VIII contains only assigned external image-resource jobs; Design Spec passed Gate 1; enabled refinement approved; lock derived from it; split handling resolved; communication and every §IX `Audience move` validated. Do not print this checklist; auto-proceed.
 
 ---
 
@@ -492,14 +527,14 @@ in Step 7.1. This is frozen production input, not a third planning artifact.
 
 🚧 **GATE**: Step 4 complete; `<project_path>/design_spec.md` and `<project_path>/spec_lock.md` both exist. If either required artifact is missing, stop before any acquisition or generation and follow [`failure-recovery.md`](governance/failure-recovery.md) §3.
 
-> **Trigger**: At least one row in the resource list has `Acquire Via: ai`, `web`, and/or `slice`, or any row is a pending prepared derivative declared by `Reference: Derived from <canonical bare filename>; treatment=...`. A prepared-user-only plan skips this step only when it has no derivative to materialize; `placeholder` rows alone do not trigger it. A permitted but unused image source creates no row and does not trigger acquisition. If §VIII omits a source, asset, or page role that `image_notes` explicitly requires, the Design Spec is incomplete; return to Step 4 Gate 1, repair it from the retained final state, and re-author the affected lock anchors from context. Do not reopen `result.json` during this check.
+> **Trigger**: §VIII is Step 4's committed external image-resource result, not a candidate inventory. At least one row has `Acquire Via: ai`, `web`, and/or `slice`, or one row is a pending prepared derivative declared by `Reference: Derived from <canonical bare filename>; treatment=...`. A prepared-user-only plan skips this step only when it has no derivative to materialize; `placeholder` rows alone do not trigger it. A permitted but unused image source creates no row and does not trigger acquisition. If §VIII omits a source, asset, or page role that `image_notes` explicitly requires, the Design Spec is incomplete; return to Step 4 Gate 1, repair it from the retained final state, and re-author the affected lock anchors from context. Do not reopen `result.json` during this check.
 
 **Failure recovery**: stop/continue behavior for AI/web/slice/image-readiness failures is defined in [`workflows/governance/failure-recovery.md`](governance/failure-recovery.md). This Step keeps the acquisition procedure.
 
 **Always load the common framework**:
 
 ```
-Read references/image-base.md
+Read ${SKILL_DIR}/references/image-base.md
 ```
 
 Then **lazy-load the path-specific reference** for each row that actually needs it:
@@ -509,7 +544,7 @@ Then **lazy-load the path-specific reference** for each row that actually needs 
 | Prepared derivative | `references/image-base.md`; add `references/image-generator.md` §4.4 only for registered layers | after its named canonical source reaches a usable terminal state, run `python3 ${SKILL_DIR}/scripts/image_treat.py ...` for the declared per-pixel treatment or the existing §4.4 preparation path |
 | `ai` | `references/image-generator.md` | write `<project_path>/images/image_prompts.json`, then follow `image-generator.md §7 Path Selection` (`image_gen.py --manifest` is **Path A only**) |
 | `web` | `references/image-searcher.md` | `python3 ${SKILL_DIR}/scripts/image_search.py ...` (≥2 web rows → `--batch images/image_queries.json`) |
-| `slice` | `references/image-generator.md` §4.3 | derived — **after** the parent `ai` sheet row is `Generated`, run `python3 ${SKILL_DIR}/scripts/slice_images.py <project_path>/images/<sheet>.png --grid RxC --names ... --trim --alpha` (see workflow step 2.5) |
+| `slice` | `references/image-generator.md` §4.3 | derived — **after** the parent `ai` sheet row is `Generated`, run `python3 ${SKILL_DIR}/scripts/slice_images.py <project_path>/images/<sheet>.png --grid RxC --names ... --trim --alpha --bg KEY_HEX_FROM_PROMPT --strict-alpha` (see workflow step 2.5) |
 | `user` / `placeholder` | (skip) | (skip) |
 
 A deck with only `ai` rows never loads `image-searcher.md`; a deck with only `web` rows never loads `image-generator.md`. A mixed deck loads both, processes each row through its own path, and writes both `image_prompts.json` and `image_sources.json`.
@@ -518,19 +553,25 @@ A deck with only `ai` rows never loads `image-searcher.md`; a deck with only `we
 
 > ⚠️ **web path — batch multiple rows**: when ≥2 rows are `Acquire Via: web`, write all queries into `images/image_queries.json` and run `image_search.py --batch` once (concurrent acquisition, status written back), instead of one CLI call per row. A single web row may use the positional single-query form. See [image-searcher.md](../references/image-searcher.md) §5.
 
+> **Default — bounded multimodal web thumbnail selection**: when either the current agent or an available isolated reviewer can inspect images, add `--save-candidates` to the single or batch web command. Author explicit `query_variants` for materially different official translations, spellings, aliases, or Chinese names; the tool aggregates and deduplicates them, then saves only the first ranked page (8 previews by default), writes `candidates/<stem>/review_sheet.jpg`, marks the batch row `Needs-Selection`, and downloads no original. Run [`web-image-review`](stages/web-image-review.md): dispatch exactly one isolated reviewer for all current sheets when supported, passing only each row's locked Reference/Crop Policy plus candidate sidecar/sheet paths; otherwise the active image owner reads that stage and reviews locally. Only a stage-selected passing candidate may be used with `--promote` to download one original and write provenance (pass the same `--batch images/image_queries.json` to reconcile its row to `Sourced`). If none passes and `has_more_candidates` is true, advance that row to `next_candidate_page` before changing the query. Only after the pool is exhausted may the row receive materially different query variants and return to `Pending`. When no available context has vision, omit `--save-candidates`: best-only mode may download only a strict metadata-verified candidate, records `selection_method: metadata-ranked`, and otherwise stops at `Needs-Manual` without claiming visual confirmation.
+
+> **Adopted-page fallback**: only after that normal search is exhausted, a vision-capable image owner may follow [`topic-research`](stages/topic-research.md) § Hand-off to fetch one relevant `source_url` as a Markdown + companion-image source package, review it, and copy only accepted files into `<project>/images/`. Never auto-expand facts URLs or promote the whole package; without vision, skip this fallback.
+
 > **Default — short provider query (may override for a complete entity name or necessary disambiguation)**: keep §VIII `Reference` as the locked subject/focal/crop intent and author a separate concrete `image_queries.json.query`. Search/review never rewrites the Design Spec or lock to fit a candidate.
 
-> **Default — one sheet for compatible AI spots (may override for different cell shape, detail, quality, or semantics)**: prefer one grid sheet for a same-family set; independent `ai` rows remain valid. When selected, choose a grid matching the planned cells, keep the sheet unplaced, and place/project each `slice` row. Contract: [image-generator.md](../references/image-generator.md) §4.3.
+> **Illustration Sheet contract**: [image-generator.md](../references/image-generator.md) §4.3 owns grouping, prompting, and slicing for illustration, illustrated-icon, and lettering elements. Keep every sheet unplaced and place/project only successful transparent `slice` rows.
 
 > ⚠️ **Honor the Design Spec's confirmed image source before running any generation command**: the `ai` generation path (Path A = `image_gen.py` API / Path B = host-native tool / Offline Manual) is **not** auto-only — the production value recorded in `design_spec.md §I` wins. `host-native` forces Path B even when `IMAGE_BACKEND` is configured; `api` forces Path A; `manual` forces offline. Never reopen `result.json` here, and never run `image_gen.py --manifest` when the recorded value is `host-native` or `manual`. Full selection rule: [image-generator.md](../references/image-generator.md) §7 Path Selection.
+
+> 🚧 **Default exhausted-automation GATE**: `auto` tries Path A then Path B but does not silently enter Offline Manual. When both are unavailable/exhausted—or a confirmed `api` / `host-native` path remains unavailable after its retry—apply `image-generator.md` §7's single recovery decision: ask whether to repair and retry the same path, generate the listed files manually, or cancel the affected AI images and repair the plan. Only confirmed `manual` may create `Needs-Manual` rows. Quick instead applies its own non-interactive no-AI replan after automated exhaustion.
 
 Workflow:
 
 1. Extract all resource rows from the design spec. First separate rows whose `Reference` starts `Derived from <canonical bare filename>; treatment=` so they cannot re-enter ordinary ai/web/slice acquisition; reject source/output equality, a derivative parent, chains, cycles, or self-reference; then group canonical rows by `Acquire Via`. Every Pending/Failed canonical acquisition row and Pending derivative must reach a terminal state before Executor starts.
 2. Generate prompts (ai rows) and/or run search (web rows) per [image-base.md](../references/image-base.md) §3 dispatch table
-2.5. **Slice any spot-illustration sheets (only if `slice` rows exist).** For each generated `ai` **sheet** row, run `slice_images.py` (grid + the element `--names` matching the `slice` rows, `--trim --alpha`) so every element file lands in `images/`; mark each `slice` row `Generated`. A sheet still in `Needs-Manual` cannot be sliced — leave its `slice` rows `Needs-Manual` and surface them at the Step 7 readiness gate. Contract: [image-generator.md](../references/image-generator.md) §4.3.
-2.6. **Materialize planned prepared derivatives.** After each named canonical source reaches a usable terminal state, preserve it and write the separately named derivative only from its declared treatment. Use `image_treat.py` for per-pixel blur, desaturation/grayscale, duotone, brightness, or contrast; that row inherits the canonical `Acquire Via` and terminal class. Use `image-generator.md` §4.4 only for registered clean-base/layer work; a supplied final asset is `user / Existing`, while generated/reconstructed output remains `ai / Generated`. A standalone cutout must be prepared RGBA, a flat-key slice, or supplied by the active host; otherwise mark it `Needs-Manual`. Do not present `image_treat.py` as photo background removal. Do not bake crop/clip, rotation/mirror, opacity, frame, shadow, scrim/wash, vignette, or overlap into a bitmap. Any derivative of a web source copies that source's license/attribution record to the new filename. A parent without a usable status leaves the child `Needs-Manual`.
-3. Verify every processed acquisition/derivative row reaches its source-class terminal status under [`svg-image-embedding.md`](../references/svg-image-embedding.md); no `Pending`/`Failed` remains. On `auto`, follow the owning fallback chain. For confirmed `api` or `host-native`, retry only that path, then mark unresolved rows `Needs-Manual` without switching provider.
+2.5. **Slice any illustration, illustrated-icon, or lettering sheets (only if `slice` rows exist).** For each generated `ai` **sheet** row, run `slice_images.py` with the matching grid/`--names`, `--trim --alpha`, the exact key HEX named in its prompt as `--bg`, and `--strict-alpha`. Mark each `slice` row `Generated` only after exit 0; a strict keying failure writes no replacement outputs and returns the affected sheet to image preparation. A sheet still in `Needs-Manual` cannot be sliced — leave its `slice` rows `Needs-Manual` and surface them at the Step 7 readiness gate. Contract: [image-generator.md](../references/image-generator.md) §4.3.
+2.6. **Materialize planned prepared derivatives.** After each named canonical source reaches a usable terminal state, preserve it and write the separately named derivative only from its declared treatment. Use `image_treat.py` for per-pixel blur, desaturation/grayscale, duotone, brightness, or contrast; that row inherits the canonical `Acquire Via` and terminal class. Use `image-generator.md` §4.4 only for registered clean-base/layer work; a supplied final asset is `user / Existing`, while generated/reconstructed output remains `ai / Generated`. A standalone cutout must be prepared RGBA, a flat-key slice, or supplied by the active host; otherwise follow its owning source's terminal rule, including the Default AI recovery decision before `Needs-Manual`. Do not present `image_treat.py` as photo background removal. Do not bake crop/clip, rotation/mirror, opacity, frame, shadow, scrim/wash, vignette, or overlap into a bitmap. Any derivative of a web source copies that source's license/attribution record to the new filename. A parent without a usable status leaves the child in the same unresolved or manual state.
+3. Verify every processed acquisition/derivative row reaches its source-class terminal status under [`svg-image-embedding.md`](../references/svg-image-embedding.md); no `Pending`, `Failed`, or web `Needs-Selection` remains. On `auto`, follow the owning automated fallback chain. For confirmed `api` or `host-native`, retry only that path. Any unresolved Default AI row stops at the recovery decision above; do not mark it `Needs-Manual` or switch provider before the user's choice.
 4. Re-derive image facts after canonical acquisition, slicing, and prepared derivatives are final — `python3 ${SKILL_DIR}/scripts/analyze_images.py <project_path>/images` — so `analysis/image_analysis.csv` reflects every image the Executor may place. Image facts are regenerated on use, never a stale store (see Step 4's image-facts note).
 
 **✅ Internal checkpoint — acquisition complete**: verify conditional AI/web sidecars, all required slice outputs, terminal status for every resource row, and a refreshed `image_analysis.csv`. Do not print this checklist. On success, auto-proceed under the compact status rule above.
@@ -544,13 +585,23 @@ Workflow:
   - [ ] **Next**: open a fresh chat window and input `继续生成 projects/<project_name>` to enter the execution session via the [`resume-execute`](stages/resume-execute.md) stage.
   ```
 
-> On acquisition failure, follow [image-base.md](../references/image-base.md) §6 without halting. Web rows continue through materially different query/provider/license/URL strategies; after exhaustion, mark `Needs-Manual`, report, and continue.
+> On web acquisition failure, follow [image-base.md](../references/image-base.md) §6 without halting. Continue through materially different query/provider/license/URL strategies; after exhaustion, mark `Needs-Manual`, report, and continue. AI rows use the separate Default recovery gate above.
 
 ---
 
 ### Step 6: Executor Phase
 
 🚧 **GATE**: Step 4 (and Step 5 if triggered) complete; all prerequisite deliverables are ready.
+
+Read the Executor role core before applying its context policy:
+
+```
+Read ${SKILL_DIR}/references/executor-base.md     # REQUIRED: flat/shared execution core
+```
+
+**Planning context**: follow [`executor-base.md`](../references/executor-base.md) §2.1. Reuse the complete Design Spec and lock in an unchanged, uncompacted context. Fresh/resumed/restarted, compacted/summary-only, or externally/unknown changed execution reads both once and reloads triggered inputs. For a local question, consult the retained lock first, then only the owning Design Spec fragment; do not poll files merely to prove validity.
+
+**Scheduled lock re-read (Default Generate only)**: when another page follows, re-read `spec_lock.md` once after P05/P10/P15/… per [`executor-base.md`](../references/executor-base.md) §2.1.
 
 **Exact page roster**: render `design_spec.md §IX` one-for-one, in order. Any add/drop/merge/split/reorder requires Spec repair/refinement first.
 
@@ -560,36 +611,32 @@ Workflow:
 `notes/total.md` once before P01 and design each visible state/semantic group
 around its exact segment; never edit or pad it.
 
-**Planning context**: follow [`executor-base.md`](../references/executor-base.md) §2.1. Reuse the complete Design Spec and lock in an unchanged, uncompacted context. Fresh/resumed/restarted, compacted/summary-only, or externally/unknown changed execution reads both once and reloads triggered inputs. For a local question, consult the retained lock first, then only the owning Design Spec fragment; do not poll files merely to prove validity.
-
-**Scheduled lock re-read (Default Generate only)**: when another page follows, re-read `spec_lock.md` once after P05/P10/P15/… per [`executor-base.md`](../references/executor-base.md) §2.1.
-
 **Artifact ownership**: `svg_output/` is the author source, `svg_final/` is derived, and image facts come from the regenerated `analysis/image_analysis.csv`; see [`references/artifact-ownership.md`](../references/artifact-ownership.md).
 
-Read the execution references for this deck's locked `mode` + `visual_style`
-(from `spec_lock.md`). Load this fixed required block directly as one batch:
+Read the exact execution references named by this deck's retained
+`spec_lock.md`; do not reopen the planning indexes. Load the remaining fixed
+construction block plus the resolved mode/style detail files as one batch:
 ```
-Read references/executor-base.md                  # REQUIRED: flat/shared execution core
-Read references/shared-standards-core.md          # REQUIRED: SVG compatibility + shared aesthetic/leading baseline
-Read references/svg-effects.md                    # REQUIRED: Visual Job Router + effects/construction vocabulary
-Read references/native-shape-authoring.md         # REQUIRED: native-shape selection and Boolean construction
-Read references/semantic-svg.md                   # REQUIRED: semantic metadata boundary
-Read references/modes/_index.md
-Read references/visual-styles/_index.md
-Read references/modes/<resolved-id>.md             # one preset id, or each `mode_references` id
-Read references/visual-styles/<resolved-id>.md     # one preset id, or each `visual_style_references` id
+Read ${SKILL_DIR}/references/shared-standards-core.md      # REQUIRED: SVG compatibility + shared aesthetic/leading baseline
+Read ${SKILL_DIR}/references/svg-effects.md                # REQUIRED: §6.1 job diagnostic + effects/construction vocabulary
+Read ${SKILL_DIR}/references/native-shape-authoring.md     # REQUIRED: native-shape selection and Boolean construction
+Read ${SKILL_DIR}/references/preset-shape-vocabulary.md    # REQUIRED: complete 187-name authoring vocabulary
+Read ${SKILL_DIR}/references/executor-structure.md         # REQUIRED: qualitative relationship and topology grammar
+Read ${SKILL_DIR}/references/topology-assembly.md          # REQUIRED: topology assembly and relative-registration material
+Read ${SKILL_DIR}/references/semantic-svg.md               # REQUIRED: semantic metadata boundary
+Read ${SKILL_DIR}/references/modes/<resolved-id>.md        # one preset id, or each `mode_references` id
+Read ${SKILL_DIR}/references/visual-styles/<resolved-id>.md # one preset id, or each `visual_style_references` id
 ```
 
-Keep the core's shared visual-quality defaults and `svg-effects.md` §6.1 Visual Job Router active during page authoring; they are not passive compatibility reading. Explicit user/template requirements and the locked style override compatible aesthetic defaults, never technical Required / Forbidden boundaries.
+Keep the core's shared visual-quality defaults and `svg-effects.md` §6.1 job diagnostic active during page authoring, with its Visual Job Router as recall; they are not passive compatibility reading. Explicit user/template requirements and the locked style override compatible aesthetic defaults, never technical Required / Forbidden boundaries.
 
-> Read only the always-on references above plus the conditionally triggered modules below. The indexes provide routing information, not permission to open siblings. A preset reads its one locked file. For `custom`, read only the exact bases named by optional `mode_references` / `visual_style_references`, then synthesize them under the corresponding behavior. If absent, treat the direction as genuinely novel and read no preset file. Do not infer adjacent bases, glob a catalog, or blend unselected identities.
+> Read only the role core, always-on construction references, exact locked detail files, and conditionally triggered modules below. The selection indexes remain planning-only. A preset reads its one locked file. For `custom`, read only the exact bases named by optional `mode_references` / `visual_style_references`: apply one under the corresponding behavior, or synthesize several by their stated contributions. If absent, read no preset file and follow the behavior directly. Do not infer adjacent bases, glob a catalog, or blend unselected identities.
 
 | Deterministic trigger | Additional references |
 |---|---|
 | `pptx_structure.mode: structured` | `executor-structured.md` + `pptx-structure-interface.md` |
 | Selected §VII / `page_visualizations` Chart/Table `family/key`, or a legacy `page_charts` row resolving to a live Chart/Table SVG | `executor-visualization.md` + the selected Chart/Table branch |
 | Actual value-driven geometry, including mini/inset charts and sparklines | `executor-chart.md` |
-| Mandatory per-page Structure decision from §IX is `yes` | `executor-structure.md` before any geometry for the first applicable page |
 | Actual row × column fact grid | `executor-table.md` |
 | Used preset pattern fill, or independent Chart/Table with §IX `<object-key>=yes` | `native-data-interface.md` before that object |
 | §IX or current page content contains mathematical notation that may require native math | `native-formula.md` before choosing ordinary text, inline native math, or block native math |
@@ -601,8 +648,9 @@ Keep the core's shared visual-quality defaults and `svg-effects.md` §6.1 Visual
 
 No branch is loaded by analogy. For each page, after §IX content/communication
 but before geometry, apply [`executor-base.md`](../references/executor-base.md)'s
-mandatory Structure decision. `no` stays on base; before the first `yes`, read
-`executor-structure.md` completely and reuse it until file/context invalidation.
+mandatory Structure decision with the already-loaded
+`executor-structure.md`. `no` stays on the shared base; `yes` applies that
+grammar without another load gate.
 Create no catalog/lock/artifact. Chart/Table selection neither replaces this
 decision nor locks geometry/native readiness.
 
@@ -635,7 +683,7 @@ sidecars, or guessed family paths.
 
 **Visual Construction Phase**: generate SVG pages sequentially, one at a time, in one continuous pass → `<project_path>/svg_output/`
 
-Each completed SVG MUST be a standalone, complete representation of that slide's visible design. Template SVGs and locked planning artifacts may guide construction, but export must not reach back to them to add visible objects omitted from `svg_output/`. Speaker notes, animation, narration, transitions, and direct native-PPTX workflows remain separately owned artifacts/capabilities. Treat §IX `Native shape suggestion` as a candidate, not a command: inspect the actual page construction, then choose the highest-level faithful construction in this order — editable basic primitive, exact Office preset, Merge Shapes Boolean result, and only then a necessary freeform. Apply [`native-shape-authoring.md`](../references/native-shape-authoring.md) before materializing an adopted native treatment. Diagram relationships follow the same Shape-first order; do not infer a preset from contour similarity.
+Each completed SVG MUST be a standalone, complete representation of that slide's visible design. Template SVGs and locked planning artifacts may guide construction, but export must not reach back to them to add visible objects omitted from `svg_output/`. Speaker notes, animation, narration, transitions, and direct native-PPTX workflows remain separately owned artifacts/capabilities. Native shapes are Executor-local authoring capabilities, not planned resources: follow [`native-shape-authoring.md`](../references/native-shape-authoring.md), read the complete current preset vocabulary before the first page, choose page-fit contours before their authoring forms, keep exact native atoms independent when possible, materialize a Merge Shapes Boolean result only where contour semantics require it, and use necessary freeform last. Diagram relationships follow the same Shape-first gate; do not infer a preset from contour similarity.
 
 **Motion-ready image composition**: Only when an explicit user motion
 instruction, the effective Custom Animations outcome in `design_spec.md §I` is
@@ -670,7 +718,7 @@ Run the command unfiltered—do not pipe it through `tail`, `head`, `grep`, or a
 
 | Signal | Reading |
 |---|---|
-| Two or more issues share a category and direction | Method-level bias — resolve it to the authoritative rule before P02; a correction fitted to the observed offset only patches this sample. For text extents that rule is `svg_to_pptx.drawingml.elements.estimate_single_line_text_frame_width(runs)`, with `skills/ppt-master/scripts` on `sys.path` and every run key present — `text`, `font_size`, `font_family`, `font_weight`, `letter_spacing` — since omissions under-measure |
+| Two or more issues share a category and direction | Method-level bias — resolve it to the authoritative rule before P02; a correction fitted to the observed offset only patches this sample. For text extents that rule is `svg_to_pptx.drawingml.elements.estimate_single_line_text_frame_width(runs)`, with `${SKILL_DIR}/scripts` on `sys.path` and every run key present — `text`, `font_size`, `font_family`, `font_weight`, `letter_spacing` — since omissions under-measure |
 | One isolated issue tied to this page's structure | Page-local — fix and continue |
 | A recurring element appears for the first time (page furniture, caption format, section numbering, accent discipline) | It will be copied to every later page — confirm its semantics now |
 
@@ -747,7 +795,7 @@ enabled,
 `notes/total.md` also exists and covers every page; when it is disabled, notes
 artifacts are not gate requirements.
 
-🚧 **Image readiness GATE**: When any required resource row is `Needs-Manual`, every expected file and derived slice output MUST exist under `<project_path>/images/` before the first active Step 7 sub-step. If any file is absent, pause and list the exact filenames. After the files arrive, rerun `analyze_images.py`, replace each dashed placeholder in `svg_output/`, reconcile every `no-crop` container to the measured native ratio, then rerun the final SVG quality check so the gate covers the changed sources.
+🚧 **Image readiness GATE**: When any required resource row is `Needs-Manual`, every expected file and derived slice output MUST exist under `<project_path>/images/` before the first active Step 7 sub-step. If any file is absent, pause and list the exact filenames; do not run `finalize_svg.py`, `svg_to_pptx.py`, or any other export path, and never ship the dashed placeholder. After the files arrive, rerun `analyze_images.py`, replace each dashed placeholder in `svg_output/`, reconcile every `no-crop` container to the measured native ratio, then rerun the final SVG quality check so the gate covers the changed sources.
 
 After the separate readiness gate above has supplied every required manual file, the final SVG quality check closes each usable terminal §VIII row through `spec_lock.md images`, the exact locked file, and a real `<image href>`; it rejects unplanned/wrong-path references and also validates Sourced provenance/license records, image-specific visible credits, and effective per-placement pixel scale under `meet` / `slice` / `none`.
 
@@ -826,6 +874,7 @@ Before creating the PPTX, the exporter independently requires the current matchi
 ## ✅ Generate PPTX Complete
 
 - [x] Image readiness gate passed
+- [x] The final carrier receipt was compared with the retained page decisions, and any factual contradiction was repaired without treating counts as quotas
 - [x] Notes split completed when enabled; disabled exports used `--no-notes`
 - [x] `svg_final/` preview completed
 - [x] Native PPTX published and postflight report written

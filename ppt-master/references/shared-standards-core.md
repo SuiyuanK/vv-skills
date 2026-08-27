@@ -26,7 +26,7 @@ Mandatory reference for every route that authors or regenerates slide visuals th
 | Containers | Use a card or panel when it expresses grouping, hierarchy, boundary, capacity, or a distinct material plane. Otherwise prefer spacing, rules, or direct text / geometry; peer containers share treatment unless a semantic difference justifies contrast. An unplanned repeated web-card grid is a carrier / topology problem, not a reason to suppress meaningful borders, shapes, or containers. |
 | Titles and page chrome | Treat the semantic page title as part of the current composition rather than an automatic fixed header band; its position, scale, and relationship may change with page role while preserving the active route's content invariants. Add or retain running headers, footers, and page numbers only when they carry navigation, identity, attribution, or another explicit page job. Fidelity profiles preserve required source chrome. |
 
-**Default — active effects vocabulary (may resolve to no added technique when no visual job is diagnosed)**: Default and Quick Generate run the already-loaded [`svg-effects.md`](./svg-effects.md) §6.1 Visual Job Router before completing each page; apply a compatible technique only for a diagnosed visual job.
+**Default — active effects vocabulary (may resolve to no added technique when no visual job is diagnosed)**: Default and Quick Generate complete the already-loaded [`svg-effects.md`](./svg-effects.md) §6.1 job diagnostic, which that file makes mandatory, before completing each page; whether any compatible technique is then added is this default's call, with the Visual Job Router as recall.
 
 **Fidelity labels**:
 
@@ -543,6 +543,8 @@ external stylesheets, and imported styles remain forbidden. This contract is
 only for literal declarations in an element's own `style` attribute; PPT Master
 does not compute CSS cascade or custom properties. Root canvas authority remains
 the `viewBox`, regardless of root `<svg>` compatibility width/height values.
+The shared coordinate and geometry implementation is
+[`utils.py`](../scripts/svg_to_pptx/drawingml/utils.py).
 
 ### 2.2 Group Opacity Compatibility
 
@@ -596,9 +598,13 @@ Semantic markers are minimal compiler hints. Flat pages declare one root `data-p
   `width`/`height` do not override `viewBox`.
   Root `<svg>` transform is forbidden; nested crop and `<symbol viewBox>` keep
   their own contracts.
-- **Font portability**: font families used by the deck must resolve to installed
-  export faces. `@font-face` remains forbidden; the typography contract lives in
-  [`strategist.md §g`](strategist.md).
+- **Font portability**: resolve an explicit user/template delivery target first;
+  otherwise default to Windows Microsoft PowerPoint with locale following the
+  deck's primary language. Exported Latin/EA faces must be installed or approved
+  on that target. The authoring host's fonts affect SVG preview and measurement
+  only and MUST NOT select PPTX faces; a local counterpart may appear only as a
+  preview tail that preserves the same export resolution. `@font-face` remains
+  forbidden; the typography contract lives in [`strategist.md §g`](strategist.md).
 - **Icon placeholders**: `<use data-icon="library/name">` is a pipeline-specific
   form, distinct from local SVG reuse. Follow the contract in
   [`../templates/icons/README.md`](../templates/icons/README.md).
@@ -622,7 +628,7 @@ These forms are needed only when the stated PPT behavior matters:
 
 ### 4.3 Element Grouping (Mandatory)
 
-**Hard rule — root groups protect body-text layout**: Every visible direct root `<g>` declares positive root-coordinate `data-pptx-bounds="x y width height"`. Keep it when frame/native coordinates size one PowerPoint object; placeholder bounds also supply the slot frame. On flat pages, make each module zone as generous as the canvas and sibling layout allow without overlapping another module zone. Checker validates this subcanvas against the root `viewBox`, then recursively validates only estimable `<text>` descendants against it using the shared SVG-to-PPTX per-run width estimate and DrawingML wrapping headroom. It validates every estimable visible text carrier directly against the root `viewBox` with the same per-run estimate before that headroom. Nested groups and all shapes, images, paths, `<use>` instances, effects, and object frames are not module-boundary inputs. Per side, Checker ignores overflow through `1px`; module-boundary overflow warns through `5%` and fails above `5%`, while any larger root-`viewBox` text overflow fails. Bounds do not clip or reflow; unestimable visible text receives an advisory warning. The only page-boundary exception is a wholly off-canvas direct-root Morph endpoint marked `data-pptx-morph-staging="true"`; its own module bounds still apply, retained Morph uses an explicit pair, and the marker never excuses partial page overflow.
+**Hard rule — root groups protect body-text layout**: Every visible direct root `<g>` except a compact helper-authored preset atom declares positive root-coordinate `data-pptx-bounds="x y width height"`. That text-free atom stays top-level when standalone, uses `data-pptx-frame`, and never carries bounds. Frame/native coordinates do not replace bounds on any other group; placeholder bounds also supply the slot frame. On flat pages, make each module zone as generous as the canvas and sibling layout allow without overlapping another module zone. Checker validates this subcanvas against the root `viewBox`, then recursively validates only estimable `<text>` descendants against it using the shared SVG-to-PPTX per-run width estimate, inline-formula native-height envelope, and DrawingML wrapping headroom. It validates every estimable visible text carrier directly against the root `viewBox` with the same per-run estimate before that headroom. Nested groups and all shapes, images, paths, `<use>` instances, effects, and object frames are not module-boundary inputs. Per side, Checker ignores overflow through `1px`; module-boundary overflow warns through `5%` and fails above `5%`, while any larger root-`viewBox` text overflow fails. Bounds do not clip or reflow; unestimable visible text receives an advisory warning. The only page-boundary exception is a wholly off-canvas direct-root Morph endpoint marked `data-pptx-morph-staging="true"`; its own module bounds still apply, retained Morph uses an explicit pair, and the marker never excuses partial page overflow.
 
 Wrap each logical Slide-local body unit in one descriptive top-level `<g id>`; group count follows the page's semantic units, and each group becomes one stable animation target when animation is enabled. Generic deck-wide animation gives that target one step; an explicit animation sidecar may assign it several ordered effects. Nested implementation groups may remain anonymous and need no bounds; any nested bounds are ignored. Flat pages use ordinary groups; structured slots already qualify, while titles, direct atomic Master/Layout elements, and canvas-level static framing—including background images and full-canvas scrim/decoration rectangles—may remain root primitives. On flat pages, give such static framing a stable `id` plus `data-pptx-role="background"` / `"decoration"`; never add a `<g>` solely to silence an ungrouped-element advisory.
 
@@ -649,9 +655,10 @@ nesting pattern, level, or quota.
 | Decorative cluster | Related decorative shapes (rings, dots, orbs) |
 
 An authored native preset fragment (§1.5) is already an atomic `<g id>` and
-counts as one content group. Keep it top-level when it stands alone. When it
-needs a label or decoration, place the preset and those siblings inside a
-separate parent content group; never put them inside the preset group itself.
+counts as one content group. Keep it top-level without `data-pptx-bounds` when
+it stands alone. When it needs a label or decoration, place the preset and those
+siblings inside a separate bounded parent content group; never put them inside
+the preset group itself.
 
 **Forbidden**:
 

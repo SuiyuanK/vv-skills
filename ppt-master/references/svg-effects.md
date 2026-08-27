@@ -10,8 +10,9 @@ Authority for advanced paint, effects, transforms, freeform/radial geometry, and
 
 **Mandatory**: Default and Quick Generate read this file completely before SVG
 authoring and keep its compatible techniques in active construction vocabulary.
-Before finalizing each page, run the §6.1 selection procedure and Visual Job
-Router. Use §6.13 when diagnosed jobs benefit from one coordinated page recipe.
+Before finalizing each page, run the §6.1 selection procedure, with the Visual
+Job Router as recall for the jobs it diagnoses. Use §6.13 when diagnosed
+jobs benefit from one coordinated page recipe.
 
 **Default — situational use (may override when plain construction is stronger)**:
 “Advanced” means capability depth, not an effect quota. During page authoring,
@@ -22,7 +23,7 @@ rhythm, and style; apply those that materially help.
 
 | Decision layer | Authority |
 |---|---|
-| Technical validity | Required / Forbidden / Conditional contracts in this file |
+| Technical validity | Required / Forbidden / Conditional contracts in this file, over the shared core's closed authoring surface, the route's other required construction references, and any triggered module |
 | Project values | Default: `<project_path>/spec_lock.md` anchors plus retained Design Spec/page context; Quick: anchors resolved in the current context |
 | Aesthetic fit | Locked or Quick-resolved `visual_style` / `visual_style_behavior` |
 | Per-page choice | Content purpose, hierarchy, legibility, semantics, and rhythm |
@@ -35,7 +36,7 @@ visual job.
 | Pass | Decision |
 |---|---|
 | Skeleton / diagnose | Establish native information, relationships, and hierarchy. Before completion, check image/text integration, plane separation, focus, state/direction, material/style, and the recurring motif; keep plain construction when none needs treatment. |
-| Surface / select | Name the target, confirm its owning subsection and fidelity, then use the Router. Choose a compatible technique that fully performs the job; prefer simpler/native-stable alternatives only when communication is equal. `Approximate` requires review, not automatic rejection. |
+| Surface / select | Name the target, confirm its owning subsection and fidelity, and let the Router recall candidates. Choose a compatible technique that fully performs the job; prefer simpler/native-stable alternatives only when communication is equal. `Approximate` requires review, not automatic rejection. |
 | Integrate / stop | Align paint, contour, light, hierarchy, and z-order; combine only techniques with different jobs. Check legibility, editability, density, fidelity, and style; simplify failures, use legal alternatives, and bake only the smallest pixel-dependent layer. Keep authoritative text/data native. |
 
 **Default — one dominant composition scaffold (may override when a second
@@ -47,9 +48,14 @@ simplify any competing scaffold without a separate communication job.
 
 #### Visual Job Router
 
-**Reference — not a quota**: route diagnosed problems through this table. A
+**Reference — not a quota**: recall candidates for a diagnosed problem from
+this table. A
 page may use no listed technique, one technique, or several techniques with
-different jobs.
+different jobs. The table recalls constructions rather than bounding them: one
+it never names is equally valid when it satisfies every applicable technical
+contract — the shared core's closed authoring surface, this file, the route's
+other required construction references, and any triggered module. Those
+contracts are the boundary; membership in this table is not.
 
 | Diagnosed visual problem | Candidate technique | Authority / stop |
 |---|---|---|
@@ -97,7 +103,9 @@ when the effect carries material meaning.
 
 Compatible paint grammar includes recognized named colors, `rgb()` / `rgba()`,
 `hsl()` / `hsla()`, and `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA`. The
-converter also tolerates legacy bare 3/4/6/8-digit hexadecimal tokens.
+converter also tolerates legacy bare 3/4/6/8-digit hexadecimal tokens. The
+shared converter implementation for §§6.2–6.8 is
+[`utils.py`](../scripts/svg_to_pptx/drawingml/utils.py).
 
 **Default — canonical generated paint tokens (may preserve compatible
 alternatives)**: New `svg_output/` and reusable template SVGs write solid paint
@@ -464,6 +472,52 @@ Generated cap, join, and `vector-effect` values use the exact lowercase tokens
 in the table. Surrounding whitespace is compatible input and produces a
 recommendation; every other token is an error.
 
+**Default — relationship-fit dash rhythm (may override when style calls for
+another rhythm)**: After §6.1 selects dash, preserve direction markers and
+branch-owned placeholder patterns.
+
+| Already-dashed/dotted job (illustrative) | Dash |
+|---|---|
+| Separator/boundary | `4,4` |
+| Subtle dotted border/generic non-image placeholder | `2,2` |
+| Optional/future timeline/flow connector | `8,4` |
+| Technical/dimension line | `8,4,2,4` |
+
+```xml
+<!-- General boundary versus quiet non-image placeholder -->
+<rect x="60" y="60" width="400" height="240" rx="12"
+  fill="none" stroke="#999999" stroke-width="2" stroke-dasharray="4,4"/>
+<line x1="100" y1="360" x2="1180" y2="360"
+  stroke="#CCCCCC" stroke-width="1" stroke-dasharray="2,2"/>
+
+<!-- Optional/future timeline connector versus technical dimension line -->
+<line x1="100" y1="420" x2="500" y2="420"
+  stroke="#1A73E8" stroke-width="2" stroke-dasharray="8,4"/>
+<line x1="620" y1="420" x2="1020" y2="420"
+  stroke="#555555" stroke-width="2" stroke-dasharray="8,4,2,4"/>
+```
+
+**Default — contour-fit joins (may override when the resolved style calls for
+another character)**:
+
+| Contour/job (illustrative) | Join |
+|---|---|
+| Smooth polyline/organic form | `round` |
+| Technical diagram | `bevel` |
+| Crisp rectangle/arrow | `miter` |
+
+```xml
+<!-- Smooth series: round avoids a miter spike at the turn. -->
+<polyline points="100,200 200,100 300,200" fill="none"
+  stroke="#1A73E8" stroke-width="3" stroke-linejoin="round"/>
+
+<!-- Technical corner versus crisp rectangle -->
+<polyline points="400,200 500,100 600,200" fill="none"
+  stroke="#555555" stroke-width="3" stroke-linejoin="bevel"/>
+<rect x="740" y="120" width="180" height="160" fill="none"
+  stroke="#333333" stroke-width="3" stroke-linejoin="miter"/>
+```
+
 Match marker paint to the parent stroke using the shape-specific channel from
 §1.1: fill for closed/oval line ends and stroke for the open arrow. Use markers
 for connectors and §6.10 calculated geometry for a manual diagonal arrowhead.
@@ -584,6 +638,44 @@ respective sections; they do not weaken those contracts.
 | Shadow/glow | §6.4 filter on `<text>` only | Shape shadow / run glow; `Approximate` |
 | Native bullet | Leading `· • ● ▪ ■ ◆ ◇ ◦ ‣` + non-empty content | `·`/`•` → `•`; others unchanged; color/alpha from marker run; font/size follow text |
 
+**Default — lift key information (may override when uniform treatment is
+deliberate)**: In prose, lift numerical results, explicit contrasts, and one or
+two load-bearing nouns per sentence with bold `<tspan>` runs in the locked or
+Quick-resolved accent. Keep connectives, routine verbs, non-load-bearing nouns,
+decorative adjectives, and structural copy neutral; reserve green/red for
+actual polarity.
+
+```xml
+<!-- Uniform: the two results disappear into the sentence. -->
+<text x="80" y="200" font-size="20" fill="#333333">
+  2024年公司营收同比增长35%达到12亿元创历史新高
+</text>
+
+<!-- Lifted: data-bearing runs carry the scan. -->
+<text x="80" y="200" font-size="20" fill="#333333">
+  2024年公司营收同比<tspan fill="#1A73E8" font-weight="bold">增长35%</tspan>达到<tspan fill="#1A73E8" font-weight="bold">12亿元</tspan>创历史新高
+</text>
+```
+
+**Default — semantic underline (may override when another cue is clear)**:
+Reserve it for links, key terms, or local emphasis—not decoration.
+
+```xml
+<!-- Key term -->
+<text x="100" y="200" font-size="20" fill="#333333"
+  text-decoration="underline">Important Term</text>
+
+<!-- Link: decorate the linked run, not the whole sentence. -->
+<text x="100" y="240" font-size="18" fill="#333333">Read <a
+  href="https://example.com"><tspan text-decoration="underline">the guide</tspan></a>.</text>
+```
+
+**Hard rule — generated decorative lettering ownership**: Approved AI
+decorative lettering is a prepared `<image>` asset under the image contracts,
+not an advanced native-text treatment. Keep ordinary editable titles and
+subtitles as normal `<text>`; this contract does not add WordArt, text warp, or
+text-on-path authoring.
+
 ```xml
 <text x="100" y="200" font-size="20" xml:space="preserve">Current <tspan
   fill="#999999" text-decoration="line-through">old</tspan> value</text>
@@ -693,8 +785,9 @@ preserve deliberate tangent continuity.
 Command identity, relative coordinates, shorthand, arc parameters, and original
 handles are not retained. Geometry needs non-zero bounds. Before authoring a
 freeform, apply [`native-shape-authoring.md`](./native-shape-authoring.md):
-prefer an editable basic primitive, one exact Office preset, or a Boolean
-materialization. Use a closed cubic path only for an organic silhouette those
+prefer editable primitives and exact Office presets, independently composed
+when possible; materialize a Boolean only when one contour requires it. Use a
+closed cubic path only for an organic silhouette those
 cannot express, polygon/closed path for unmatched ribbons/facets, and an open
 path only for a required data curve, custom route, or locked or Quick-resolved
 hand-drawn / organic style. Straight relationships use `<line>`; exact stock bends/curves
@@ -875,7 +968,7 @@ back-to-front and omit every layer without a distinct job.
 
 | Page / deck job | Back-to-front stack | Stop |
 |---|---|---|
-| Cover | Hero field → optional scrim/wash → purposeful opening/contour → native title | Stop when copy is safe and title/field read together |
+| Cover | Hero field → optional scrim/wash → purposeful opening/contour → native title, optionally paired with a prepared decorative-lettering image | Stop when copy is safe and title/field read together |
 | Divider | Image band or quiet field → restrained wash → recurring geometry → number/title | Reuse deck language; add no effect family |
 | Text-led explanation | Quiet field → recurring material/contour → native hierarchy → optional local emphasis | Emphasis clarifies the argument, never decorates body copy |
 | Process / system | Context field → native relation lines → nodes/labels → optional state/direction focus | Every connector stays semantic; atmosphere must not obscure flow |
