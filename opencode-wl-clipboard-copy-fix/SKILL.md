@@ -62,3 +62,34 @@ Expect the pasted text to be the text you copied from opencode, and a background
 
 - `wl-paste` is read-only viewing; `wl-copy` is write; both come from the `wl-clipboard` package.
 - `xclip` is optional and only useful for diagnosing X11-side state; it is not required by opencode.
+
+## Middle-click paste does not work
+
+After the fix, opencode copies work with Ctrl+V but **middle-click paste is still empty**. Root cause: opencode only writes the CLIPBOARD selection, while middle-click paste reads the PRIMARY selection. Regular GNOME/GTK apps write both, which is why middle-click works everywhere else.
+
+Fix: install a `wl-copy` wrapper in `~/.local/bin` (ahead of `/usr/bin` in PATH) that writes both selections:
+
+~~~bash
+cat > ~/.local/bin/wl-copy <<'EOF'
+#!/bin/bash
+# wl-copy wrapper: write both CLIPBOARD and PRIMARY
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+cat > "$tmp"
+/usr/bin/wl-copy < "$tmp" || exit 1
+/usr/bin/wl-copy --primary < "$tmp" || exit 1
+EOF
+chmod +x ~/.local/bin/wl-copy
+~~~
+
+Verify both selections:
+
+~~~bash
+echo "TEST" | /home/vv/.local/bin/wl-copy
+wl-paste | head -c 50
+wl-paste --primary | head -c 50
+~~~
+
+Note that `wl-copy` holds the clipboard by staying alive, so a terminal command using the wrapper may not return until the clipboard changes; this is normal Wayland behavior, not a hang.
+
+If opencode was started before the wrapper was created, restart it so it picks up the new PATH resolution.

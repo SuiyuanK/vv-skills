@@ -91,6 +91,7 @@
 
 - 根因：Wayland 下剪贴板内容由持有者进程实时提供，opencode 通过调用 `wl-copy`（来自 `wl-clipboard` 包）写入剪贴板；系统缺少该工具时复制静默失败，但 TUI 仍显示成功提示。
 - 修复：安装 `wl-clipboard` 后**重启 opencode**（剪贴板支持仅在启动时初始化）；`xclip` 仅作 X11 侧诊断可选，opencode 不依赖它。
+- 中键粘贴补充：opencode 只写 CLIPBOARD 不写 PRIMARY，中键粘贴需在 `~/.local/bin` 安装 `wl-copy` 双写包装脚本（见 skill 内 `Middle-click paste does not work` 一节）。
 - 验证：`wl-paste` 应输出刚复制的文本，`ps aux | grep wl-copy` 应有持有剪贴板的进程（Wayland 正常机制）。
 - 依赖：archlinux/cachyos 的 `pacman`；仅安装一个小型包，无源码改动。
 
