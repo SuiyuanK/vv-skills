@@ -93,3 +93,12 @@ wl-paste --primary | head -c 50
 Note that `wl-copy` holds the clipboard by staying alive, so a terminal command using the wrapper may not return until the clipboard changes; this is normal Wayland behavior, not a hang.
 
 If opencode was started before the wrapper was created, restart it so it picks up the new PATH resolution.
+
+## Middle-click paste inside opencode itself
+
+After the wrapper fix, copying from opencode middle-click-pastes fine into other apps, but **middle-click inside the opencode window still does nothing**. Root cause: the opencode TUI captures mouse events (mouse mode), so middle-click never reaches the terminal's native paste - this is not a clipboard problem.
+
+Workarounds:
+
+1. Hold **Shift** while middle-clicking - Shift bypasses the TUI mouse capture and the terminal performs the native PRIMARY paste.
+2. Permanently, disable opencode's mouse capture by setting the environment variable `OPENCODE_DISABLE_MOUSE=1` (e.g. in the shell profile). Side effect: mouse scroll/click interactions in the TUI stop working; keyboard use is unaffected.
