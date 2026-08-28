@@ -85,6 +85,15 @@
 - 仅在目标文件不存在或内容已知时创建、替换用户级 wrapper，并在写入前展示内容、备份与回滚方案。
 - wrapper 显式保留 Nemo 传入的当前目录并禁用 Ghostty GTK single-instance；不修改系统 desktop 文件，也不转发不兼容的 `exec-arg`。
 
+### `opencode-wl-clipboard-copy-fix`
+
+诊断并修复 opencode TUI 在 Wayland（CachyOS/Arch，Ptyxis 等 GTK/Qt 终端）下复制失效的问题：界面提示"复制成功"，但系统剪贴板始终没有内容。
+
+- 根因：Wayland 下剪贴板内容由持有者进程实时提供，opencode 通过调用 `wl-copy`（来自 `wl-clipboard` 包）写入剪贴板；系统缺少该工具时复制静默失败，但 TUI 仍显示成功提示。
+- 修复：安装 `wl-clipboard` 后**重启 opencode**（剪贴板支持仅在启动时初始化）；`xclip` 仅作 X11 侧诊断可选，opencode 不依赖它。
+- 验证：`wl-paste` 应输出刚复制的文本，`ps aux | grep wl-copy` 应有持有剪贴板的进程（Wayland 正常机制）。
+- 依赖：archlinux/cachyos 的 `pacman`；仅安装一个小型包，无源码改动。
+
 ### `linux-ext4-superblock-recovery`
 
 安全诊断和恢复无法启动或无法识别的 EXT4 文件系统，覆盖 dracut UUID 超时、超级块校验失败、备用超级块验证，以及 DiskGenius 修改卷标后未同步更新 `metadata_csum` 的实证案例。
