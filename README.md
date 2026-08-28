@@ -96,6 +96,15 @@
 - 验证：`wl-paste` 应输出刚复制的文本，`ps aux | grep wl-copy` 应有持有剪贴板的进程（Wayland 正常机制）。
 - 依赖：archlinux/cachyos 的 `pacman`；仅安装一个小型包，无源码改动。
 
+### `gnome-default-terminal-ghostty`
+
+配置并诊断 CachyOS/Arch + GNOME 桌面下的默认终端：切换默认终端到 Ghostty、绑定 Ctrl+Alt+T 快捷键、安全卸载其他终端（Ptyxis/Alacritty）。
+
+- 根因：CachyOS + GNOME 环境下终端由 gsettings 多处独立控制（默认终端 exec、media-keys 自定义键绑定），且 GNOME 的 `panel-terminal` 键在安装 Ptyxis 的环境中不存在，需用自定义键绑定替代。
+- 流程：检查现状 → 设默认终端 exec 为 ghostty → 加 `Ctrl+Alt+T` 自定义键绑定 → 验证 → 确认新终端可用后 `pacman -Rns` 卸载旧终端。
+- 安全边界：仅修改 gsettings；卸载前先按 `Ctrl+Alt+T` 确认 Ghostty 可用；sudo 命令由用户在终端执行。
+- 已在 CachyOS + GNOME 会话 + Ptyxis 50.1 / Ghostty 1.3.1 / Alacritty 组合上实际验证。
+
 ### `linux-ext4-superblock-recovery`
 
 安全诊断和恢复无法启动或无法识别的 EXT4 文件系统，覆盖 dracut UUID 超时、超级块校验失败、备用超级块验证，以及 DiskGenius 修改卷标后未同步更新 `metadata_csum` 的实证案例。
