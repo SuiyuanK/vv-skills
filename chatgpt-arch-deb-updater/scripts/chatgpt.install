@@ -1,0 +1,29 @@
+_chatgpt_load_apparmor() {
+  local profile=/etc/apparmor.d/chatgpt
+
+  [[ -f $profile ]] || return 0
+  command -v aa-enabled >/dev/null 2>&1 || return 0
+  command -v apparmor_parser >/dev/null 2>&1 || return 0
+  aa-enabled --quiet || return 0
+
+  apparmor_parser -r -W -T "$profile" ||
+    echo 'ChatGPT: warning: failed to load the AppArmor profile' >&2
+}
+
+post_install() {
+  _chatgpt_load_apparmor
+}
+
+post_upgrade() {
+  post_install
+}
+
+pre_remove() {
+  local profile=/etc/apparmor.d/chatgpt
+
+  if command -v aa-enabled >/dev/null 2>&1 &&
+     command -v apparmor_parser >/dev/null 2>&1 &&
+     aa-enabled --quiet && [[ -f $profile ]]; then
+    apparmor_parser -R "$profile" || true
+  fi
+}

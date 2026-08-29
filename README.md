@@ -4,6 +4,16 @@
 
 ## 个人 Skills
 
+### `chatgpt-arch-deb-updater`
+
+在 Arch Linux/CachyOS x86_64 上把 OpenAI 官方最新 ChatGPT/Codex Desktop `amd64` deb 构建为规范的本地 Arch 软件包，适用于 AUR/发行版包落后或 debtap 产生错误依赖与元数据的情况。
+
+- `scripts/auto-deb-install.sh`：下载官方 latest deb 或接受本地 deb，校验包名、架构、版本和 SHA-256，再通过 fakeroot 下的 `makepkg` 构建，并验证 `.PKGINFO`、`.MTREE` 及包内全部条目的数值 UID/GID 均为 0。
+- `scripts/PKGBUILD.chatgpt`：显式维护 Debian 到 Arch 的运行时依赖映射，避免 debtap 引入 KDE、交叉工具链、`lib32-*` 等错误依赖；保留 AppArmor、Git 与音频服务为可选依赖。
+- `scripts/chatgpt.install`：仅在系统已启用 AppArmor 时加载或卸载官方 Electron user-namespace 兼容 profile，不配置 Debian APT 软件源。
+- 以普通用户构建，全部临时内容和产物写入调用工作区的 `./tmp/`；构建本身不安装系统包，得到授权后使用 `yay -U` 安装，并在宿主真实环境运行 `pacman -Qkk chatgpt` 验证零变化文件，避免 UID/GID 映射沙箱把 `root:root` 误报为 `nobody:nobody`。
+- 依赖 bash、curl、libarchive/bsdtar、pacman/makepkg、gzip、gawk、grep、findutils 和常用 GNU 工具；仅支持官方 `chatgpt` `amd64` deb。
+
 ### update-verible
 
 从官方 chipsalliance/verible GitHub Releases 读取全部版本，交互选择 Release，核对实际 Linux x86_64 资产名称，并将 Verible 安装到 ~/.local/bin。

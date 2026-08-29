@@ -1,0 +1,76 @@
+# Maintainer: local package
+
+pkgname=chatgpt
+pkgver="${CHATGPT_PKGVER:?CHATGPT_PKGVER is required}"
+pkgrel=1
+pkgdesc='ChatGPT by OpenAI'
+arch=('x86_64')
+url='https://developers.openai.com/codex/app'
+license=('LicenseRef-OpenAI')
+
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'cairo'
+  'dbus'
+  'expat'
+  'gcc-libs'
+  'gdk-pixbuf2'
+  'glib2'
+  'glibc'
+  'gtk3'
+  'libcups'
+  'libdrm'
+  'libnotify'
+  'libusb'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+  'vulkan-icd-loader'
+  'xdg-utils'
+  'xz'
+)
+optdepends=(
+  'apparmor: load the Electron user-namespace compatibility profile on AppArmor-enabled systems'
+  'git: Git integration'
+  'pipewire-pulse: PulseAudio-compatible audio service'
+  'pulseaudio: alternative PulseAudio service; do not install with pipewire-pulse'
+)
+backup=('etc/apparmor.d/chatgpt')
+install=chatgpt.install
+options=('!strip' '!debug')
+
+source=('chatgpt.deb')
+sha256sums=("${CHATGPT_DEB_SHA256:?CHATGPT_DEB_SHA256 is required}")
+
+package() {
+  local container="$srcdir/deb-container"
+  local data_members
+
+  install -d "$container" "$pkgdir"
+  bsdtar -xf "$srcdir/chatgpt.deb" -C "$container"
+
+  data_members=("$container"/data.tar.*)
+  if (( ${#data_members[@]} != 1 )) || [[ ! -f ${data_members[0]} ]]; then
+    error 'Debian package must contain exactly one data.tar archive'
+    return 1
+  fi
+
+  bsdtar -xf "${data_members[0]}" -C "$pkgdir"
+  rm -rf "$pkgdir/usr/share/lintian"
+
+  if [[ -f $pkgdir/usr/share/doc/chatgpt/copyright ]]; then
+    install -Dm644 "$pkgdir/usr/share/doc/chatgpt/copyright" \
+      "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  fi
+}

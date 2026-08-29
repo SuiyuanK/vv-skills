@@ -1,0 +1,4 @@
+interface:
+  display_name: "ChatGPT Arch Deb Updater"
+  short_description: "Build official ChatGPT deb packages for Arch"
+  default_prompt: "Use $chatgpt-arch-deb-updater to build the latest official ChatGPT Linux deb as a verified Arch package."
