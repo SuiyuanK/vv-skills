@@ -369,10 +369,19 @@ ln -sf $V/platform/LINUXAMD64/lib/Qt5/lib/depends/ssl/libcrypto.so.1.1 $C/libcry
 ln -sf $V/platform/LINUXAMD64/lib/zebu/libRtxStable.so                 $C/libRtxStable.so
 ln -sf $V/etc/lib/libstdc++/linux64/libpng12.so.0                      $C/libpng12.so.0
 ```
-使用前：
-```zsh
-export LD_LIBRARY_PATH=/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:$LD_LIBRARY_PATH
+**推荐做法：wrapper 脚本 `~/.local/bin/verdi`**（只在启动 verdi 时注入，不污染全局 Qt5）：
+```bash
+#!/usr/bin/env bash
+set -u
+export VERDI_HOME="${VERDI_HOME:-/opt/EDA/Synopsys/verdi/X-2025.06}"
+export LD_LIBRARY_PATH="/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:$LD_LIBRARY_PATH"
+exec "$VERDI_HOME/bin/verdi" "$@"
 ```
+装好后 `.zshrc` 需要末尾「最终 PATH 断言」`export PATH="$HOME/.local/bin:$PATH"` 排在
+`$VERDI_HOME/bin` 的 prepend 之后（否则命中真身）——与 2.2.5 的 vcs 同理。
+
+> ⚠️ 不要用全局 `export LD_LIBRARY_PATH=...Qt5/lib...`：Verdi 自带 Qt5 5.15.11 会把系统
+> Qt5 5.15.19 遮蔽，影响同终端启动的其他 Qt 应用。
 > 注意不要加 `etc/lib/libstdc++/linux64` 整目录（老 libstdc++ 会覆盖系统新版本，导致
 > 系统 tbb 报 `version CXXABI_1.3.15 not found`）。
 
