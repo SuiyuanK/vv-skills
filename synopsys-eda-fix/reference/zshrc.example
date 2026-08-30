@@ -1,0 +1,130 @@
+
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+export ZSH="/usr/share/oh-my-zsh"
+
+# 自定义插件/主题放在用户目录（系统目录只读，根用户无法写入），
+# 各插件/主题通过 ~/.zsh-custom 下的符号链接接入（见 ~/.zshrc 下方「符号链接」注释）。
+export ZSH_CUSTOM="$HOME/.zsh-custom"
+
+# OMZ 缓存（zcompdump/completion 等）系统目录无法写入，改用用户缓存目录。
+export ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh"
+
+
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+
+
+plugins=(
+     # other plugins...
+     git
+     zsh-autosuggestions
+     zsh-syntax-highlighting
+)
+
+[[ -d "$HOME/bin" ]] && path=("$HOME/bin" $path)
+[[ -d "$HOME/.local/bin" ]] && path=("$HOME/.local/bin" $path)
+typeset -U path PATH
+
+source $ZSH/oh-my-zsh.sh
+
+
+
+# ---- 历史记录：共享、去重、带时间戳（重启终端也保留） ----
+HISTSIZE=10000
+SAVEHIST=10000
+HISTFILE=~/.zsh_history
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_SPACE           # 行首空格开头的命令不入历史
+setopt EXTENDED_HISTORY           # 记录时间戳
+setopt HIST_REDUCE_BLANKS
+
+# ---- 小体验项 ----
+ENABLE_CORRECTION="true"          # 命令拼写纠错
+COMPLETION_WAITING_DOTS="true"       # tab 补全等待转圈
+
+# ---- Oh My Zsh 静默自动更新 ----
+zstyle ':omz:update' mode auto
+
+# ---- zoxide：智能目录跳转（替代 z 插件，按频率排序 + fzf） ----
+eval "$(zoxide init zsh)"
+
+# ============================================================================
+# EDA 工具链环境
+# ============================================================================
+
+# --- AMD/Xilinx Vivado & Vitis & Model Composer 2025.2.1 ---
+source /opt/EDA/Xilinx/2025.2.1/PDM/.settings64-Power_Design_Manager__PDM_.sh
+source /opt/EDA/Xilinx/2025.2.1/Vitis/.settings64-Vitis.sh
+source /opt/EDA/Xilinx/2025.2.1/Vivado/.settings64-Vivado.sh
+source /opt/EDA/Xilinx/2025.2.1/Model_Composer/.settings64-Model_Composer.sh
+source /opt/EDA/Xilinx/DocNav/.settings64-DocNav.sh
+
+# --- Synopsys ---
+
+export SNPSLMD_LICENSE_FILE=27080@vv-cachyos
+export LM_LICENSE_FILE=/opt/EDA/Synopsys/synopsys.lic
+
+# scl
+export SCL_HOME=/opt/EDA/Synopsys/scl/2025.03
+export PATH=$PATH:$SCL_HOME/linux64/bin
+
+# spyglass
+# export SPYGLASS_HOME=/opt/EDA/Synopsys/spyglass/X-2025.06/SPYGLASS_HOME
+# export PATH=$SPYGLASS_HOME/bin:$PATH
+
+# spyglass with optional VCS/UFE integration
+export SPYGLASS_HOME=/opt/EDA/Synopsys/ufe_optional_spyglass-vcs/X-2025.06/SPYGLASS_HOME
+export PATH="$SPYGLASS_HOME/bin:$PATH"
+
+export SPYGLASS_DC_PATH=/opt/EDA/Synopsys/syn/X-2025.06-SP4
+
+# lc
+export SYNOPSYS_LC_ROOT=/opt/EDA/Synopsys/lc/X-2025.06
+export PATH=$SYNOPSYS_LC_ROOT/bin:$PATH
+# LC 退出时 segfault(glibc 2.39)，用包装脚本屏蔽报错并返回 0
+alias lc_shell='~/.local/bin/lc_shell'
+
+# syn
+export SYN_HOME=/opt/EDA/Synopsys/syn/X-2025.06-SP4
+export PATH=$SYN_HOME/bin:$PATH
+
+# VCS
+export VCS_ARCH_OVERRIDE=linux
+export VCS_HOME=/opt/EDA/Synopsys/vcs/X-2025.06
+export PATH=$VCS_HOME/bin:$PATH
+# export LD_LIBRARY_PATH=$VCS_HOME/amd64/lib:$LD_LIBRARY_PATH
+# Ubuntu/Mint 链接器默认 --as-needed 会导致 VCS 链接阶段 undefined reference，需禁用
+# 包装脚本：给 vcs 传 -LDFLAGS "-Wl,--no-as-needed"
+# 不使用别名依赖，仅保留显式路径即可（PATH 已由文件末尾统一断言把 ~/.local/bin 提到最前，
+# 见 .zshrc 末尾「最终 PATH 断言」，即使 make 等不做别名展开的程序也会命中包装脚本）。
+alias vcs='~/.local/bin/vcs'
+
+# Verdi
+
+export VERDI_HOME=/opt/EDA/Synopsys/verdi/X-2025.06
+export PATH=$VERDI_HOME/bin:$PATH
+# export LD_LIBRARY_PATH=/opt/EDA/Synopsys/verdi/X-2025.06/share/PLI/VCS/linux64:$LD_LIBRARY_PATH
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# ============================================================================
+# 最终 PATH 断言（放在文件末尾，保证本文件中任何 PATH-prepend 都不会往前插入）
+# EDA 工具链的 Synopsys bin 目录会把自己 prepend 到 PATH 前面，覆盖用户工具目录。
+# make 等不做别名展开的程序按 PATH 顺序查找，若不前置，会命中真身而绕过
+# ~/.local/bin 里的包装脚本（vcs 的 --as-needed 修复、LC 的 segfault 修复）。
+# 这里把 ~/.local/bin 提到最前，且保留本文件其余 PATH 顺序（Synopsys 目录已在前面堆好）。
+# ----------------------------------------------------------------------------
+# 注意：zsh 的 typeset -U path 在 91 行已开启去重，因此这里的 repeat 不会造成重复。
+# 若你在此文件之后（如 autoload 的脚本）还要 prepend，请继续遵守「local/bin 第一个」约定，
+# 或改用一行表达式统一维护。
+# ----------------------------------------------------------------------------
+export PATH="$HOME/.local/bin:$PATH"
+# （可选）若某些第三方脚本要求 ~/.local/share 也在前列，同理补在此处。
+
+# opencode
+export PATH="$HOME/.opencode/bin:$PATH"

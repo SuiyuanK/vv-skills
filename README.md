@@ -64,7 +64,7 @@
 
 ### `synopsys-eda-fix`
 
-诊断并修复 Synopsys X-2025.06 EDA 工具在 Linux Mint 22.3（Ubuntu 24.04 基础、glibc 2.39）与 Linux kernel 7.0.0 上的兼容问题，覆盖 VCS、Verdi、Design Compiler、Library Compiler、SpyGlass 和 SCL 2025.03。
+诊断并修复 Synopsys X-2025.06 EDA 工具在 Linux Mint 22.3（Ubuntu 24.04 基础、glibc 2.39）与 Linux kernel 7.0.0 上的兼容问题，覆盖 VCS、Verdi、Design Compiler、Library Compiler、SpyGlass 和 SCL 2025.03。附带 `reference/zshrc.example`：实测机器的完整 `~/.zshrc` 工具链配置参考（含最终 PATH 断言与 wrapper 方案）。
 
 主要修复范围：
 

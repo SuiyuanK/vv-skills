@@ -431,3 +431,6 @@ lmutil lmstat -c 27080@vv-mint   # license server UP / snpslmd UP
 
 - `scripts/fix_spyglass_linux7.sh` — SpyGlass 内核判断修复（备份+改+验证）
 - `scripts/lc_shell_wrapper.sh` — LC 退出崩溃包装脚本
+- `reference/zshrc.example` — 实测机器的完整 `~/.zshrc` EDA 工具链配置参考
+  （Synopsys 六套工具 env/alias、最终 PATH 断言与 wrapper 的关系、Xilinx 段可忽略），
+  主机为 CachyOS，主机名 `vv-cachyos`，license 端口 27080
