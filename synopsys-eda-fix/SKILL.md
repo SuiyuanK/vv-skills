@@ -23,6 +23,8 @@ description: >-
 > 其它发行版/内核/版本不要模糊套用。核心难点是：这些工具是在较老的 RHEL 上编译的，
 > 跑在「新 glibc 2.39 + 内核 7」上会有 wrapper Bashism、内核版本识别不全、内存分配器
 > 不兼容三类问题。
+> 注：License（第 7 节）与 Verdi 老 ABI 依赖（第 8 节）在 **CachyOS（Arch，`/bin/sh -> bash`）**
+> 上亦按同样流程验证通过（内核同为 7.x）。
 
 ## 修复总览（速查）
 
@@ -35,7 +37,7 @@ description: >-
 | Verdi | `verdi_supp` post_install 报 home 不对 | 补跑 post_install 加 `-verdi_home` |
 | LC | 退出时 segfault（工作已完成） | 包装脚本屏蔽报错 + 返回 0 |
 | SpyGlass | `Unknown platform: Linux-7.0.0-…` | 3 个脚本内核判断加 `Linux-7*` |
-| 全部 | license 连不上 / 服务起不来 | lmgrd `/usr/tmp` + CRLF + systemd |
+| 全部 | license 连不上 / 服务起不来 | lmgrd 必须 `-c <licfile>`（不带会死循环）+ `/usr/tmp` + CRLF + `Type=simple`+`-z` |
 
 ---
 
@@ -249,7 +251,7 @@ Perl 5 installation could not be validated」。
 
 ## 7. License（lmgrd / snpslmd）
 
-三个常见根因，逐层排查：
+常见根因，逐层排查（先下面 1-3，再 7.4）：
 
 1. **`/usr/tmp` 缺失**（lmgrd 硬编码依赖 `/usr/tmp/.flexlm`）：
    ```bash
@@ -261,16 +263,121 @@ Perl 5 installation could not be validated」。
    ```
 3. **端口一致**：`SNPSLMD_LICENSE_FILE` 里的端口必须等于 license `SERVER` 行端口。
 
-环境变量：
+环境变量（客户端配置，正确没问题）：
 ```zsh
 export SNPSLMD_LICENSE_FILE=27080@vv-mint
 export LM_LICENSE_FILE=/opt/EDA/Synopsys/synopsys.lic
 export SCL_HOME=/opt/EDA/Synopsys/scl/2025.03
 ```
 
-**systemd 开机自启**：脚本 `synopsys_script.sh` 用 `lmgrd -c … -l …`（无 `-z`），配
-`Type=forking`；或按原 license skill 用 `-z` + `Type=simple`。两者都行，关键是
-`/usr/tmp` 必须已建、license 无 CRLF。
+### 7.4 lmgrd 启动必须带 `-c <licfile>`（最隐蔽的坑，已踩）
+
+**症状**：scl 的 license server 启动后 snpslmd 每 ~10 秒退出一次，日志出现：
+```
+(snpslmd) Error getting server information.
+(snpslmd) Error opening the license file, 27080@vv-cachyos
+(lmgrd) snpslmd exited with status 1 signal = 17
+(lmgrd) manager (lmgrd) will attempt to re-start the vendor daemon.
+(lmgrd) ... restarts ~10 次后放弃: Please correct problem and restart daemons
+```
+`lmutil lmstat` 显示 `license server UP (MASTER)` 但 `snpslmd: Cannot connect …`,
+或 `-7,10015 No socket connection…`。
+
+**根因**：若只写 `lmgrd -l <log>` 而不加 `-c`，lmgrd 靠 `LM_LICENSE_FILE` 找到 license 文件，
+但 vendor daemon `snpslmd` 启动时继承 shell 环境里的
+`SNPSLMD_LICENSE_FILE=27080@vv-cachyos`（server 引用形式），把该**字符串当 license 文件路径**去
+打开 → `Error opening the license file, 27080@vv-cachyos` → 崩溃循环。
+
+**修复**：启动必须带 `-c`（lmgrd 会把真实路径传给 snpslmd，进程参数会出现
+`-c :/opt/…/synopsys.lic:`），手动启动时再加 `env -u` 双保险：
+```bash
+env -u SNPSLMD_LICENSE_FILE -u LM_LICENSE_FILE \
+  /opt/EDA/Synopsys/scl/2025.03/linux64/bin/lmgrd \
+  -c /opt/EDA/Synopsys/synopsys.lic \
+  -l /opt/EDA/Synopsys/synopsys_licnese.log
+```
+> 注意：`SNPSLMD_LICENSE_FILE=27080@host`、`LM_LICENSE_FILE=<file>` 作为**客户端**连接配置是对的，
+> 错在它们出现在**启动 lmgrd 的进程**环境里（systemd 环境干净则天然无此问题）。
+
+### 7.5 systemd 开机自启（Type=simple + -z，实测）
+
+本机 lmgrd 是**前台运行、不自行 daemonize**，`Type=forking` 会在 `TimeoutSec` 后被 systemd
+把 lmgrd 一起杀光。因此必须 `Type=simple`，脚本里 lmgrd 加 `-z`：
+
+`/opt/EDA/Synopsys/synopsys_script.sh`：
+```bash
+#!/bin/bash
+/opt/EDA/Synopsys/scl/2025.03/linux64/bin/lmgrd -z -c /opt/EDA/Synopsys/synopsys.lic -l /opt/EDA/Synopsys/synopsys_licnese.log
+```
+
+`/etc/systemd/system/synopsyslm.service`：
+```ini
+[Unit]
+Description=Synopsys Licensing Service
+After=network.target
+
+[Service]
+Type=simple
+User=vv
+ExecStart=/opt/EDA/Synopsys/synopsys_script.sh
+Restart=on-failure
+RestartSec=5
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable synopsyslm.service
+sudo systemctl start synopsyslm.service
+```
+
+### 7.6 hostid：双网卡机器取哪个 MAC
+
+`lmutil lmhostid` 可能返回双 hostid（如 `""7413eaff5776 644ed7097462""`，wlan0+eno1）。
+license `SERVER` 行填写任意一个匹配的 MAC 即可（snpslmd SLOG 会打印
+`HostID node-locked in license file` 与 `HostID of the License Server` 做对照，命中之一即通过）。
+MAC 获取：`ip link` 或 `cat /sys/class/net/*/address`。
+
+### 7.7 平台差异备忘
+
+skill 主要验证环境是 Mint 22.3（`/bin/sh -> dash`），而这一节的实际复现机器是
+**CachyOS（Arch）**：`/bin/sh -> bash`，License 部分行为一致（无需 1.1 shebang 修复，
+`#!/bin/sh -h` 在 bash 下合法）；差异仅在于 CachyOS 缺老 ABI 系统库（见第 8 节 Verdi compat）。
+
+---
+
+## 8. Verdi（CachyOS 缺老 ABI 系统库）—— compat 目录方案
+
+**症状**：`verdi -id` / Verdi 启动报
+`error while loading shared libraries: libxml2.so.2: cannot open shared object file`、
+`libselinux.so.1`、`libnuma.so.1`、`libpng12.so.0`、`libssl.so.1.1` 等。
+
+**根因**：CachyOS/Arch 的库 ABI 比 RHEL 新：libxml2 是 `.so.16`（需 `.so.2`）、OpenSSL 3
+（需 1.1）、系统无 libpng12、旧 Qt5 子模块（Qml/Charts/WebEngine 等由 Verdi 自带，不在话下）。
+其中 `libnuma.so.1` 与 `libselinux.so.1` 用包安装即可：
+```bash
+sudo pacman -S numactl libselinux
+```
+其余老 ABI 库在 Synopsys 树内自带，建本地 compat 目录放软链（避免整目录塞 Verdi 老 libstdc++
+与系统 tbb 冲突 CXXABI_1.3.15）：
+```bash
+V=/opt/EDA/Synopsys/verdi/X-2025.06; C=/opt/EDA/Synopsys/.compat/verdi; mkdir -p $C
+ln -sf $V/platform/LINUXAMD64/lib/Qt5/lib/depends/xslt/libxml2.so.2  $C/libxml2.so.2
+ln -sf $V/platform/LINUXAMD64/lib/Qt5/lib/depends/ssl/libssl.so.1.1    $C/libssl.so.1.1
+ln -sf $V/platform/LINUXAMD64/lib/Qt5/lib/depends/ssl/libcrypto.so.1.1 $C/libcrypto.so.1.1
+ln -sf $V/platform/LINUXAMD64/lib/zebu/libRtxStable.so                 $C/libRtxStable.so
+ln -sf $V/etc/lib/libstdc++/linux64/libpng12.so.0                      $C/libpng12.so.0
+```
+使用前：
+```zsh
+export LD_LIBRARY_PATH=/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:$LD_LIBRARY_PATH
+```
+> 注意不要加 `etc/lib/libstdc++/linux64` 整目录（老 libstdc++ 会覆盖系统新版本，导致
+> 系统 tbb 报 `version CXXABI_1.3.15 not found`）。
+
+验证：`ldd $VERDI_HOME/platform/LINUXAMD64/bin/Novas` 无 `not found`；
+`verdi -id` 能打印 `Product version = Verdi_X-2025.06`（注意它可能挂起输出版本后 Ctrl-C）。
 
 ---
 
