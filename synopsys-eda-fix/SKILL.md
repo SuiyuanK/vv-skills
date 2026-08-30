@@ -167,6 +167,23 @@ alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
 （alias `=vcs 'vcs ...'` 旧写法仍然有用，但它只解决交互式。若只要 wrapper 全场景生效，
 改用它做：`alias vcs='~/.local/bin/vcs'` + PATH 前置 wrapper。）
 
+### 2.4 CachyOS/Arch 增补（已踩）
+
+- **`dc`（bc 包）缺失**：vcs 脚本自定义 `DC` 环境变量用于 `RecordTime`（`1h2m3.4s`→秒），缺了报
+  `vcs: line 7088: dc: 未找到命令`。**修复**：`sudo pacman -S bc`（bc+dc 同包）。
+- **`/usr/bin/time` 缺失**（time 包）：`vcs: line 14529: /usr/bin/time: No such file or directory`。
+  **修复**：`sudo pacman -S time`。
+- **gcc 16 把隐式函数声明升级为 error**：`rmapats.c:20:9: error: implicit declaration of function
+  'vcs_simpSetEBlkEvtID'`。VCS 内部 Makefile 的 `CC_CG=gcc` 按 PATH 解析（不用 `VCS_CC`，所以
+  `-CFLAGS`/`-cc`/`VCS_CC` 都绕不过 rmapats.o 这条规则）。**修复**：在 PATH 最前（`~/.local/bin/gcc`）
+  放 gcc wrapper（exec 真身+gcc 追加参数），注意它是全局 shadow：
+  ```bash
+  #!/usr/bin/env bash
+  exec /usr/bin/gcc -Wno-implicit-function-declaration "$@"
+  ```
+  端到端验证：`vcs -full64 -sverilog -o simv t.v && ./simv` 输出 `VCS OK`；
+  运行时有 ASLR 提示（`-no_save` 或无副作用，正常）。
+
 ---
 
 ## 3. Verdi
@@ -220,6 +237,23 @@ libstdc++ 无用（只是 139→1），无干净公开解法。
 装到 `~/.local/bin/lc_shell`，并在 `.zshrc` 加 `alias lc_shell='~/.local/bin/lc_shell'`
 （因为原 PATH 里 LC 的 bin 排在 `~/.local/bin` 前，不加别名会命中真身）。
 
+### 5.1 CachyOS/Arch 增补：LC 需要旧版 krb5（已踩）
+
+**症状**：`lc_shell` 启动报
+```
+lc2_shell_exec: symbol lookup error: /lib64/libkrb5.so.3: undefined symbol:
+krb5int_c_deprecated_enctype, version k5crypto_3_MIT
+```
+**根因**：`lc2_shell_exec` 的 **RPATH 硬编码（旧 RPATH 优先级高于 LD_LIBRARY_PATH）**
+且包含 `/lib64`，Arch 系统 krb5 3.x 删除了 `krb5int_c_deprecated_enctype` 老符号；
+`LD_LIBRARY_PATH` 指向老库无效（RPATH 优先），必须用 **LD_PRELOAD** 加载老 krb5
+（Verdi 自带 `/…/platform/LINUXAMD64/lib/Qt5/lib/depends/krb5`，含 libkrb5.so.3 1.x 全套）。
+已在 `~/.local/bin/lc_shell` wrapper 中固化：
+```bash
+KB="${VERDI_HOME:-/opt/EDA/Synopsys/verdi/X-2025.06}/platform/LINUXAMD64/lib/Qt5/lib/depends/krb5"
+export LD_PRELOAD="$KB/libkrb5.so.3:$KB/libk5crypto.so.3:$KB/libgssapi_krb5.so.2:$KB/libkrb5support.so.0${LD_PRELOAD:+:$LD_PRELOAD}"
+```
+
 ---
 
 ## 6. SpyGlass —— Unknown platform Linux-7
@@ -246,6 +280,27 @@ Perl 5 installation could not be validated」。
 
 > bash 脚本不受影响：第 1.1 步已把 vendor 脚本统一为 `#!/bin/bash -h`，
 > `/bin/sh` 保持 dash 也不会再踩 `Illegal option -h`。
+
+### 6.1 CachyOS/Arch 增补：`bin/spyglass` 主流程启动段 SIGSEGV（已踩，未根治）
+
+**症状**（两套安装一致）：`spyglass -version` 先打印 `SpyGlass Predictive Analyzer`,
+随后 `standard-environment.sh: line 1329: Segmentation fault (core dumped) …/obj/check.Linux4`
++ `SpyGlass Exit Code 139`。
+**coredump 定位**（systemd-coredump + gdb）：
+```
+malloc_usable_size () from /usr/lib64/libc.so.6
+  ← _nss_resolve_gethostbyname3_r ← gethostbyname ← libNPI.so anrep_init（构造器）
+```
+即老 libNPI.so 构造器 `anrep_init` 调 `gethostbyname("")`，与 glibc 2.44 的
+`nss_resolve`（nsswitch `hosts: … resolve …`）在 `malloc_usable_size` 处崩溃。
+**排除法已核实**：与 jemalloc/ptmalloc/tcmalloc SNPSMEM 等 LD_PRELOAD **无关**
+（core 环境确认 preload=libreplacemalloc，但清空后仍崩；libsgjemalloc 禁用后仍崩；
+`obj/check.Linux4` 直跑——不经 bin/spyglass——4/4 正常）。
+**现状**：`obj/check.Linux4` 直跑 `/…/SPYGLASS_HOME/obj/check.Linux4 -version` 正常
+（Linux-7 修复本身有效）；`bin/spyglass` 主流程启动段崩溃目前无干净解——
+`$SG/lib/libNPI.so` 行为老代码，受 glibc 2.44+nss_resolve 影响。可后续尝试
+（未验证思路）：`/etc/nsswitch.conf` 将 `resolve` 移出 hosts 优先项；
+或改用 `-gui`/真实 lint flow 看是否同样命中 NPI。
 
 ---
 
@@ -374,7 +429,7 @@ ln -sf $V/etc/lib/libstdc++/linux64/libpng12.so.0                      $C/libpng
 #!/usr/bin/env bash
 set -u
 export VERDI_HOME="${VERDI_HOME:-/opt/EDA/Synopsys/verdi/X-2025.06}"
-export LD_LIBRARY_PATH="/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:${LD_LIBRARY_PATH:-}"
 exec "$VERDI_HOME/bin/verdi" "$@"
 ```
 装好后 `.zshrc` 需要末尾「最终 PATH 断言」`export PATH="$HOME/.local/bin:$PATH"` 排在
@@ -382,6 +437,9 @@ exec "$VERDI_HOME/bin/verdi" "$@"
 
 > ⚠️ 不要用全局 `export LD_LIBRARY_PATH=...Qt5/lib...`：Verdi 自带 Qt5 5.15.11 会把系统
 > Qt5 5.15.19 遮蔽，影响同终端启动的其他 Qt 应用。
+> 注意：wrapper 若有 `set -u`，尾部 `$LD_LIBRARY_PATH` 必须写 `${LD_LIBRARY_PATH:-}`，
+> 否则无该变量时启动直接报 `LD_LIBRARY_PATH: 未绑定的变量`（已踩）。
+> 验证记录：本机（CachyOS）VCS/DC/LC/Verdi 端到端通过；SpyGlass 见 6.1。
 > 注意不要加 `etc/lib/libstdc++/linux64` 整目录（老 libstdc++ 会覆盖系统新版本，导致
 > 系统 tbb 报 `version CXXABI_1.3.15 not found`）。
 
