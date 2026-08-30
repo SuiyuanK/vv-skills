@@ -3,25 +3,27 @@ name: synopsys-eda-fix
 description: >-
   Diagnose and fix Synopsys X-2025.06 EDA tools (VCS, Verdi, DC/syn, LC,
   SpyGlass, SCL 2025.03) on Linux Mint 22.3 (Ubuntu 24.04 base, glibc 2.39)
-  with Linux kernel 7.0.0. Covers the vendor-script shebang fix (230 scripts to
+  and CachyOS/Arch (glibc 2.44) with Linux kernel 7.x. Covers the vendor-script shebang fix (230 scripts to
   #!/bin/bash -h while /bin/sh stays dash), VCS --as-needed linker undefined-reference crash,
-  SpyGlass "Unknown platform Linux-7" detection failure, LC exit segfault
-  (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure,
+  SpyGlass "Unknown platform Linux-7" detection failure and SNPSMEM/nss_resolve
+  startup SIGSEGV, LC exit segfault (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure,
   and FlexLM lmgrd/snpslmd license setup (/usr/tmp, CRLF, systemd). Use when
   a Synopsys tool crashes, fails to launch, or can't obtain a license on this
   system.
 ---
 
-# Synopsys X-2025.06 EDA 工具在 Mint 22.3 / 内核 7 上的修复
+# Synopsys X-2025.06 EDA 工具在 Mint 22.3、CachyOS / 内核 7 上的修复
 
 ## 适用范围
 
 - x86_64，Linux Mint 22.3（Ubuntu 24.04 底，glibc 2.39），Linux 内核 **7.0.0**。
+- x86_64，CachyOS（Arch 系，glibc 2.44），Linux 内核 **7.2.x**；SpyGlass、License 与
+  Verdi/VCS 老 ABI 问题已在此环境实测。
 - Synopsys **X-2025.06**：VCS、Verdi、DC(syn)、LC、SpyGlass、SCL 2025.03。
 - 安装根：`/opt/EDA/Synopsys/`。
 
 > 其它发行版/内核/版本不要模糊套用。核心难点是：这些工具是在较老的 RHEL 上编译的，
-> 跑在「新 glibc 2.39 + 内核 7」上会有 wrapper Bashism、内核版本识别不全、内存分配器
+> 跑在「新 glibc 2.39/2.44 + 内核 7」上会有 wrapper Bashism、内核版本识别不全、内存分配器
 > 不兼容三类问题。
 > 注：License（第 7 节）与 Verdi 老 ABI 依赖（第 8 节）在 **CachyOS（Arch，`/bin/sh -> bash`）**
 > 上亦按同样流程验证通过（内核同为 7.x）。
@@ -37,6 +39,7 @@ description: >-
 | Verdi | `verdi_supp` post_install 报 home 不对 | 补跑 post_install 加 `-verdi_home` |
 | LC | 退出时 segfault（工作已完成） | 包装脚本屏蔽报错 + 返回 0 |
 | SpyGlass | `Unknown platform: Linux-7.0.0-…` | 3 个脚本内核判断加 `Linux-7*` |
+| SpyGlass | glibc 2.44 启动 `check.Linux4` SIGSEGV/139 | 用户级 `.spyglass.setup` 改用 `runtime`（jemalloc） |
 | 全部 | license 连不上 / 服务起不来 | lmgrd 必须 `-c <licfile>`（不带会死循环）+ `/usr/tmp` + CRLF + `Type=simple`+`-z` |
 
 ---
@@ -286,26 +289,105 @@ Perl 5 installation could not be validated」。
 > bash 脚本不受影响：第 1.1 步已把 vendor 脚本统一为 `#!/bin/bash -h`，
 > `/bin/sh` 保持 dash 也不会再踩 `Illegal option -h`。
 
-### 6.1 CachyOS/Arch 增补：`bin/spyglass` 主流程启动段 SIGSEGV（已踩，未根治）
+### 6.1 CachyOS/Arch：glibc 2.44 启动段 SIGSEGV（已根治）
 
 **症状**（两套安装一致）：`spyglass -version` 先打印 `SpyGlass Predictive Analyzer`,
 随后 `standard-environment.sh: line 1329: Segmentation fault (core dumped) …/obj/check.Linux4`
 + `SpyGlass Exit Code 139`。
+
 **coredump 定位**（systemd-coredump + gdb）：
 ```
 malloc_usable_size () from /usr/lib64/libc.so.6
   ← _nss_resolve_gethostbyname3_r ← gethostbyname ← libNPI.so anrep_init（构造器）
 ```
-即老 libNPI.so 构造器 `anrep_init` 调 `gethostbyname("")`，与 glibc 2.44 的
-`nss_resolve`（nsswitch `hosts: … resolve …`）在 `malloc_usable_size` 处崩溃。
-**排除法已核实**：与 jemalloc/ptmalloc/tcmalloc SNPSMEM 等 LD_PRELOAD **无关**
-（core 环境确认 preload=libreplacemalloc，但清空后仍崩；libsgjemalloc 禁用后仍崩；
-`obj/check.Linux4` 直跑——不经 bin/spyglass——4/4 正常）。
-**现状**：`obj/check.Linux4` 直跑 `/…/SPYGLASS_HOME/obj/check.Linux4 -version` 正常
-（Linux-7 修复本身有效）；`bin/spyglass` 主流程启动段崩溃目前无干净解——
-`$SG/lib/libNPI.so` 行为老代码，受 glibc 2.44+nss_resolve 影响。可后续尝试
-（未验证思路）：`/etc/nsswitch.conf` 将 `resolve` 移出 hosts 优先项；
-或改用 `-gui`/真实 lint flow 看是否同样命中 NPI。
+
+#### 根因闭环
+
+安装目录的 `$SPYGLASS_HOME/.spyglass.setup` 默认写有：
+
+```text
+OPTIMIZE_PERF = snpsmem
+```
+
+启动链是：
+
+```text
+.spyglass.setup
+  → spyconfig.pl 自动追加 --snpsmem
+  → spyglass_main 设置 SPYGLASS_USE_SNPSMEM=yes
+  → standard-environment.sh 设置 LD_PRELOAD=libreplacemalloc.so
+  → libNPI.so 的 ELF 构造器 anrep_init 调 gethostbyname("")
+  → nsswitch 的 resolve 后端进入 libnss_resolve.so
+  → libnss_resolve 调 malloc_usable_size()
+  → SIGSEGV
+```
+
+`nm -D`/`readelf -Ws` 已确认：`libreplacemalloc.so` 只导出 `malloc`、`free`、`calloc`、
+`realloc`，**没有导出 `malloc_usable_size`**；调用因此落到 glibc 自己的实现，后者按 glibc
+堆布局解析 SNPSMEM 返回的指针并崩溃。SpyGlass 自带的 `libsgjemalloc-Linux4.so` 和
+`libsgptmalloc-Linux4.so` 均导出 `malloc_usable_size`。
+
+原来的两个“排除实验”不能排除 SNPSMEM：
+
+- 在外部 `unset SPYGLASS_USE_SNPSMEM SPYGLASS_LD_PRELOAD` 后运行，安装配置仍会重新追加
+  `--snpsmem` 并注入 `libreplacemalloc.so`；应以 core 中最终环境为准。
+- 移走 `libsgjemalloc-Linux4.so` 不影响当前崩溃，因为默认实际加载的是
+  `libreplacemalloc.so`。
+
+`obj/check.Linux4` 带齐库路径直接运行正常，是因为它绕开了 vendor wrapper 的 SNPSMEM
+注入。`anrep_init` 位于动态加载器初始化阶段、早于 `main()`，所以这不是 `-version`
+专属路径：正常 `lint/lint_rtl` 只要加载 `libNPI.so` 也必经，必须修复。
+
+#### 推荐修复：用户级切换到 jemalloc
+
+优先使用用户级配置，同时覆盖独立版和 UFE 版，不改 `/opt` 或系统 NSS。先检查
+`~/.spyglass.setup`；若不存在则创建，若已存在则只修改或加入这一项，保留其它设置：
+
+```text
+-- Use SpyGlass's bundled jemalloc on modern glibc.
+OPTIMIZE_PERF = runtime
+```
+
+SpyGlass 内部映射为：`runtime → jemalloc`、`memory → ptmalloc`、`snpsmem → libreplacemalloc.so`、
+`tcmalloc → tcmalloc`。本机 `runtime` 已验证；若大型工程出现 jemalloc 特有问题，可再测试
+`memory`。工程目录的 `.spyglass.setup` 优先级高于用户配置，验证时同时检查三层：
+
+```bash
+rg -n '^OPTIMIZE_PERF' \
+  "$SPYGLASS_HOME/.spyglass.setup" \
+  "$HOME/.spyglass.setup" \
+  ./.spyglass.setup 2>/dev/null
+```
+
+#### 验证与实测结果
+
+先禁用本次测试的 core 并验证信息命令：
+
+```bash
+ulimit -c 0
+spyglass -version
+echo "$?"
+```
+
+成功标准：打印 `Version X-2025.06`，退出 0，不再出现 SIGSEGV/139。不要只测版本；还应使用
+现有项目运行真实 goal，并确认 design read、elaboration、rule checking、报告生成和退出码。
+
+2026-08-30 在 CachyOS、glibc 2.44、kernel 7.2.2、UFE SpyGlass X-2025.06 上实测：
+
+- `spyglass -version`：退出 0，无新 core。
+- `syn_fifo/fifo.v`，GuideWare `latest/block/initial_rtl`，goal `lint/lint_rtl`：270 条规则完成，
+  design read/elaboration/synthesis/report 全部完成，退出 0，无新 core；结果为 0 error、
+  3 warnings、2 infos。
+
+#### 回滚与不推荐方案
+
+若 `~/.spyglass.setup` 是专为本问题新建的，删除它即可回到安装默认；若文件原先存在，只恢复
+`OPTIMIZE_PERF` 原值，不要覆盖其它用户配置。
+
+不推荐为此删除 `/etc/nsswitch.conf` 的 `resolve`：这只避开当前触发点，不能修复不完整的
+allocator，而且会全系统改变 systemd-resolved、分接口 DNS、VPN/LLMNR 等名字解析行为。
+若排障时临时改过，必须先备份原文件，并在验证结束后原样恢复。长期上游方案是向 Synopsys
+索取适配新 glibc 的 `libNPI.so`/`libreplacemalloc.so` 或升级到受支持版本。
 
 ---
 
