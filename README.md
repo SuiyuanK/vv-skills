@@ -68,11 +68,11 @@
 
 主要修复范围：
 
-- 把 Synopsys vendor 脚本的 shebang 统一改为 `#!/bin/bash -h`（230 个 `#!/bin/sh -h` + 39 个实际用 bash 特性的 `#!/bin/sh` 脚本；`/bin/sh` 保持系统默认 dash），并补装 `csh` 前置依赖。
-- 为 VCS 链接补充 `--no-as-needed`，修复 `vfs_fopen`、`snps_mem_*` 等 undefined reference。
+- 把 Synopsys vendor 脚本的 shebang 统一改为 `#!/bin/bash -h`（230 个 `#!/bin/sh -h` + 39 个实际用 bash 特性的 `#!/bin/sh` 脚本；不修改发行版的 `/bin/sh`），并补装 `csh` 前置依赖。
+- 为 VCS 合并 `--no-as-needed`，把 GCC 16 workaround 限定在 VCS 子进程，并仅在 KDB/Verdi 集成时注入 compat/Qt 库。
 - 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
-- 修复 SpyGlass 在 glibc 2.44 上由默认 SNPSMEM、`libnss_resolve` 与缺失 `malloc_usable_size` 共同触发的启动 SIGSEGV；使用用户级 `.spyglass.setup` 切换到厂商自带 jemalloc，并记录 `-version` 与 270-rule `lint/lint_rtl` 端到端验证。
-- 为 Library Compiler 在 glibc 2.39 上的退出阶段崩溃提供结果校验与包装脚本。
+- 修复 SpyGlass 在 glibc 2.44 上由默认 SNPSMEM、`libnss_resolve` 与缺失 `malloc_usable_size` 共同触发的启动 SIGSEGV；使用 HOME 与 customer 配置切换到厂商自带 jemalloc，覆盖 `LINT_VCUM` 入口，并记录 `-version` 与 270-rule `lint/lint_rtl` 端到端验证。
+- 为 Library Compiler 仅在 LC 子进程内注入兼容 krb5，避免污染日志管道；只在成功横幅之后发生已知退出清理崩溃时归一化退出码，并可选验证输出文件。
 - 覆盖 Verdi supplementary post-install 失败以及 FlexLM `lmgrd`/`snpslmd` 的 `/usr/tmp`、CRLF、端口和 systemd 配置问题。
 - 严格限定已验证的系统和产品版本；其他发行版、内核或 Synopsys 版本不得直接套用。
 

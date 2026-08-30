@@ -79,13 +79,15 @@ export PATH=$PATH:$SCL_HOME/linux64/bin
 # spyglass with optional VCS/UFE integration
 export SPYGLASS_HOME=/opt/EDA/Synopsys/ufe_optional_spyglass-vcs/X-2025.06/SPYGLASS_HOME
 export PATH="$SPYGLASS_HOME/bin:$PATH"
+# 独立 customer 配置在 LINT_VCUM 跳过 HOME 配置时仍会被读取。
+export SPYGLASS_CUSTOMER_CONFIG_FILE="$HOME/.config/synopsys/spyglass-modern-glibc.setup"
 
 export SPYGLASS_DC_PATH=/opt/EDA/Synopsys/syn/X-2025.06-SP4
 
 # lc
 export SYNOPSYS_LC_ROOT=/opt/EDA/Synopsys/lc/X-2025.06
 export PATH=$SYNOPSYS_LC_ROOT/bin:$PATH
-# LC 退出时 segfault(glibc 2.39)，用包装脚本屏蔽报错并返回 0
+# LC wrapper 注入兼容 krb5；仅归一化成功横幅之后的已知退出清理 segfault
 alias lc_shell='~/.local/bin/lc_shell'
 
 # syn
@@ -98,7 +100,8 @@ export VCS_HOME=/opt/EDA/Synopsys/vcs/X-2025.06
 export PATH=$VCS_HOME/bin:$PATH
 # export LD_LIBRARY_PATH=$VCS_HOME/amd64/lib:$LD_LIBRARY_PATH
 # Ubuntu/Mint 链接器默认 --as-needed 会导致 VCS 链接阶段 undefined reference，需禁用
-# 包装脚本：给 vcs 传 -LDFLAGS "-Wl,--no-as-needed"
+# 包装脚本合并 --no-as-needed；GCC 16 workaround 只进入 VCS 子进程，
+# compat/Qt 路径只在 KDB/Verdi 集成参数出现时注入。
 # 不使用别名依赖，仅保留显式路径即可（PATH 已由文件末尾统一断言把 ~/.local/bin 提到最前，
 # 见 .zshrc 末尾「最终 PATH 断言」，即使 make 等不做别名展开的程序也会命中包装脚本）。
 alias vcs='~/.local/bin/vcs'

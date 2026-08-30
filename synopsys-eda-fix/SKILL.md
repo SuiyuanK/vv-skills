@@ -4,7 +4,7 @@ description: >-
   Diagnose and fix Synopsys X-2025.06 EDA tools (VCS, Verdi, DC/syn, LC,
   SpyGlass, SCL 2025.03) on Linux Mint 22.3 (Ubuntu 24.04 base, glibc 2.39)
   and CachyOS/Arch (glibc 2.44) with Linux kernel 7.x. Covers the vendor-script shebang fix (230 scripts to
-  #!/bin/bash -h while /bin/sh stays dash), VCS --as-needed linker undefined-reference crash,
+  #!/bin/bash -h without changing the distro's /bin/sh), VCS --as-needed linker undefined-reference crash,
   SpyGlass "Unknown platform Linux-7" detection failure and SNPSMEM/nss_resolve
   startup SIGSEGV, LC exit segfault (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure,
   and FlexLM lmgrd/snpslmd license setup (/usr/tmp, CRLF, systemd). Use when
@@ -37,7 +37,7 @@ description: >-
 | VCS | 链接 `undefined reference to vfs_fopen/snps_mem_*` | `-LDFLAGS "-Wl,--no-as-needed"` |
 | VCS | 启动刷「语法错误」OS 检测噪音 | `VCS_ARCH_OVERRIDE=linux` |
 | Verdi | `verdi_supp` post_install 报 home 不对 | 补跑 post_install 加 `-verdi_home` |
-| LC | 退出时 segfault（工作已完成） | 包装脚本屏蔽报错 + 返回 0 |
+| LC | 旧 krb5 符号缺失；成功后的退出清理 segfault | 进程级预加载旧 krb5；严格识别后归一化 |
 | SpyGlass | `Unknown platform: Linux-7.0.0-…` | 3 个脚本内核判断加 `Linux-7*` |
 | SpyGlass | glibc 2.44 启动 `check.Linux4` SIGSEGV/139 | 用户级 `.spyglass.setup` 改用 `runtime`（jemalloc） |
 | 全部 | license 连不上 / 服务起不来 | lmgrd 必须 `-c <licfile>`（不带会死循环）+ `/usr/tmp` + CRLF + `Type=simple`+`-z` |
@@ -124,10 +124,8 @@ sudo apt install csh
 ```bash
 vcs -full64 -sverilog -LDFLAGS "-Wl,--no-as-needed" -o simv xxx.v
 ```
-永久化（`.zshrc` 别名）：
-```zsh
-alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
-```
+永久化使用 `scripts/vcs_wrapper.sh`；它会保留并合并用户已有的 `-LDFLAGS`，避免用户传入
+其它链接参数时重新丢失 `--no-as-needed`。
 
 ### 2.2 OS 检测噪音
 
@@ -152,8 +150,9 @@ export VCS_ARCH_OVERRIDE=linux
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-这样 `~/.local/bin` 总是排第一，连 `make` 也命中 wrapper。`~/.local/bin/vcs` 内容同前
-（见下）；LC 的 `~/.local/bin/lc_shell` wrapper 同理。
+这样 `~/.local/bin` 位于 Synopsys bin 之前，连 `make` 也命中 wrapper；LC 的
+`~/.local/bin/lc_shell` wrapper 同理。允许其它明确需要更高优先级的用户目录排在它之前，
+判断标准是 wrapper 必须早于 vendor bin，而不是机械要求 PATH 第一个元素。
 
 **验证**：新开 zsh，`unalias vcs; for d in $(echo $PATH|tr ':' $'\n'); do [ -e "$d/vcs" ] && { echo $d; break; }; done`
 应输出 `~/.local/bin/vcs`（不是 `/opt/…/vcs/bin/vcs`）。
@@ -164,11 +163,9 @@ export PATH="$HOME/.local/bin:$PATH"
 export VCS_ARCH_OVERRIDE=linux
 export VCS_HOME=/opt/EDA/Synopsys/vcs/X-2025.06
 export PATH=$VCS_HOME/bin:$PATH
-# 别名只管交互式；make 等按 PATH 直取 vcs。务必把 wrapper 放 PATH 首位（见 2.2）。
-alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
+# wrapper 安装到 ~/.local/bin/vcs，并确保 ~/.local/bin 早于 $VCS_HOME/bin。
+alias vcs='~/.local/bin/vcs'
 ```
-（alias `=vcs 'vcs ...'` 旧写法仍然有用，但它只解决交互式。若只要 wrapper 全场景生效，
-改用它做：`alias vcs='~/.local/bin/vcs'` + PATH 前置 wrapper。）
 
 ### 2.4 CachyOS/Arch 增补（已踩）
 
@@ -178,8 +175,9 @@ alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
   **修复**：`sudo pacman -S time`。
 - **gcc 16 把隐式函数声明升级为 error**：`rmapats.c:20:9: error: implicit declaration of function
   'vcs_simpSetEBlkEvtID'`。VCS 内部 Makefile 的 `CC_CG=gcc` 按 PATH 解析（不用 `VCS_CC`，所以
-  `-CFLAGS`/`-cc`/`VCS_CC` 都绕不过 rmapats.o 这条规则）。**修复**：在 PATH 最前（`~/.local/bin/gcc`）
-  放 gcc wrapper（exec 真身+gcc 追加参数），注意它是全局 shadow：
+  `-CFLAGS`/`-cc`/`VCS_CC` 都绕不过 rmapats.o 这条规则）。**不要**把 gcc wrapper 放入
+  `~/.local/bin` 全局 shadow；安装到 `~/.local/libexec/synopsys-vcs/gcc`，仅由 VCS wrapper
+  给子进程临时前置 PATH：
   ```bash
   #!/usr/bin/env bash
   exec /usr/bin/gcc -Wno-implicit-function-declaration "$@"
@@ -190,7 +188,8 @@ alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
   `Verdi KDB elaboration failed` + `Process 'vcs1fe' is exiting with non-zero
   status -1`（增量缓存不清时误报增量错误，先 `rm -rf simv* csrc *.daidir` 再试）。
   根因同第 8 节：vcs1fe/KDB 流程 dlopen Verdi 老 ABI 库（libxml2.so.2 等）。
-  `~/.local/bin/vcs` wrapper 已内置注入 LD_LIBRARY_PATH（compat+Qt5+platform lib）。
+  `~/.local/bin/vcs` 只在检测到 `-kdb`、`-debug_acc*` 或 `-debug_access*` 时注入
+  compat+Qt5+platform lib，普通 VCS 编译不携带 Verdi Qt 环境。
 
 ---
 
@@ -241,7 +240,12 @@ Error code=11  (SIGSEGV)
 glibc 2.39 改了 malloc/free 符号插桩，与 LC 的自定义分配器 `snpsmalloc` 不兼容。换系统
 libstdc++ 无用（只是 139→1），无干净公开解法。
 
-**务实修复**：用包装脚本屏蔽报错 + 返回 0（`.db` 产出不受影响）。见 `scripts/lc_shell_wrapper.sh`，
+**务实修复**：用 `scripts/lc_shell_wrapper.sh` 识别已知的退出清理崩溃。不能只看到
+`Segmentation fault`/`stack trace` 就返回 0；当前 wrapper 仅在“原始退出非零、已打印
+`Thank you for using Library Compiler.`、崩溃标志位于成功横幅之后”同时成立时归一化。
+调用方还可用冒号分隔的 `LC_EXPECT_OUTPUTS` 要求本次目标文件存在且非空。
+
+将 wrapper
 装到 `~/.local/bin/lc_shell`，并在 `.zshrc` 加 `alias lc_shell='~/.local/bin/lc_shell'`
 （因为原 PATH 里 LC 的 bin 排在 `~/.local/bin` 前，不加别名会命中真身）。
 
@@ -259,8 +263,12 @@ krb5int_c_deprecated_enctype, version k5crypto_3_MIT
 已在 `~/.local/bin/lc_shell` wrapper 中固化：
 ```bash
 KB="${VERDI_HOME:-/opt/EDA/Synopsys/verdi/X-2025.06}/platform/LINUXAMD64/lib/Qt5/lib/depends/krb5"
-export LD_PRELOAD="$KB/libkrb5.so.3:$KB/libk5crypto.so.3:$KB/libgssapi_krb5.so.2:$KB/libkrb5support.so.0${LD_PRELOAD:+:$LD_PRELOAD}"
+lc_preload="$KB/libkrb5.so.3:$KB/libk5crypto.so.3:$KB/libgssapi_krb5.so.2:$KB/libkrb5support.so.0${LD_PRELOAD:+:$LD_PRELOAD}"
+env LD_PRELOAD="$lc_preload" LD_LIBRARY_PATH="$KB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    "$SYNOPSYS_LC_ROOT/bin/lc_shell" "$@"
 ```
+这里必须用进程级 `env`，不要全局 `export`：旧 krb5 若被同一日志管道里的系统
+`tee`、`sed`、`grep` 继承，可能使这些现代程序崩溃并反向造成 LC 异常退出。
 
 ---
 
@@ -348,6 +356,16 @@ OPTIMIZE_PERF = snpsmem
 OPTIMIZE_PERF = runtime
 ```
 
+部分 VC SpyGlass 集成流程会设置 `LINT_VCUM`，此时 `spyconfig.pl` 跳过 HOME 与 CWD 配置。
+为覆盖该入口，再建立独立 customer 配置（内容同上），并在 shell 环境设置：
+
+```zsh
+export SPYGLASS_CUSTOMER_CONFIG_FILE="$HOME/.config/synopsys/spyglass-modern-glibc.setup"
+```
+
+customer 配置在安装配置之后读取，即使定义了 `LINT_VCUM` 也生效。普通流程中项目目录
+`.spyglass.setup` 仍有更高优先级；若项目明确改回 `snpsmem`，必须先审查并纠正项目配置。
+
 SpyGlass 内部映射为：`runtime → jemalloc`、`memory → ptmalloc`、`snpsmem → libreplacemalloc.so`、
 `tcmalloc → tcmalloc`。本机 `runtime` 已验证；若大型工程出现 jemalloc 特有问题，可再测试
 `memory`。工程目录的 `.spyglass.setup` 优先级高于用户配置，验证时同时检查三层：
@@ -381,7 +399,8 @@ echo "$?"
 
 #### 回滚与不推荐方案
 
-若 `~/.spyglass.setup` 是专为本问题新建的，删除它即可回到安装默认；若文件原先存在，只恢复
+回滚时删除本次专用 customer 配置并取消 `SPYGLASS_CUSTOMER_CONFIG_FILE`；若
+`~/.spyglass.setup` 是专为本问题新建的也可删除，若文件原先存在则只恢复
 `OPTIMIZE_PERF` 原值，不要覆盖其它用户配置。
 
 不推荐为此删除 `/etc/nsswitch.conf` 的 `resolve`：这只避开当前触发点，不能修复不完整的
@@ -449,8 +468,10 @@ env -u SNPSLMD_LICENSE_FILE -u LM_LICENSE_FILE \
 `/opt/EDA/Synopsys/synopsys_script.sh`：
 ```bash
 #!/bin/bash
-/opt/EDA/Synopsys/scl/2025.03/linux64/bin/lmgrd -z -c /opt/EDA/Synopsys/synopsys.lic -l /opt/EDA/Synopsys/synopsys_licnese.log
+exec /opt/EDA/Synopsys/scl/2025.03/linux64/bin/lmgrd -z -c /opt/EDA/Synopsys/synopsys.lic -l /opt/EDA/Synopsys/synopsys_licnese.log
 ```
+
+使用 `exec` 让 systemd 直接跟踪 `lmgrd` 的 PID 和信号，不保留一层等待中的 shell。
 
 `/etc/systemd/system/synopsyslm.service`：
 ```ini
@@ -538,16 +559,17 @@ exec "$VERDI_HOME/bin/verdi" "$@"
 ## 验证
 
 ```bash
-# /bin/sh 应为系统默认 dash（本方案不改系统 shell）
-ls -l /bin/sh                              # -> dash
+# 不修改系统 /bin/sh；Mint 通常为 dash，CachyOS 当前为 bash。
+readlink -f /bin/sh
 # 不应再有 /bin/sh -h 的脚本残留
 grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l   # 应为 0
 
-# VCS 端到端
-cat > /tmp/t.v <<'EOF'
+# VCS 端到端；把验证文件放在当前工作区的 ./tmp/ 隔离目录。
+mkdir -p ./tmp/vcs-smoke
+cat > ./tmp/vcs-smoke/t.v <<'EOF'
 module t; initial begin $display("VCS OK"); $finish; end endmodule
 EOF
-vcs -full64 -sverilog -o simv t.v && ./simv          # 应打印 "VCS OK"，退出 0
+(cd ./tmp/vcs-smoke && vcs -full64 -sverilog -o simv t.v && ./simv)
 
 # Verdi
 verdi -batch -version 2>&1 | grep 'Version X-2025.06'   # GUI 型命令：打印版本后进程挂起不退出属正常，看到版本行即可 Ctrl-C
@@ -575,7 +597,9 @@ lmutil lmstat -c 27080@vv-mint   # license server UP / snpslmd UP
 ## 参考文件
 
 - `scripts/fix_spyglass_linux7.sh` — SpyGlass 内核判断修复（备份+改+验证）
-- `scripts/lc_shell_wrapper.sh` — LC 退出崩溃包装脚本
+- `scripts/vcs_wrapper.sh` — VCS 链接参数合并、KDB 条件 compat、专用 GCC PATH
+- `scripts/vcs_gcc_wrapper.sh` — 仅供 VCS 子进程使用的 GCC 16 workaround
+- `scripts/lc_shell_wrapper.sh` — LC 旧 krb5 与退出清理崩溃的窄化处理
 - `reference/zshrc.example` — 实测机器的完整 `~/.zshrc` EDA 工具链配置参考
   （Synopsys 六套工具 env/alias、最终 PATH 断言与 wrapper 的关系、Xilinx 段可忽略），
   主机为 CachyOS，主机名 `vv-cachyos`，license 端口 27080
