@@ -183,6 +183,11 @@ alias vcs='vcs -LDFLAGS "-Wl,--no-as-needed"'
   ```
   端到端验证：`vcs -full64 -sverilog -o simv t.v && ./simv` 输出 `VCS OK`；
   运行时有 ASLR 提示（`-no_save` 或无副作用，正常）。
+- **`-kdb`/`-debug_acc`（Verdi 集成）必须带 Verdi compat 路径**（已踩）：
+  `Verdi KDB elaboration failed` + `Process 'vcs1fe' is exiting with non-zero
+  status -1`（增量缓存不清时误报增量错误，先 `rm -rf simv* csrc *.daidir` 再试）。
+  根因同第 8 节：vcs1fe/KDB 流程 dlopen Verdi 老 ABI 库（libxml2.so.2 等）。
+  `~/.local/bin/vcs` wrapper 已内置注入 LD_LIBRARY_PATH（compat+Qt5+platform lib）。
 
 ---
 
