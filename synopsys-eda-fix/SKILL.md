@@ -6,7 +6,8 @@ description: >-
   and CachyOS/Arch (glibc 2.44) with Linux kernel 7.x. Covers the vendor-script shebang fix (230 scripts to
   #!/bin/bash -h without changing the distro's /bin/sh), VCS --as-needed linker undefined-reference crash,
   SpyGlass "Unknown platform Linux-7" detection failure and SNPSMEM/nss_resolve
-  startup SIGSEGV, LC exit segfault (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure,
+  startup SIGSEGV, LC exit segfault (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure
+  and old bundled Fontconfig warnings on CachyOS,
   and FlexLM lmgrd/snpslmd license setup (/usr/tmp, CRLF, systemd). Use when
   a Synopsys tool crashes, fails to launch, or can't obtain a license on this
   system.
@@ -37,6 +38,7 @@ description: >-
 | VCS | 链接 `undefined reference to vfs_fopen/snps_mem_*` | `-LDFLAGS "-Wl,--no-as-needed"` |
 | VCS | 启动刷「语法错误」OS 检测噪音 | `VCS_ARCH_OVERRIDE=linux` |
 | Verdi | `verdi_supp` post_install 报 home 不对 | 补跑 post_install 加 `-verdi_home` |
+| Verdi | `xsi:nil` / `invalid constant` Fontconfig 告警 | wrapper 仅对 Verdi 预加载系统 `libfontconfig.so.1` |
 | LC | 旧 krb5 符号缺失；成功后的退出清理 segfault | 进程级预加载旧 krb5；严格识别后归一化 |
 | SpyGlass | `Unknown platform: Linux-7.0.0-…` | 3 个脚本内核判断加 `Linux-7*` |
 | SpyGlass | glibc 2.44 启动 `check.Linux4` SIGSEGV/139 | 用户级 `.spyglass.setup` 改用 `runtime`（jemalloc） |
@@ -532,12 +534,24 @@ ln -sf $V/platform/LINUXAMD64/lib/Qt5/lib/depends/ssl/libcrypto.so.1.1 $C/libcry
 ln -sf $V/platform/LINUXAMD64/lib/zebu/libRtxStable.so                 $C/libRtxStable.so
 ln -sf $V/etc/lib/libstdc++/linux64/libpng12.so.0                      $C/libpng12.so.0
 ```
-**推荐做法：wrapper 脚本 `~/.local/bin/verdi`**（只在启动 verdi 时注入，不污染全局 Qt5）：
+**推荐做法：安装 `scripts/verdi_wrapper.sh` 为 `~/.local/bin/verdi`**。它只在启动 Verdi 时
+注入依赖，不污染全局 Qt5；同时按 Arch 与 Debian/Ubuntu 的常见路径查找系统 Fontconfig：
 ```bash
 #!/usr/bin/env bash
 set -u
 export VERDI_HOME="${VERDI_HOME:-/opt/EDA/Synopsys/verdi/X-2025.06}"
 export LD_LIBRARY_PATH="/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:${LD_LIBRARY_PATH:-}"
+
+system_fontconfig=""
+for candidate in /usr/lib/libfontconfig.so.1 /usr/lib/x86_64-linux-gnu/libfontconfig.so.1; do
+    if [[ -r "$candidate" ]]; then
+        system_fontconfig="$candidate"
+        break
+    fi
+done
+if [[ -n "$system_fontconfig" && ":${LD_PRELOAD:-}:" != *":$system_fontconfig:"* ]]; then
+    export LD_PRELOAD="$system_fontconfig${LD_PRELOAD:+:$LD_PRELOAD}"
+fi
 exec "$VERDI_HOME/bin/verdi" "$@"
 ```
 装好后 `.zshrc` 需要末尾「最终 PATH 断言」`export PATH="$HOME/.local/bin:$PATH"` 排在
@@ -550,6 +564,26 @@ exec "$VERDI_HOME/bin/verdi" "$@"
 > 验证记录：本机（CachyOS）VCS/DC/LC/Verdi 端到端通过；SpyGlass 见 6.1。
 > 注意不要加 `etc/lib/libstdc++/linux64` 整目录（老 libstdc++ 会覆盖系统新版本，导致
 > 系统 tbb 报 `version CXXABI_1.3.15 not found`）。
+
+### 8.1 CachyOS 新 Fontconfig 配置与 Verdi 旧解析器
+
+**症状**：Verdi 可以启动和加载 KDB/FSDB，但终端连续打印：
+```text
+Fontconfig error: "/etc/fonts/conf.d/48-guessfamily.conf" ... invalid attribute 'xsi:nil'
+Fontconfig warning: ... invalid constant used : monospace
+```
+
+**根因**：不能只凭普通 `ldd Novas` 判断。`LD_DEBUG=libs` 实测表明，Verdi 的主进程或子进程
+会经 RPATH 加载 `$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib/depends/fontconfig/libfontconfig.so.1`，
+然后用这套旧解析器读取 CachyOS Fontconfig 2.18.3 的 `/etc/fonts/conf.d` 新语法。
+
+**修复**：由上述 `scripts/verdi_wrapper.sh` 仅对 Verdi 进程预加载系统
+`libfontconfig.so.1`，并保留调用方已有的 `LD_PRELOAD`。不要删除或修改
+`/etc/fonts/conf.d/48-guessfamily.conf`，也不要全局导出 `LD_PRELOAD`。
+
+2026-08-31 在 CachyOS 上以 Verdi X-2025.06 批处理实际加载 VCS 生成的 KDB 与 FSDB：修复前
+稳定复现 `xsi:nil` 和 `invalid constant`；进程级预加载后告警为零，退出码为 0，且 Tcl 标志
+`VERDI_BATCH_CHECK: KDB and FSDB load completed` 正常出现。
 
 验证：`ldd $VERDI_HOME/platform/LINUXAMD64/bin/Novas` 无 `not found`；
 `verdi -id` 能打印 `Product version = Verdi_X-2025.06`（注意它可能挂起输出版本后 Ctrl-C）。
@@ -600,6 +634,7 @@ lmutil lmstat -c 27080@vv-mint   # license server UP / snpslmd UP
 - `scripts/vcs_wrapper.sh` — VCS 链接参数合并、KDB 条件 compat、专用 GCC PATH
 - `scripts/vcs_gcc_wrapper.sh` — 仅供 VCS 子进程使用的 GCC 16 workaround
 - `scripts/lc_shell_wrapper.sh` — LC 旧 krb5 与退出清理崩溃的窄化处理
+- `scripts/verdi_wrapper.sh` — Verdi 老 ABI compat 与系统 Fontconfig 的进程级注入
 - `reference/zshrc.example` — 实测机器的完整 `~/.zshrc` EDA 工具链配置参考
   （Synopsys 六套工具 env/alias、最终 PATH 断言与 wrapper 的关系、Xilinx 段可忽略），
   主机为 CachyOS，主机名 `vv-cachyos`，license 端口 27080

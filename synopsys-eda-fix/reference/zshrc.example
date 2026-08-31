@@ -110,6 +110,8 @@ alias vcs='~/.local/bin/vcs'
 
 export VERDI_HOME=/opt/EDA/Synopsys/verdi/X-2025.06
 export PATH=$VERDI_HOME/bin:$PATH
+# ~/.local/bin/verdi wrapper 仅对 Verdi 注入老 ABI compat，并预加载系统 Fontconfig，
+# 避免 vendor 旧解析器读取 CachyOS 新配置时产生 xsi:nil/invalid constant 告警。
 # export LD_LIBRARY_PATH=/opt/EDA/Synopsys/verdi/X-2025.06/share/PLI/VCS/linux64:$LD_LIBRARY_PATH
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
@@ -119,7 +121,7 @@ export PATH=$VERDI_HOME/bin:$PATH
 # 最终 PATH 断言（放在文件末尾，保证本文件中任何 PATH-prepend 都不会往前插入）
 # EDA 工具链的 Synopsys bin 目录会把自己 prepend 到 PATH 前面，覆盖用户工具目录。
 # make 等不做别名展开的程序按 PATH 顺序查找，若不前置，会命中真身而绕过
-# ~/.local/bin 里的包装脚本（vcs 的 --as-needed 修复、LC 的 segfault 修复）。
+# ~/.local/bin 里的包装脚本（vcs 的 --as-needed、LC 的 segfault、Verdi 的 Fontconfig 修复）。
 # 这里把 ~/.local/bin 提到最前，且保留本文件其余 PATH 顺序（Synopsys 目录已在前面堆好）。
 # ----------------------------------------------------------------------------
 # 注意：zsh 的 typeset -U path 在 91 行已开启去重，因此这里的 repeat 不会造成重复。

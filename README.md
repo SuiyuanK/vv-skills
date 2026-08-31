@@ -73,6 +73,7 @@
 - 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
 - 修复 SpyGlass 在 glibc 2.44 上由默认 SNPSMEM、`libnss_resolve` 与缺失 `malloc_usable_size` 共同触发的启动 SIGSEGV；使用 HOME 与 customer 配置切换到厂商自带 jemalloc，覆盖 `LINT_VCUM` 入口，并记录 `-version` 与 270-rule `lint/lint_rtl` 端到端验证。
 - 为 Library Compiler 仅在 LC 子进程内注入兼容 krb5，避免污染日志管道；只在成功横幅之后发生已知退出清理崩溃时归一化退出码，并可选验证输出文件。
+- 为 Verdi 提供进程级 wrapper：补齐老 ABI 依赖，并预加载系统 Fontconfig，消除旧版 vendor 解析器读取 CachyOS 新配置时的 `xsi:nil`/`invalid constant` 告警，不修改系统字体配置。
 - 覆盖 Verdi supplementary post-install 失败以及 FlexLM `lmgrd`/`snpslmd` 的 `/usr/tmp`、CRLF、端口和 systemd 配置问题。
 - 严格限定已验证的系统和产品版本；其他发行版、内核或 Synopsys 版本不得直接套用。
 
