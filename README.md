@@ -68,7 +68,7 @@
 
 主要修复范围：
 
-- 把 Synopsys vendor 脚本的 shebang 统一改为 `#!/bin/bash -h`（230 个 `#!/bin/sh -h` + 39 个实际用 bash 特性的 `#!/bin/sh` 脚本；不修改发行版的 `/bin/sh`），并补装 `csh` 前置依赖。
+- 先检查发行版实际的 `/bin/sh`：只在非 Bash 解释器上复现 `Illegal option -h`/Bashism 错误后，才把受影响的 Synopsys vendor 脚本改为 `#!/bin/bash -h`；CachyOS 的 `/bin/sh -> bash` 可保留 vendor 原状。`snps_platform` 依赖在 Ubuntu/Mint 由 `csh` 包提供，在 Arch/CachyOS 由 `tcsh` 包提供。
 - 为 VCS 合并 `--no-as-needed`，把 GCC 16 workaround 限定在 VCS 子进程，并仅在 KDB/Verdi 集成时注入 compat/Qt 库。
 - 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
 - 修复 SpyGlass 在 glibc 2.44 上由默认 SNPSMEM、`libnss_resolve` 与缺失 `malloc_usable_size` 共同触发的启动 SIGSEGV；使用 HOME 与 customer 配置切换到厂商自带 jemalloc，覆盖 `LINT_VCUM` 入口，并记录 `-version` 与 270-rule `lint/lint_rtl` 端到端验证。

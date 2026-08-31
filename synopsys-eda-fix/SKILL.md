@@ -3,8 +3,8 @@ name: synopsys-eda-fix
 description: >-
   Diagnose and fix Synopsys X-2025.06 EDA tools (VCS, Verdi, DC/syn, LC,
   SpyGlass, SCL 2025.03) on Linux Mint 22.3 (Ubuntu 24.04 base, glibc 2.39)
-  and CachyOS/Arch (glibc 2.44) with Linux kernel 7.x. Covers the vendor-script shebang fix (230 scripts to
-  #!/bin/bash -h without changing the distro's /bin/sh), VCS --as-needed linker undefined-reference crash,
+  and CachyOS/Arch (glibc 2.44) with Linux kernel 7.x. Covers the conditional vendor-script shebang fix
+  for systems where /bin/sh is not Bash, VCS --as-needed linker undefined-reference crash,
   SpyGlass "Unknown platform Linux-7" detection failure and SNPSMEM/nss_resolve
   startup SIGSEGV, LC exit segfault (glibc 2.39 malloc interposition), Verdi verdi_supp post-install failure
   and old bundled Fontconfig warnings on CachyOS,
@@ -33,8 +33,8 @@ description: >-
 
 | 工具 | 症状 | 修复 |
 |---|---|---|
-| 全部 | `#!/bin/sh -h` 脚本报 `Illegal option -h` | 改脚本 shebang 为 `#!/bin/bash -h` |
-| 全部 | `snps_platform: 无法执行` | 装 `csh` |
+| 全部 | 非 Bash `/bin/sh` 执行 `#!/bin/sh -h` 报 `Illegal option -h` | 先检查 `/bin/sh`；仅在复现问题时改 vendor shebang |
+| 全部 | `snps_platform: 无法执行` | Ubuntu/Mint 装 `csh`；Arch/CachyOS 装 `tcsh` |
 | VCS | 链接 `undefined reference to vfs_fopen/snps_mem_*` | `-LDFLAGS "-Wl,--no-as-needed"` |
 | VCS | 启动刷「语法错误」OS 检测噪音 | `VCS_ARCH_OVERRIDE=linux` |
 | Verdi | `verdi_supp` post_install 报 home 不对 | 补跑 post_install 加 `-verdi_home` |
@@ -48,14 +48,26 @@ description: >-
 
 ## 1. 通用前置
 
-### 1.1 改脚本 shebang 为 `#!/bin/bash -h`（最重要，一次修好 230 个脚本）
+### 1.1 按 `/bin/sh` 实际解释器决定是否修 vendor shebang
 
 Synopsys 有约 **230 个脚本** shebang 写成 `#!/bin/sh -h`，其中 `-h` 是 bash 专有参数。
 Mint/Ubuntu 的 `/bin/sh` 默认是 dash，dash 不认 `-h` → 直接 `Illegal option -h` 退出。
 
-**修正方案：不改系统 `/bin/sh`（保持 dash），把这 230 个脚本首行统一改为
-`#!/bin/bash -h`**，直接经 bash 解释，完全绕开 `/bin/sh` 指向哪种 shell。
-这样不动系统默认 shell，不影响其它软件的依赖语义，也便于整套流程在其他机器/CI 上复现。
+**先检查，不要无条件批量修改：**
+```bash
+readlink -f /bin/sh
+```
+
+- 若结果不是 Bash（Mint/Ubuntu 通常是 dash），并且真实启动已复现 `Illegal option -h` 或
+  `[[: not found`，保持系统 `/bin/sh` 不变，只把受影响的 vendor 脚本改为 `#!/bin/bash -h`。
+- 若结果是 Bash（本机 CachyOS 实测为 `/usr/bin/bash`），`#!/bin/sh -h` 本身合法；不要仅为
+  追求扫描结果为零而改动数百个 vendor 文件。先运行真实工具流，只有具体脚本仍失败时再局部修。
+
+2026-08-31 本机复核时，VCS `bin/vcs`、`kdbtest.sh` 等仍保留 vendor 的 `#!/bin/sh -h`，
+Verdi/SpyGlass 入口也仍为 `#!/bin/sh`；在 `/bin/sh -> bash` 下，VCS/KDB、Verdi 和 SpyGlass
+真实工程均通过。这些残留是有意保留 vendor 原状，不表示修复遗漏。
+
+因此，下面的批量方案是 **非 Bash `/bin/sh` 环境中的条件修复**，不是所有发行版必做步骤。
 
 **批量修改**（脚本目录属主为当前用户，无需 sudo；改前先备份清单 tar）：
 ```bash
@@ -66,15 +78,16 @@ grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | while read f; do
 done
 ```
 
-230 个文件分布在：`vcs/*/bin`（含 dpo/cso/vcfca/auxx/seq 共 71）、
+已知约 230 个文件分布在：`vcs/*/bin`（含 dpo/cso/vcfca/auxx/seq 共 71）、
 `verdi/*/platform/verdi_supp/*/bin`（67，含 linux/linux64）、
 `ufe_optional_spyglass-vcs/*/SPYGLASS_HOME/lib/multi-vcst/*`（76，vcs-mx/hector/auxx/seq）。
 vcs/verdi/spyglass 三套的 bin 都要覆盖，不然 `vcs -id`、`verdi_supp` post_install 仍会报
 `Illegal option -h`。
 
-除上述 230 个 `#!/bin/sh -h` 外，还有约 **39 个 `#!/bin/sh`（不带 -h）的脚本实际用了
-bash 特性**（`[[`、`==` 等），它们同样依赖 `/bin/sh` 是 bash，也要统一改为
-`#!/bin/bash -h`。典型：verdi `bin/.wrapper`（`verdi` 入口是指向其的软链）、
+除上述 `#!/bin/sh -h` 外，还有约 **39 个 `#!/bin/sh`（不带 -h）的脚本实际用了
+bash 特性**（`[[`、`==` 等）。在 `/bin/sh` 不是 Bash 且真实执行失败时，也应改为
+`#!/bin/bash -h`；在 `/bin/sh -> bash` 的 CachyOS 上可保持 vendor 原状。典型：verdi
+`bin/.wrapper`（`verdi` 入口是指向其的软链）、
 spyglass `bin/spyglass`、`spyglass_main`、`scmbrowser`、`spyon`、`ugo`、
 `scm_process_new`、`kdb_only_indp.sh` 等。
 
@@ -90,16 +103,23 @@ spyglass `bin/spyglass`、`spyglass_main`、`scmbrowser`、`spyon`、`ugo`、
 
 验证：
 ```bash
-ls -l /bin/sh        # 应仍是 -> dash（系统默认，不用改）
-grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l   # 应为 0
+readlink -f /bin/sh   # 不修改发行版的默认解释器
+# 仅在 /bin/sh 不是 Bash 且已实施 shebang 修复时，残留数才应为 0：
+grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l
 ```
 
-### 1.2 装 csh（`snps_platform` 是 csh 脚本）
+### 1.2 提供 csh 命令（`snps_platform` 是 csh 脚本）
 
 dc_shell / lc_shell 启动时会调 `snps_platform`（`#!/bin/csh -f`），缺 csh 会报
-`snps_platform: 无法执行：找不到需要的文件`（非致命，但建议装）：
+`snps_platform: 无法执行：找不到需要的文件`（非致命，但建议安装对应发行版的提供者）：
 ```bash
+# Mint/Ubuntu
 sudo apt install csh
+
+# Arch/CachyOS：tcsh 包提供 /usr/bin/csh -> /usr/bin/tcsh
+sudo pacman -S tcsh
+
+command -v csh
 ```
 
 ### 1.3 不需要的包（避免白装）
@@ -215,14 +235,14 @@ bash ./post_install.sh \
 成功标志：`[VERDI SUPPLEMENTARY INSTALL] Completed !!!`。脚本会把 `verdi_supp` 整体移进
 `verdi/platform/verdi_supp` 并在 aarch64/linux64/linux 三个平台建 `vcs` 软链（正常行为）。
 
-> 注意：若 `vcs -id` 报 `/bin/sh: 0: Illegal option -h`，说明还有脚本没改成
-> `#!/bin/bash -h`，按 1.1 补齐即可。
+> 注意：若 `vcs -id` 报 `/bin/sh: 0: Illegal option -h`，按 1.1 先确认 `/bin/sh`，再局部
+> 或批量修正受影响脚本；不要先改系统 `/bin/sh`。
 
 ---
 
 ## 4. DC (syn) / Design Compiler
 
-无需额外修复（做 1.1 的 shebang 修正和 1.2 的 csh 后即可用）。
+无需额外修复（按 1.1 判断是否需要 shebang 修正，并按 1.2 提供 `csh` 命令后即可用）。
 `dc_shell -f script.tcl` 批处理 `read_file -format verilog` + `elaborate` + `link` 正常。
 唯一无害噪音：`cat: /etc/upstream-release: 是一个目录`（Mint 上该路径是目录，脚本
 `cat /etc/*-release` 撞到，不影响）。用现代 `read_file -format verilog`，别用旧 `read_verilog`。
@@ -296,8 +316,8 @@ Perl 5 installation could not be validated」。
 
 可直接跑 `scripts/fix_spyglass_linux7.sh`（自动备份 + 修改 + 验证）。
 
-> bash 脚本不受影响：第 1.1 步已把 vendor 脚本统一为 `#!/bin/bash -h`，
-> `/bin/sh` 保持 dash 也不会再踩 `Illegal option -h`。
+> 这些 Bashism 脚本是否需要改由第 1.1 节的解释器检查决定：dash 环境复现失败后修，
+> `/bin/sh -> bash` 的 CachyOS 不必为了形式统一而修改。
 
 ### 6.1 CachyOS/Arch：glibc 2.44 启动段 SIGSEGV（已根治）
 
@@ -508,7 +528,8 @@ MAC 获取：`ip link` 或 `cat /sys/class/net/*/address`。
 
 skill 主要验证环境是 Mint 22.3（`/bin/sh -> dash`），而这一节的实际复现机器是
 **CachyOS（Arch）**：`/bin/sh -> bash`，License 部分行为一致（无需 1.1 shebang 修复，
-`#!/bin/sh -h` 在 bash 下合法）；差异仅在于 CachyOS 缺老 ABI 系统库（见第 8 节 Verdi compat）。
+`#!/bin/sh -h` 在 bash 下合法）；Arch 由 `tcsh` 包提供 `/usr/bin/csh`，并且缺少部分老 ABI
+系统库（见第 8 节 Verdi compat）。
 
 ---
 
@@ -595,8 +616,9 @@ Fontconfig warning: ... invalid constant used : monospace
 ```bash
 # 不修改系统 /bin/sh；Mint 通常为 dash，CachyOS 当前为 bash。
 readlink -f /bin/sh
-# 不应再有 /bin/sh -h 的脚本残留
-grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l   # 应为 0
+# 只在非 Bash /bin/sh 环境已实施 1.1 修复时要求残留为 0；CachyOS/Bash 可保留 vendor 原状。
+grep -rl '^#! */bin/sh *-h' /opt/EDA/Synopsys/ | wc -l
+command -v csh   # Ubuntu/Mint 来自 csh；Arch/CachyOS 来自 tcsh
 
 # VCS 端到端；把验证文件放在当前工作区的 ./tmp/ 隔离目录。
 mkdir -p ./tmp/vcs-smoke
