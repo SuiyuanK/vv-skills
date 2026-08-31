@@ -23,6 +23,16 @@
 - 仅支持 Linux x86_64，依赖 bash、curl、git、tar、find 和常用 GNU 工具；网络只访问官方 GitHub 仓库。
 - 以普通用户运行，不使用 sudo；临时下载和解压内容写入 /home/vv/TMP/tmp。
 
+### `matlab-cachyos-fix`
+
+诊断并修复 MATLAB R2025b 在 x86_64 CachyOS/Arch 上的安装器、并行 GCC 13、MEX 与启动入口问题，同时保持系统默认 GCC 不变。
+
+- 安装器：用 coredump 和动态库证据识别 MathWorks 激活库与 Arch GnuTLS/leancrypto 的 `lc_init` 符号冲突，只对安装器进程预加载 `/usr/lib/libleancrypto.so.1`，不降级系统 GnuTLS；区分下载超时导致的加密组件解压失败，并避免把大型安装写入容量不足的 `/tmp` tmpfs。
+- GCC 13：识别自定义 makepkg 优化引发的 stage2/stage3 bootstrap comparison 失败，优先使用 `devtools` 干净 chroot；覆盖 2026 年 Linux 移除 `linux/scc.h` 后旧 GCC 13 `libsanitizer` 构建失败，并附带经 GCC 13 源码实际验证的上游派生补丁。
+- 增量恢复：记录 `extra-x86_64-build` 保留树、`compare`/`.bad_compare` 判据、Arch `arch-nspawn` 参数顺序、`/startdir`/`/pkgdest` 重新挂载和 split package 归档验证，避免每次都重新编译一小时。
+- MATLAB-only 编译器：通过用户级 `~/.local/bin/matlab` wrapper 和 `.desktop` 覆盖，只在 MATLAB 子进程内把 `gcc-13`、`g++-13`、`gfortran-13` 暴露为通用命令；禁止全局替换 `/usr/bin/gcc`，并要求用真实 batch 与 MEX 模块验证。
+- 依赖按故障路径选择：安装器路径使用系统 `ldd`/`nm`/coredump 工具；GCC 源码构建路径使用 Arch `devtools`、`patch`、`makepkg`/`pacman` 和足够磁盘空间。所有安装、chroot、系统或 vendor 修改均需按实际授权执行。
+
 ### codex-html-mime-fix
 
 诊断并修复 Linux Codex/ChatGPT Desktop 启动后把 text/html 默认程序从 Google Chrome 改成 chatgpt.desktop 的问题。
