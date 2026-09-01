@@ -80,6 +80,7 @@
 
 - 先检查发行版实际的 `/bin/sh`：只在非 Bash 解释器上复现 `Illegal option -h`/Bashism 错误后，才把受影响的 Synopsys vendor 脚本改为 `#!/bin/bash -h`；CachyOS 的 `/bin/sh -> bash` 可保留 vendor 原状。`snps_platform` 依赖在 Ubuntu/Mint 由 `csh` 包提供，在 Arch/CachyOS 由 `tcsh` 包提供。
 - 为 VCS 合并 `--no-as-needed`，只在 VCS 子进程内前置并行安装的 GCC 13 私有 toolchain，并仅在 KDB/Verdi 集成时注入 compat/Qt 库；系统 GCC、MATLAB 和其它 EDA 工具不受影响。
+- 用 VCS 私有 grep dispatcher 将废弃的 `egrep` 转为 `grep -E`，并把旧式字面连字符 `\-` 规范化为 `[-]`；不修改系统 grep，也不批量改写 vendor 主脚本，并要求用真实 KDB 工程回归。
 - License 排障不固定端口或主机名：先识别当前登录 shell，读取用户实际的 `~/.zshrc` 或 `~/.bashrc` 并核对新登录 shell 的有效变量；缺失或冲突时停止确认，不从参考样例或旧日志猜值。已记录 `syn_fifo` 的 VCS + KDB + GCC 13 + license 端到端回归。
 - 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
 - 修复 SpyGlass 在 glibc 2.44 上由默认 SNPSMEM、`libnss_resolve` 与缺失 `malloc_usable_size` 共同触发的启动 SIGSEGV；使用 HOME 与 customer 配置切换到厂商自带 jemalloc，覆盖 `LINT_VCUM` 入口，并记录 `-version` 与 270-rule `lint/lint_rtl` 端到端验证。

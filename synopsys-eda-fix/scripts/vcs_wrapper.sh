@@ -22,6 +22,14 @@ if [ -x "$vcs_gcc13_dir/gcc" ]; then
     export PATH="$vcs_gcc13_dir:$PATH"
 fi
 
+vcs_grep_dir="${VCS_GREP_WRAPPER_DIR:-$HOME/.local/libexec/synopsys-vcs}"
+if [ -x "$vcs_grep_dir/grep" ]; then
+    export VCS_GREP="${VCS_GREP:-$vcs_grep_dir/grep}"
+fi
+if [ -x "$vcs_grep_dir/egrep" ]; then
+    export VCS_EGREP="${VCS_EGREP:-$vcs_grep_dir/egrep}"
+fi
+
 original_args=("$@")
 final_args=()
 has_ldflags=0

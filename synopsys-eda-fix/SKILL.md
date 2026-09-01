@@ -212,6 +212,19 @@ alias vcs='~/.local/bin/vcs'
   `gcc-*-13` helper 均存在，再部署。
   端到端验证：`vcs -full64 -sverilog -o simv t.v && ./simv` 输出 `VCS OK`；
   运行时有 ASLR 提示（`-no_save` 或无副作用，正常）。
+- **新版 GNU grep 的旧语法 warning**：VCS 主脚本把 `EGREP` 解析到已废弃的 `egrep`，并在
+  BRE/ERE 正则中使用旧式 `\-`，GNU grep 3.12 会打印 `egrep is obsolescent; using grep -E`
+  和 `stray \\ before -`。不要全局替换系统 grep，也不要批量修改约 3.4 万行的 vendor 主脚本。
+  把 `scripts/vcs_grep_wrapper.sh` 安装为 VCS 私有的 `grep`，并将 `egrep` 链接到它：
+  ```bash
+  install -Dm755 scripts/vcs_grep_wrapper.sh ~/.local/libexec/synopsys-vcs/grep
+  ln -sfn grep ~/.local/libexec/synopsys-vcs/egrep
+  ```
+  dispatcher 将 `egrep` 等价转换为 `/usr/bin/grep -E`，并把旧式字面连字符 `\-` 转为
+  `[-]`；使用字符类而不是直接删除反斜杠，可避免位于正则开头的 `-` 被 grep 当成选项。
+  `scripts/vcs_wrapper.sh` 仅对 VCS 子进程设置 `VCS_GREP`/`VCS_EGREP`，系统及其它工具不受影响。
+  验证时先比较无参数 `vcs` 的两类 warning 数量应从 4/4 降为 0/0，同时仍出现预期的
+  `Error-[NTMES] No TopModule/Entity supplied`；再跑真实 VCS/KDB 工程，不能只看干净输出。
 - **`-kdb`/`-debug_acc`（Verdi 集成）必须带 Verdi compat 路径**（已踩）：
   `Verdi KDB elaboration failed` + `Process 'vcs1fe' is exiting with non-zero
   status -1`（增量缓存不清时误报增量错误，先 `rm -rf simv* csrc *.daidir` 再试）。
@@ -232,7 +245,8 @@ vcs -full64 -debug_acc -kdb -R -l vrun.log -v fifo.v tb_fifo.v
 结果：VCS X-2025.06 编译、链接、仿真退出 0；VCS 私有 `gcc/g++` 为 13.4.1，系统 GCC 保持
 16.2.1；仿真在时间 455 正常 `$finish`，预期的满写溢出和空读下溢各触发 2 次；
 `simv.daidir/simv.kdb` 非空，并打印 `Verdi KDB elaboration done and the database successfully
-generated`。`grep/egrep` 的过时语法 warning 是 vendor 脚本噪音，不作为失败。
+generated`。初次回归中的 `grep/egrep` 过时语法 warning 不影响功能；部署上述现代 dispatcher
+后，同一回归应保持通过且两类 warning 均为 0。
 
 ---
 
@@ -700,6 +714,7 @@ lmutil lmstat -c "$SNPSLMD_LICENSE_FILE"   # license server UP / snpslmd UP
 - `scripts/fix_spyglass_linux7.sh` — SpyGlass 内核判断修复（备份+改+验证）
 - `scripts/vcs_wrapper.sh` — VCS 链接参数合并、KDB 条件 compat、专用 GCC PATH
 - `scripts/vcs_gcc_wrapper.sh` — 仅供 VCS 子进程使用的 GCC 13 通用名 dispatcher
+- `scripts/vcs_grep_wrapper.sh` — 仅供 VCS 子进程使用的现代 grep/egrep 语法 dispatcher
 - `scripts/lc_shell_wrapper.sh` — LC 旧 krb5 与退出清理崩溃的窄化处理
 - `scripts/verdi_wrapper.sh` — Verdi 老 ABI compat 与系统 Fontconfig 的进程级注入
 - `reference/zshrc.example` — 实测机器的完整 `~/.zshrc` EDA 工具链配置参考
