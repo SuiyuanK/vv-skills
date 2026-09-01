@@ -120,6 +120,16 @@
 - 验证：`wl-paste` 应输出刚复制的文本，`ps aux | grep wl-copy` 应有持有剪贴板的进程（Wayland 正常机制）。
 - 依赖：archlinux/cachyos 的 `pacman`；仅安装一个小型包，无源码改动。
 
+### `wechat-appimage-gnome-icon-fix`
+
+诊断并修复微信 AppImage 在 GNOME 中“应用菜单图标正常，但运行窗口、Dock 或任务切换器显示通用 AppImage 图标”的窗口匹配问题。
+
+- 根因：AppImage 集成生成的用户级 `.desktop` 缺少或写错 `StartupWMClass`，GNOME 无法把运行窗口的实际 `WM_CLASS` 与菜单启动器关联。
+- 流程：动态发现重装后当前的 AppImage 与 `.desktop`，用 `Exec=`/`TryExec=` 唯一对应，再从 XWayland 窗口读取真实 `WM_CLASS`；禁止沿用旧文件名或根据窗口标题猜值。
+- 修复：使用 `desktop-file-edit` 仅设置当前启动器的 `StartupWMClass`，运行 `desktop-file-validate` 与 `update-desktop-database`，正常退出并从应用菜单重开后验证 Dock 分组。
+- 安全边界：只修改 `~/.local/share/applications/` 中已确认的微信启动器，不改 AppImage 内部或系统启动器，不强制结束微信；不需要 sudo 或网络。
+- 依赖 `xprop`（`xorg-xprop`）与 `desktop-file-utils`；已在 CachyOS/Arch、GNOME Wayland/XWayland、微信 4.1.1 AppImage 上验证。
+
 ### `gnome-default-terminal-ghostty`
 
 配置并诊断 CachyOS/Arch + GNOME 桌面下的默认终端：切换默认终端到 Ghostty、绑定 Ctrl+Alt+T 快捷键、安全卸载其他终端（Ptyxis/Alacritty）。
