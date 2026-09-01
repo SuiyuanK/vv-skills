@@ -57,10 +57,13 @@ Notes:
 - `validate` parses the existing Markdown artifacts against
   `templates/schemas/design_spec.schema.json` and
   `templates/schemas/spec_lock.schema.json`. It reports missing sections and
-  fields, illegal enums, malformed page keys, and unmet conditional sections.
+  fields, including per-slide `Audience move` and `Relationships` lines,
+  illegal enums, malformed page keys, and unmet conditional sections.
   When optional custom reference lists are present, it also requires every id
   to resolve to the matching mode, visual-style, or image-rendering catalog,
   rejects duplicates, and rejects reference rows on non-custom selections;
+  under `## forbidden` on versioned locks, every non-empty, non-baseline list
+  item must end with `(user)`;
   it does not rewrite either artifact or compare their values for textual
   equality. It also does not prove final-confirmation → Design Spec fidelity or
   Design Spec/context → lock semantic fidelity; Generate Step 4 owns those two
@@ -257,21 +260,21 @@ python3 scripts/pptx_template_import.py <template.pptx> --inheritance-mode layer
 ```
 
 Notes:
-- Extracts reusable media assets from `ppt/media/`
+- Extracts package resources into semantic workspace directories
 - Summarizes slide size, theme colors, font metadata, and per-master theme metadata
 - Resolves slide / layout / master relationships from OOXML relationships; every master and layout is included even when no sample slide currently references it
-- Generates `manifest.json` (single source of truth for slide size, theme, per-master themes, assets, layouts, masters, placeholders, slides, SVG file paths, and page-type candidates), `native_structure.json`, `source_template.pptx`, `assets/`, `conversion-report.json`, and shape-level SVGs under `svg/`
+- Generates `analysis/manifest.json` (source facts and resource inventory), `analysis/native_structure.json`, `sources/source.pptx`, `validation/conversion-report.json`, populated semantic resource directories, and shape-level SVGs under `svg/`
 - **SVG output defaults to the layered authoring source** (`--inheritance-mode layered`):
   - `svg/` — layered template view for designers: every master and layout in the deck rendered once as `svg/master_*.svg` / `svg/layout_*.svg` (including ones no sample slide currently references); `svg/slide_NN.svg` contains only that slide's own shapes; `svg/inheritance.json` records parentage plus source-owned `showInheritedShapes` / `showMasterShapes` booleans.
   - `svg-flat/` — optional verification view emitted only by `--inheritance-mode both`: each `slide_NN.svg` is self-contained (the effective visible Master/Layout contributions plus Slide-local content painted into one file), so opening any slide in isolation shows the full page like PowerPoint would. Background inheritance remains independent of inherited-shape visibility. Useful for previews, screenshots, and "did this slide actually render correctly" sanity checks.
-- `manifest.json` records `svgFile` for slides / layouts / masters, `flatSvgFile` for slides when `svg-flat/` exists, placeholder type / index / geometry / base style, an asset map used by SVG `href` values, and common assets reused through slide / layout / master inheritance. Placeholder semantics keep `subTitle`, `obj`, `media`, and `dt` distinct as `subtitle`, `object`, `media`, and `date`.
-- `conversion-report.json` owns tolerant source-recovery diagnostics; it is not a cache or a duplicate of the structural manifests
+- `analysis/manifest.json` records `svgFile` for slides / layouts / masters, `flatSvgFile` for slides when `svg-flat/` exists, placeholder type / index / geometry / base style, a resource map used by SVG `href` values, and common images reused through slide / layout / master inheritance. Placeholder semantics keep `subTitle`, `obj`, `media`, and `dt` distinct as `subtitle`, `object`, `media`, and `date`.
+- `validation/conversion-report.json` owns tolerant source-recovery diagnostics; it is not a cache or a duplicate of the structural manifests
 - Layered slide SVGs keep only the slide's own background; inherited master / layout backgrounds stay in the corresponding master / layout SVGs
 - Placeholder guides are intentionally lightweight in `svg/` master / layout files; `svg-flat/` hides those guides and is the visual preview source
 - Charts, SmartArt, diagrams, and OLE objects become typed placeholders in `svg/`; `svg-flat/` shows a preview image with a corner badge when one exists, otherwise a visible placeholder. Tables are converted into real SVG content.
-- Pass `--inheritance-mode both` to add `svg-flat/`, or `--inheritance-mode flat` for the legacy round-trip view (single self-contained `svg/` tree without master/layout/inheritance files).
+- Pass `--inheritance-mode both` to add `svg-flat/`, or `--inheritance-mode flat` for a self-contained projection-only `svg/` tree without master/layout/inheritance files. Imported-deck round-trip uses the separate `authoring-svg-flat/` contract.
 - SVG export reads OOXML directly via `pptx_to_svg` — no PowerPoint or Keynote dependency, runs on any platform
-- `<image>` elements in `svg/` reference files in `assets/` directly; pass `--embed-images` to inline as data URIs instead
+- `<image>` elements in `svg/` reference files in `images/` directly; raster images and SVG/EMF/WMF image media share that directory. Pass `--embed-images` to inline them as data URIs instead.
 - External linked images and missing media are strict failures. Office vector media such as EMF / WMF are converted to PNG previews when the local toolchain can do so; otherwise the import fails instead of silently dropping content.
 - Required in `/create-template` whenever the reference source is `.pptx`
 - Default output directory is `<pptx_stem>_template_import/`

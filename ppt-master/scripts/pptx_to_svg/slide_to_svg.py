@@ -85,6 +85,7 @@ from .ooxml_loader import (
     inherited_shape_visibility,
 )
 from .pic_to_svg import (
+    LinkedImageResolutionError,
     MediaResolutionError,
     PictureResult,
     convert_blip_fill,
@@ -110,6 +111,12 @@ from .txbody_to_svg import (
 # AssemblyContext
 # ---------------------------------------------------------------------------
 
+_SOURCE_PROXY_ATTRIBUTE = "data-pptx-source-proxy"
+_SOURCE_PROXY_KIND = "native-restore"
+_EXTERNAL_LINKED_IMAGE_PROXY_ATTRIBUTE = (
+    "data-pptx-external-linked-image-proxy"
+)
+
 @dataclass
 class AssemblyContext:
     """Per-slide accumulator for unique IDs + media + defs."""
@@ -119,7 +126,7 @@ class AssemblyContext:
     slide_part: PartRef
     slide_number: int | None = None
     theme_fonts: dict[str, str] = field(default_factory=dict)
-    media_subdir: str = "assets"
+    media_subdir: str = "images"
     embed_images: bool = False
     keep_hidden: bool = False
     strict: bool = False
@@ -225,7 +232,7 @@ def assemble_slide(
     palette: ColorPalette | None,
     *,
     theme_fonts: dict[str, str] | None = None,
-    media_subdir: str = "assets",
+    media_subdir: str = "images",
     embed_images: bool = False,
     keep_hidden: bool = False,
     inheritance_mode: str = "flat",
@@ -337,7 +344,7 @@ def assemble_part_solo(
     role: str,
     parent_master: PartRef | None = None,
     theme_fonts: dict[str, str] | None = None,
-    media_subdir: str = "assets",
+    media_subdir: str = "images",
     embed_images: bool = False,
     keep_hidden: bool = False,
     asset_name_map: dict[str, str] | None = None,
@@ -483,6 +490,7 @@ def _fallback_node_svg(
     ctx: AssemblyContext,
     *,
     top_level: bool,
+    source_proxy: bool = False,
 ) -> str:
     """Keep one unsupported source object visible without aborting its deck."""
     if node.xfrm.w <= 0 or node.xfrm.h <= 0:
@@ -500,7 +508,21 @@ def _fallback_node_svg(
         f'y="{fmt_num(node.xfrm.y + min(18, node.xfrm.h / 2))}" '
         f'font-size="12" fill="#991B1B">{label}</text>'
     )
-    return _wrap_shape_group(inner, node, ctx, top_level=top_level)
+    extra_attrs = (
+        [
+            f'{_SOURCE_PROXY_ATTRIBUTE}="{_SOURCE_PROXY_KIND}"',
+            f'{_EXTERNAL_LINKED_IMAGE_PROXY_ATTRIBUTE}="true"',
+        ]
+        if source_proxy
+        else None
+    )
+    return _wrap_shape_group(
+        inner,
+        node,
+        ctx,
+        top_level=top_level,
+        extra_attrs=extra_attrs,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -525,6 +547,20 @@ def _convert_shape(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) ->
                 asset_name_map=ctx.asset_name_map,
                 strict=ctx.strict,
             )
+        except LinkedImageResolutionError as exc:
+            if ctx.strict:
+                raise
+            ctx.diagnose(
+                "linked-image-proxy",
+                str(exc),
+                "retain the complete source object as a non-editable proxy",
+            )
+            return _fallback_node_svg(
+                node,
+                ctx,
+                top_level=top_level,
+                source_proxy=True,
+            )
         except (ValueError, MediaResolutionError) as exc:
             if ctx.strict:
                 raise
@@ -534,6 +570,18 @@ def _convert_shape(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) ->
                 "omit the image fill and retain shape geometry/text",
             )
         else:
+            if blip_result.external_linked:
+                ctx.diagnose(
+                    "linked-image-proxy",
+                    "Externally linked image fills are source-backed",
+                    "retain the complete source object as a non-editable proxy",
+                )
+                return _fallback_node_svg(
+                    node,
+                    ctx,
+                    top_level=top_level,
+                    source_proxy=True,
+                )
             _diagnose_picture_result(ctx, blip_result)
             if blip_result.svg:
                 blip_image = _clip_blip_image(blip_result.svg, geom, ctx)
@@ -1555,6 +1603,20 @@ def _convert_picture(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) 
             asset_name_map=ctx.asset_name_map,
             strict=ctx.strict,
         )
+    except LinkedImageResolutionError as exc:
+        if ctx.strict:
+            raise
+        ctx.diagnose(
+            "linked-image-proxy",
+            str(exc),
+            "retain the complete source picture as a non-editable proxy",
+        )
+        return _fallback_node_svg(
+            node,
+            ctx,
+            top_level=top_level,
+            source_proxy=True,
+        )
     except MediaResolutionError as exc:
         if ctx.strict:
             raise
@@ -1581,6 +1643,13 @@ def _convert_picture(node: ShapeNode, ctx: AssemblyContext, *, top_level: bool) 
     clipped_svg = _clip_blip_image(result.svg, geom, ctx)
     picture_attrs = {**_object_metadata(node, ctx), **effect_metadata}
     group_attrs = _metadata_group_attrs(effect_metadata)
+    if result.external_linked:
+        group_attrs.append(
+            f'{_SOURCE_PROXY_ATTRIBUTE}="{_SOURCE_PROXY_KIND}"'
+        )
+        group_attrs.append(
+            f'{_EXTERNAL_LINKED_IMAGE_PROXY_ATTRIBUTE}="true"'
+        )
     if effect.filter_id is not None:
         filter_attr = f"url(#{effect.filter_id})"
         if (
@@ -2051,6 +2120,7 @@ def _render_graphic_table(
             result.native_payload["name"] = node.name
         payload_metadata = _replacement_payload_metadata(result.native_payload)
         replacement_attrs.append('data-pptx-replace-with="table"')
+        replacement_attrs.append('data-pptx-native-authority="json"')
     elif result.native_status:
         replacement_attrs.append(
             'data-pptx-replacement-status="'
@@ -2100,6 +2170,7 @@ def _render_graphic_chart(
             )
         payload_metadata = _replacement_payload_metadata(payload)
         replacement_attrs.append('data-pptx-replace-with="chart"')
+        replacement_attrs.append('data-pptx-native-authority="json"')
     elif result.native_status:
         replacement_attrs.append(
             'data-pptx-replacement-status="'

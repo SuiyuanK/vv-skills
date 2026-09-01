@@ -64,6 +64,12 @@
             sec_proactive_execution: "Proactive execution",
             sec_mode: "Generation mode",
             sec_refine: "Review the Design Spec first",
+            sec_design_spec_depth: "Design Spec depth",
+            design_spec_depth_brief: "Brief",
+            design_spec_depth_brief_desc: "A short block list per page; no full page copy.",
+            design_spec_depth_complete: "Complete",
+            design_spec_depth_complete_desc: "Full page briefs with complete wording.",
+            design_spec_depth_locked: "Locked to Complete because split mode or Design Spec refinement is enabled.",
             sec_design_directions: "Coherent design directions",
             design_directions_hint: "The recommended complete direction is applied first. Choose another or fine-tune the projected fields below; use Restore to return an adjusted direction to its authored bundle.",
             direction_active: "Applied",
@@ -72,8 +78,8 @@
             direction_restore: "Restore authored direction",
             scheme_component_options: "Project-specific custom choices · select a card to edit",
             sec_template_application: "Template application",
-            template_application_hint: "The AI recommends how to apply the installed template to this deck. Revise the plan directly in natural language.",
-            placeholder_template_application: "Describe which template pages or prototypes to use, skip, repeat, or reorder; what must stay; and what may be replaced or reorganized.",
+            template_application_hint: "After reading every installed template SVG, the AI proposes one natural-language application plan. Edit it directly; this is not a mode selector.",
+            placeholder_template_application: "Name exact SVG files for page-specific rules; describe what to use, skip, repeat, or reorder, what stays fixed, and what may be replaced or reorganized.",
             sub_mode: "Narrative mode",
             sub_visual: "Visual style",
             sub_divergence: "Material divergence (how freely to reshape vs. stay close to the source)",
@@ -247,6 +253,12 @@
             sec_proactive_execution: "能動的な実行",
             sec_mode: "生成モード",
             sec_refine: "先に設計仕様を確認",
+            sec_design_spec_depth: "設計仕様の詳細度",
+            design_spec_depth_brief: "簡潔",
+            design_spec_depth_brief_desc: "各ページを短いブロック一覧で記し、全文は書きません。",
+            design_spec_depth_complete: "完全",
+            design_spec_depth_complete_desc: "完全な文言を含む各ページの詳細なブリーフを記載します。",
+            design_spec_depth_locked: "分割モードまたは設計仕様のレビューが有効なため、「完全」に固定されています。",
             sec_design_directions: "統合デザイン方針",
             design_directions_hint: "おすすめの全体案が最初に適用されています。別案を選ぶか、下の各項目を微調整できます。調整後は「元の案に戻す」で最初の組み合わせを復元できます。",
             direction_active: "適用中",
@@ -255,8 +267,8 @@
             direction_restore: "元の案に戻す",
             scheme_component_options: "プロジェクト専用カスタム案 · カードを選んで編集",
             sec_template_application: "テンプレートの適用方法",
-            template_application_hint: "AIが現在の内容に合わせたテンプレートの使い方を提案します。自然言語で直接修正できます。",
-            placeholder_template_application: "使用・省略・反復・並べ替えするページやプロトタイプ、保持する要素、差し替え・再構成できる内容を記述します。",
+            template_application_hint: "AIがインストール済みテンプレートの全SVGを確認し、自然言語の適用方針を1段落で提案します。モード選択ではなく、文章を直接修正できます。",
+            placeholder_template_application: "ページ固有の規則は正確なSVGファイル名で示し、使用・省略・反復・並べ替え、固定する要素、差し替え・再構成できる内容を記述します。",
             sub_mode: "ナラティブモード",
             sub_visual: "ビジュアルスタイル",
             sub_divergence: "素材からの発散度（どこまで自由に再構成するか、原文に忠実か）",
@@ -430,6 +442,12 @@
             sec_proactive_execution: "主动执行",
             sec_mode: "生成模式",
             sec_refine: "先审核设计规范",
+            sec_design_spec_depth: "设计规范深度",
+            design_spec_depth_brief: "简要",
+            design_spec_depth_brief_desc: "每页只写简短的内容块列表，不写整页文案。",
+            design_spec_depth_complete: "完整",
+            design_spec_depth_complete_desc: "写入包含完整文案的逐页简报。",
+            design_spec_depth_locked: "分段模式或设计规范审核已开启，因此固定为“完整”。",
             sec_design_directions: "成套设计方向",
             design_directions_hint: "AI 最倾向的成套方案已默认应用；你可以改选其他方案，或在下方微调各项。调整后可用“恢复原方案”还原整套预设。",
             direction_active: "已应用",
@@ -438,8 +456,8 @@
             direction_restore: "恢复原方案",
             scheme_component_options: "项目专属自定义方案 · 选中卡片后可编辑",
             sec_template_application: "模板应用方式",
-            template_application_hint: "AI 会根据当前内容推荐如何使用已安装模板；你可以直接用自然语言修改。",
-            placeholder_template_application: "说明使用、跳过、重复或重排哪些模板页面/原型，哪些内容必须保留，哪些可以替换或重组。",
+            template_application_hint: "AI 会先阅读已安装模板的全部 SVG，再给出一段自然语言应用方案；这不是模式选择，你可以直接修改文字。",
+            placeholder_template_application: "页面级规则请写明精确 SVG 文件名；说明使用、跳过、重复或重排哪些原型，哪些内容固定，哪些可以替换或重组。",
             sub_mode: "叙事模式",
             sub_visual: "视觉风格",
             sub_divergence: "材料发散度（多大程度重塑，还是贴近源材料）",
@@ -613,6 +631,12 @@
             sec_proactive_execution: "主動執行",
             sec_mode: "生成模式",
             sec_refine: "先審閱設計規範",
+            sec_design_spec_depth: "設計規範深度",
+            design_spec_depth_brief: "簡要",
+            design_spec_depth_brief_desc: "每頁只寫簡短的內容區塊清單，不寫整頁文案。",
+            design_spec_depth_complete: "完整",
+            design_spec_depth_complete_desc: "寫入包含完整文案的逐頁簡報。",
+            design_spec_depth_locked: "分段模式或設計規範審閱已開啟，因此固定為「完整」。",
             sec_design_directions: "成套設計方向",
             design_directions_hint: "AI 最傾向的成套方案已預設套用；你可以改選其他方案，或在下方微調各項。調整後可用「還原原始方案」還原整套預設。",
             direction_active: "已套用",
@@ -621,8 +645,8 @@
             direction_restore: "還原原始方案",
             scheme_component_options: "專案專屬自訂方案 · 選取卡片後可編輯",
             sec_template_application: "範本套用方式",
-            template_application_hint: "AI 會根據目前內容推薦如何使用已安裝範本；你可以直接用自然語言修改。",
-            placeholder_template_application: "說明使用、跳過、重複或重排哪些範本頁面/原型，哪些內容必須保留，哪些可以替換或重組。",
+            template_application_hint: "AI 會先閱讀已安裝範本的全部 SVG，再提出一段自然語言套用方案；這不是模式選擇，你可以直接修改文字。",
+            placeholder_template_application: "頁面級規則請寫明精確 SVG 檔名；說明使用、略過、重複或重排哪些原型，哪些內容固定，哪些可以替換或重組。",
             sub_mode: "敘事模式",
             sub_visual: "視覺風格",
             sub_divergence: "材料發散度（多大程度重塑，還是貼近源材料）",
@@ -1426,6 +1450,7 @@
     function enumField(parent, list, recommendedId, getVal, setVal, opts2) {
         list = list || [];
         opts2 = opts2 || {};
+        var disabled = opts2.disabled === true;
         var grouped = list.length && list[0] && list[0].items;
         var flat = grouped ? list.reduce(function (a, g) { return a.concat(g.items || []); }, []) : list;
         var ids = flat.map(function (o) { return o.id; });
@@ -1508,7 +1533,13 @@
             }
             chip.appendChild(copy);
             if (!isCustom && o.id === cur) chip.classList.add("selected");
+            if (disabled) {
+                chip.setAttribute("aria-disabled", "true");
+                chip.style.cursor = "not-allowed";
+                chip.style.opacity = "0.65";
+            }
             chip.addEventListener("click", function () {
+                if (disabled) return;
                 deselect();
                 chip.classList.add("selected");
                 if (!aiCustom) customInput.style.display = "none";
@@ -2685,6 +2716,9 @@
     // Replaced when the final plan's image-production section mounts; image-use
     // edits call it so the conditional AI path stays synchronized on the page.
     var refreshImageProduction = function () {};
+    // Replaced when the Design Spec depth section mounts; generation/refinement
+    // edits call it so the forced-complete coupling stays synchronized.
+    var refreshDesignSpecDepth = function () {};
     // Replaced when the typography section mounts; the canvas section calls it so
     // the body-size hint tracks the chosen canvas dimensions.
     var refreshBodySizeHint = function () {};
@@ -3830,7 +3864,11 @@
             setSectionNote(sec, STATE.generation_mode === "split" ? t("mode_split_desc") : t("mode_continuous_desc"));
         }
         enumField(sec, CAT.generation_mode, recOrFirst("generation_mode", CAT.generation_mode),
-            function () { return STATE.generation_mode; }, function (v) { STATE.generation_mode = v; refresh(); });
+            function () { return STATE.generation_mode; }, function (v) {
+                STATE.generation_mode = v;
+                refresh();
+                refreshDesignSpecDepth();
+            });
         refresh();
         host.appendChild(sec);
     }
@@ -3881,8 +3919,54 @@
         }
         enumField(sec, opts, STATE.refine_spec ? "on" : "off",
             function () { return STATE.refine_spec ? "on" : "off"; },
-            function (v) { STATE.refine_spec = (v === "on"); refresh(); });
+            function (v) {
+                STATE.refine_spec = (v === "on");
+                refresh();
+                refreshDesignSpecDepth();
+            });
         refresh();
+        host.appendChild(sec);
+    }
+
+    function designSpecDepthCatalog() {
+        if (CAT.design_spec_depth && CAT.design_spec_depth.length) {
+            return CAT.design_spec_depth;
+        }
+        return [
+            {
+                id: "brief",
+                label: t("design_spec_depth_brief"),
+                desc: t("design_spec_depth_brief_desc")
+            },
+            {
+                id: "complete",
+                label: t("design_spec_depth_complete"),
+                desc: t("design_spec_depth_complete_desc")
+            }
+        ];
+    }
+
+    function renderDesignSpecDepth(host) {
+        var sec = section("D", "sec_design_spec_depth");
+        var body = el("div", "design-spec-depth-body");
+        var recommended = REC.design_spec_depth && REC.design_spec_depth.value;
+        if (recommended !== "brief" && recommended !== "complete") recommended = "brief";
+        sec.appendChild(body);
+        refreshDesignSpecDepth = function () {
+            var locked = STATE.generation_mode === "split" || STATE.refine_spec;
+            if (locked) STATE.design_spec_depth = "complete";
+            body.innerHTML = "";
+            enumField(
+                body,
+                designSpecDepthCatalog(),
+                locked ? null : recommended,
+                function () { return STATE.design_spec_depth; },
+                function (value) { STATE.design_spec_depth = value; },
+                { disabled: locked }
+            );
+            setSectionNote(sec, locked ? t("design_spec_depth_locked") : "");
+        };
+        refreshDesignSpecDepth();
         host.appendChild(sec);
     }
 
@@ -3917,6 +4001,7 @@
         refreshStylePreview = function () {};
         refreshImageStrategyPreview = function () {};
         refreshImageProduction = function () {};
+        refreshDesignSpecDepth = function () {};
         refreshBodySizeHint = function () {};
         refreshSizeInputs = function () {};
         DIRECTION_COMPONENT_PAINTERS = [];
@@ -3951,6 +4036,7 @@
             renderProactiveExecution(host);
             renderMode(host);
             renderRefine(host);
+            renderDesignSpecDepth(host);
             var refreshDirectionIndicators = function () {
                 window.setTimeout(function () {
                     refreshDesignDirectionState();
@@ -4111,6 +4197,11 @@
 
         STATE.generation_mode = pick("generation_mode", CAT.generation_mode);
         STATE.refine_spec = !!((REC.refine_spec && REC.refine_spec.value) || (REC.recommend && REC.recommend.refine_spec));
+        var designSpecDepth = REC.design_spec_depth && REC.design_spec_depth.value;
+        STATE.design_spec_depth = designSpecDepth === "complete" ? "complete" : "brief";
+        if (STATE.generation_mode === "split" || STATE.refine_spec) {
+            STATE.design_spec_depth = "complete";
+        }
     }
 
     function initState() {

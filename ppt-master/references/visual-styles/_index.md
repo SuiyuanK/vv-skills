@@ -21,7 +21,7 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 
 > The **`visual_style` value is only ever a first-column `id`** (`swiss-minimal`, `editorial`, …). The "Paired rendering" column lists **image-rendering** names (`flat`, `minimalist-swiss`, `digital-dashboard`, …) — never treat one of those as the `visual_style`. Default records rendering under confirmation h; Quick keeps the selected rendering only in active context and any required image manifest.
 >
-> The **`Illus.`** column describes illustration's role only after page-carrier selection activates it — `core` (illustration may lead the look), `supportive` (illustration may share the composition), or `sparse` (illustration stays selective so the style's lead visual remains clear). It tunes selected illustration's centrality and recurrence; it never recommends adding illustration, selects an AI source or image row, or narrows eligible page types, element scale, or carrier combinations. An explicit user request to use / skip illustrations overrides it either way, and `image_usage: none` always writes no illustration rows. Full per-style rule in each file's §6.
+> The **`Illus.`** column describes illustration's role only after the resource-need review selects illustration — `core` (illustration may lead the look), `supportive` (illustration may share the composition), or `sparse` (illustration stays selective so the style's lead visual remains clear). It tunes selected illustration's centrality and recurrence; it never recommends adding illustration, selects an AI source or image row, or narrows eligible page types, element scale, or carrier combinations. An explicit user request to use / skip illustrations overrides it either way, and `image_usage: none` always writes no illustration rows. Full per-style rule in each file's §6.
 >
 > **Typography character applies to editable native text.** Decorative
 > lettering is a separate carrier decision; a selected style informs its
@@ -29,46 +29,46 @@ Each style keeps its own authoritative file with: shape & decoration, typography
 
 ### 1.1 Corporate / product
 
-| Visual style | Character | Typical context | Paired rendering | Illus. |
-|---|---|---|---|---|
-| [`swiss-minimal`](./swiss-minimal.md) | Grid-locked, sharp, aggressive whitespace, near-zero ornament | High-end consulting, architecture, type-led | `minimalist-swiss` | sparse |
-| [`soft-rounded`](./soft-rounded.md) | Rounded cards, gentle elevation, approachable | Product, SaaS, training, consumer | `flat` | supportive |
-| [`glassmorphism`](./glassmorphism.md) | Translucent glass panels, gradient light, floating depth | Modern SaaS, fintech, product launches, AI demos | `glassmorphism` | sparse |
-| [`dark-tech`](./dark-tech.md) | Dark canvas, glow accents, geometric precision | Tech, AI, data products, launches | `digital-dashboard` | sparse |
-| [`blueprint`](./blueprint.md) | Schematic line work on dark paper, isometric, annotated | Technical briefings, architecture, engineering | `blueprint` | supportive |
+| Visual style | Character | Paired rendering | Illus. |
+|---|---|---|---|
+| [`swiss-minimal`](./swiss-minimal.md) | Grid-locked, sharp, aggressive whitespace, near-zero ornament | `minimalist-swiss` | sparse |
+| [`soft-rounded`](./soft-rounded.md) | Rounded cards, gentle elevation, approachable | `flat` | supportive |
+| [`glassmorphism`](./glassmorphism.md) | Translucent glass panels, gradient light, floating depth | `glassmorphism` | sparse |
+| [`dark-tech`](./dark-tech.md) | Dark canvas, glow accents, geometric precision | `digital-dashboard` | sparse |
+| [`blueprint`](./blueprint.md) | Schematic line work on dark paper, isometric, annotated | `blueprint` | supportive |
 
 ### 1.2 Editorial / publication
 
-| Visual style | Character | Typical context | Paired rendering | Illus. |
-|---|---|---|---|---|
-| [`editorial`](./editorial.md) | Magazine hierarchy, rules & columns, serif/sans interplay | Finance, journalism, analysis, explainers | `editorial` | supportive |
-| [`photo-editorial`](./photo-editorial.md) | Full-bleed photography dominates, text points & captions | Architecture, design, fashion, culture, travel / destination, photo-led | `corporate-photo` | sparse |
-| [`data-journalism`](./data-journalism.md) | Multi-column micro-charts, sidebars, source lines, dense | Finance, market reviews, research, data reports | `editorial` | sparse |
-| [`brutalist`](./brutalist.md) | Newsprint density, ruled boxes, raw structure, flat | Annual reviews, research digests, manifestos | `screen-print` / `editorial` | supportive |
+| Visual style | Character | Paired rendering | Illus. |
+|---|---|---|---|
+| [`editorial`](./editorial.md) | Magazine hierarchy, rules & columns, serif/sans interplay | `editorial` | supportive |
+| [`photo-editorial`](./photo-editorial.md) | Full-bleed photography dominates, text points & captions | `corporate-photo` | sparse |
+| [`data-journalism`](./data-journalism.md) | Multi-column micro-charts, sidebars, source lines, dense | `editorial` | sparse |
+| [`brutalist`](./brutalist.md) | Newsprint density, ruled boxes, raw structure, flat | `screen-print` / `editorial` | supportive |
 
 ### 1.3 Expressive / print
 
-| Visual style | Character | Typical context | Paired rendering | Illus. |
-|---|---|---|---|---|
-| [`memphis`](./memphis.md) | Clashing color blocks, geometric confetti, bold outlines | Festivals, consumer, youth, launch hype | `flat` | core |
-| [`zine`](./zine.md) | Riso misregistration, halftone, limited palette, print grit | Culture, design talks, indie brands | `screen-print` | core |
-| [`vintage-poster`](./vintage-poster.md) | Mid-century flat blocks, halftone, retro-geometric warmth | Heritage brands, historic hospitality identities, cultural retrospectives, anniversaries | `vintage-poster` | core |
-| [`paper-cut`](./paper-cut.md) | Layered cut-paper sheets, soft inter-layer shadow, tactile | Cultural / folk, children, festival, sustainability | `paper-cut` | core |
+| Visual style | Character | Paired rendering | Illus. |
+|---|---|---|---|
+| [`memphis`](./memphis.md) | Clashing color blocks, geometric confetti, bold outlines | `flat` | core |
+| [`zine`](./zine.md) | Riso misregistration, halftone, limited palette, print grit | `screen-print` | core |
+| [`vintage-poster`](./vintage-poster.md) | Mid-century flat blocks, halftone, retro-geometric warmth | `vintage-poster` | core |
+| [`paper-cut`](./paper-cut.md) | Layered cut-paper sheets, soft inter-layer shadow, tactile | `paper-cut` | core |
 
 ### 1.4 Hand-drawn / brush
 
-| Visual style | Character | Typical context | Paired rendering | Illus. |
-|---|---|---|---|---|
-| [`sketch-notes`](./sketch-notes.md) | Warm paper, doodle line work, soft pastel blocks | Education, training, onboarding, knowledge | `sketch-notes` | core |
-| [`ink-notes`](./ink-notes.md) | Pale field, black hand-ink, sparse semantic accent | Methodology, before/after, manifestos | `ink-notes` | supportive |
-| [`chalkboard`](./chalkboard.md) | Dark slate, chalk strokes, powdery pastel accents | Teaching, tutorials, classroom, academic | `chalkboard` | core |
-| [`ink-wash`](./ink-wash.md) | Rice-paper whitespace, brush marks, seal accent, still | Cultural, philosophy, heritage, 新中式 | `ink-notes` / `watercolor` | supportive |
+| Visual style | Character | Paired rendering | Illus. |
+|---|---|---|---|
+| [`sketch-notes`](./sketch-notes.md) | Warm paper, doodle line work, soft pastel blocks | `sketch-notes` | core |
+| [`ink-notes`](./ink-notes.md) | Pale field, black hand-ink, sparse semantic accent | `ink-notes` | supportive |
+| [`chalkboard`](./chalkboard.md) | Dark slate, chalk strokes, powdery pastel accents | `chalkboard` | core |
+| [`ink-wash`](./ink-wash.md) | Rice-paper whitespace, brush marks, seal accent, still | `ink-notes` / `watercolor` | supportive |
 
 ### 1.5 Specialty
 
-| Visual style | Character | Typical context | Paired rendering | Illus. |
-|---|---|---|---|---|
-| [`pixel-art`](./pixel-art.md) | Strict pixel grid, blocky forms, limited palette, flat | Gaming, retro-tech, nostalgic, game-flavored | `pixel-art` | core |
+| Visual style | Character | Paired rendering | Illus. |
+|---|---|---|---|
+| [`pixel-art`](./pixel-art.md) | Strict pixel grid, blocky forms, limited palette, flat | `pixel-art` | core |
 
 ---
 
@@ -107,11 +107,7 @@ an exact authoring preset here.
 
 ## 3. Editable `custom` projection
 
-Each coordinated Default Stage-2 direction authors one visible, non-empty `custom` aesthetic whose paragraph names its executable shape language, composition geometry, decoration density, whitespace, typographic character, and texture — **no HEX, no color names as values**. `custom` is not constrained by its relationship to the catalog: it may use catalog material in any way or none, including carrying one fitting preset unchanged. The three complete directions are plainly different designs; this axis expresses that difference whenever their aesthetics genuinely differ, and catalog bases may coincide. A different name, note, reference count, or palette alone is not another aesthetic. Style behaviors may also coincide when other components carry the direction difference or authoritative user/template truth forbids visual variation; state that boundary in the direction note instead of fabricating difference. Use this index to freeze any catalog bases before reading their detail files. A template-backed direction stays inside the inherited identity and confirmed application plan. Record the confirmed current aesthetic in the Design Spec first, then project `- visual_style: custom` plus `- visual_style_behavior:`. The 18 fixed styles remain lower-level single-select alternatives; do not create a fourth AI-custom proposal.
-
-Quick does not display a candidate spectrum. It reads this index, resolves one preset or custom behavior, then reads only the selected detail files and persists nothing.
-
-**Mandatory — select before detail reading**: Freeze every catalog source actually used from this index, then read only those exact files before writing the behavior. One source may supply the complete aesthetic unchanged; when several are named, each contributes a distinct executable job across shape language, composition, decoration, whitespace, typography, or texture. Reference count has no fixed cap; count is an outcome, not a target. A coherent three-basis direction may assign `swiss-minimal` to grid and whitespace, `soft-rounded` to selective surface contours and elevation, and `editorial` to evidence hierarchy and rules. Default persists every actual id as `visual_style_references`; Quick retains them only in active context. Omit every source whose contribution cannot be stated, never add a second merely to imply synthesis, and do not open candidates for comparison after this gate. A custom using no catalog source names and reads none.
+Each Default Stage-2 direction authors one visible, non-empty `custom` aesthetic under [`strategist.md`](../strategist.md) §d — its executable shape language, composition geometry, decoration density, whitespace, typography character, and texture — naming only the catalog bases it actually uses; freeze those ids from this index, then read only their files before writing the behavior. Quick resolves one preset or custom behavior the same way and persists nothing.
 
 ---
 

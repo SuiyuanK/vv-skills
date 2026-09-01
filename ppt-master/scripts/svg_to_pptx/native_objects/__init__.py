@@ -62,15 +62,19 @@ from .marker_common import (
     native_marker_transform,
 )
 from .marker_attributes import (
+    JSON_NATIVE_AUTHORITY,
+    NATIVE_AUTHORITY_ATTR,
     NativeMarkerAttributeError,
     native_fallback_kind,
     native_import_source,
     native_metadata_payload_matches,
+    native_json_is_authoritative,
     native_marker_legacy_warnings,
     native_replacement_kind,
     native_replacement_status,
 )
 from .marker_status import native_marker_status_errors
+from semantic_table import expand_semantic_table_payload
 from .table import (
     _build_native_table,
     _native_table_warnings,
@@ -86,16 +90,21 @@ __all__ = [
     "convert_native_object",
     "estimate_inline_formula_vertical_extent",
     "INLINE_FORMULA_ATTR",
+    "JSON_NATIVE_AUTHORITY",
+    "NATIVE_AUTHORITY_ATTR",
     "NativeMarkerAttributeError",
     "native_fallback_kind",
     "native_import_source",
     "native_metadata_payload_matches",
+    "native_json_is_authoritative",
     "native_marker_legacy_warnings",
     "native_object_marker_warnings",
+    "native_object_projection_warnings",
     "native_replacement_kind",
     "native_replacement_status",
     "native_marker_transform",
     "inline_formula_marker_errors",
+    "require_fresh_native_fallback",
     "snapshot_native_fallback_freshness",
     "stamp_native_fallback_baseline",
     "validate_native_object_marker",
@@ -432,11 +441,23 @@ def _validate_native_object_marker_payload(
         payload = _load_payload(elem, kind)
     except NativeMarkerAttributeError as exc:
         raise RuntimeError(str(exc)) from exc
+    if native_json_is_authoritative(elem):
+        missing_bounds = [
+            key for key in ("x", "y", "width", "height")
+            if payload.get(key) is None
+        ]
+        if missing_bounds:
+            raise RuntimeError(
+                "JSON-authoritative Chart/Table metadata requires explicit "
+                "x/y/width/height; missing " + ", ".join(missing_bounds)
+            )
     bounds_ctx = ctx or _native_marker_validation_context(elem, ancestors)
     off_x, off_y, ext_cx, ext_cy, _ = _validate_bounds_inputs(elem, payload, bounds_ctx)
     validated_data: list[list[Any]] | FormulaSpec | None = None
     if kind == "table":
-        table_rows, col_count, _merge_layout = _validate_table_payload(payload)
+        _expanded_payload, table_rows, col_count, _merge_layout = (
+            _validate_table_payload(payload)
+        )
         validated_data = table_rows
         if ext_cx < col_count or ext_cy < len(table_rows):
             raise RuntimeError(
@@ -485,6 +506,48 @@ def validate_native_object_marker(
     _validate_native_object_marker_payload(elem, ancestors=ancestors)
 
 
+def _projection_warnings_for_validated_marker(
+    elem: ET.Element,
+    kind: str,
+    payload: dict[str, Any],
+    validated_data: list[list[Any]] | FormulaSpec | None,
+) -> list[str]:
+    if (
+        native_json_is_authoritative(elem)
+        or native_import_source(elem) == "pptx"
+    ):
+        return []
+    if kind == "table" and isinstance(validated_data, list):
+        # Expand a copy for the parity checks; the caller keeps the original
+        # payload so the table writer can expand it again itself.
+        return _native_table_warnings(
+            elem,
+            expand_semantic_table_payload(payload),
+            validated_data,
+        )
+    if kind == "chart" and payload.get("source_package") is None:
+        return _native_chart_chrome_warnings(elem, payload)
+    return []
+
+
+def native_object_projection_warnings(
+    elem: ET.Element,
+    *,
+    ancestors: tuple[ET.Element, ...] = (),
+) -> list[str]:
+    """Return SVG-first fallback details that marker metadata does not project."""
+    kind, payload, validated_data = _validate_native_object_marker_payload(
+        elem,
+        ancestors=ancestors,
+    )
+    return _projection_warnings_for_validated_marker(
+        elem,
+        kind,
+        payload,
+        validated_data,
+    )
+
+
 def validate_native_object_marker_with_warnings(
     elem: ET.Element,
     *,
@@ -503,11 +566,14 @@ def validate_native_object_marker_with_warnings(
         )
         if kind in {"chart", "table"} else []
     )
-    if kind == "table" and isinstance(validated_data, list):
-        warnings.extend(_native_table_warnings(elem, validated_data))
-    elif kind == "chart":
-        if payload.get("source_package") is None:
-            warnings.extend(_native_chart_chrome_warnings(elem, payload))
+    warnings.extend(
+        _projection_warnings_for_validated_marker(
+            elem,
+            kind,
+            payload,
+            validated_data,
+        )
+    )
     return warnings
 
 

@@ -17,33 +17,69 @@
   },
   "file_budgets": {
     "AGENTS.md": 3250,
-    "skills/ppt-master/SKILL.md": 1250,
-    "skills/ppt-master/references/executor-base.md": 12000,
+    "skills/ppt-master/SKILL.md": 1750,
+    "skills/ppt-master/references/executor-base.md": 11000,
     "skills/ppt-master/references/executor-structured.md": 5500,
-    "skills/ppt-master/references/executor-chart.md": 3500,
-    "skills/ppt-master/references/executor-visualization.md": 1250,
-    "skills/ppt-master/references/executor-structure.md": 2250,
+    "skills/ppt-master/references/executor-chart.md": 1750,
+    "skills/ppt-master/references/executor-visualization.md": 1000,
+    "skills/ppt-master/references/executor-structure.md": 1750,
     "skills/ppt-master/references/topology-assembly.md": 3750,
     "skills/ppt-master/references/executor-table.md": 1000,
     "skills/ppt-master/references/executor-image.md": 2000,
     "skills/ppt-master/references/executor-web-image.md": 750,
     "skills/ppt-master/references/executor-notes.md": 1000,
     "skills/ppt-master/references/shared-standards.md": 500,
-    "skills/ppt-master/references/shared-standards-core.md": 13000,
-    "skills/ppt-master/references/svg-effects.md": 16000,
-    "skills/ppt-master/references/native-data-interface.md": 7500,
-    "skills/ppt-master/references/pptx-structure-interface.md": 4750,
+    "skills/ppt-master/references/shared-standards-core.md": 7000,
+    "skills/ppt-master/references/svg-effects.md": 9500,
+    "skills/ppt-master/references/native-data-interface.md": 5000,
+    "skills/ppt-master/references/pptx-structure-interface.md": 3000,
     "skills/ppt-master/references/preset-shape-vocabulary.md": 2750,
-    "skills/ppt-master/references/strategist.md": 18000,
+    "skills/ppt-master/references/strategist.md": 13000,
     "skills/ppt-master/references/strategist-image.md": 3250,
-    "skills/ppt-master/references/strategist-template.md": 3000,
-    "skills/ppt-master/templates/design_spec_reference.md": 3750,
-    "skills/ppt-master/templates/spec_lock_reference.md": 2750,
+    "skills/ppt-master/references/strategist-template.md": 2500,
+    "skills/ppt-master/templates/design_spec_reference.md": 3500,
+    "skills/ppt-master/templates/spec_lock_reference.md": 2500,
     "skills/ppt-master/templates/charts/chart-vocabulary.md": 1250,
     "skills/ppt-master/templates/tables/table-vocabulary.md": 500,
     "skills/ppt-master/templates/sounds/sound-vocabulary.md": 6250,
-    "skills/ppt-master/workflows/generate-pptx.md": 18000,
-    "skills/ppt-master/workflows/stages/apply-template-workspace.md": 3500
+    "skills/ppt-master/workflows/generate-pptx.md": 11000,
+    "skills/ppt-master/workflows/stages/apply-template-workspace.md": 2750,
+    "skills/ppt-master/references/confirm-surface.md": 3000,
+    "skills/ppt-master/references/video-design.md": 2500,
+    "skills/ppt-master/references/native-formula.md": 1500,
+    "skills/ppt-master/references/semantic-svg.md": 1500,
+    "skills/ppt-master/references/native-hyperlinks.md": 1250,
+    "skills/ppt-master/references/canvas-formats.md": 1250,
+    "skills/ppt-master/workflows/routing.md": 3000,
+    "skills/ppt-master/references/artifact-ownership.md": 4500,
+    "skills/ppt-master/workflows/governance/failure-recovery.md": 2750,
+    "skills/ppt-master/workflows/stages/resume-execute.md": 1750,
+    "skills/ppt-master/workflows/stages/refine-spec.md": 1000,
+    "skills/ppt-master/workflows/stages/verify-charts.md": 2500,
+    "skills/ppt-master/workflows/stages/topic-research.md": 2000,
+    "skills/ppt-master/workflows/stages/live-preview.md": 1000,
+    "skills/ppt-master/workflows/stages/web-image-review.md": 750,
+    "skills/ppt-master/references/visual-review.md": 3500,
+    "skills/ppt-master/workflows/stages/visual-review.md": 1750,
+    "skills/ppt-master/workflows/stages/generate-audio.md": 4000,
+    "skills/ppt-master/workflows/profiles/beautify-pptx.md": 5000,
+    "skills/ppt-master/workflows/profiles/image-to-pptx.md": 3250,
+    "skills/ppt-master/workflows/edit-native-pptx.md": 4250,
+    "skills/ppt-master/workflows/create-template.md": 10000,
+    "skills/ppt-master/references/template-designer.md": 7000,
+    "skills/ppt-master/workflows/create-template/create-brand.md": 1500,
+    "skills/ppt-master/workflows/create-template/create-style.md": 2000,
+    "skills/ppt-master/workflows/create-template/create-layout.md": 1500,
+    "skills/ppt-master/workflows/create-template/create-deck.md": 1500,
+    "skills/ppt-master/workflows/stages/customize-animations.md": 4250,
+    "skills/ppt-master/references/svg-image-embedding.md": 1750,
+    "skills/ppt-master/references/image-layout-spec.md": 2500,
+    "skills/ppt-master/templates/README.md": 1750,
+    "skills/ppt-master/templates/brands/README.md": 750,
+    "skills/ppt-master/templates/styles/README.md": 1250,
+    "skills/ppt-master/templates/layouts/README.md": 1500,
+    "skills/ppt-master/templates/decks/README.md": 1250,
+    "skills/ppt-master/templates/icons/README.md": 1750
   },
   "load_sets": {
     "bootstrap.routing": {
@@ -54,7 +90,7 @@
         "skills/ppt-master/SKILL.md",
         "skills/ppt-master/workflows/routing.md"
       ],
-      "max_tokens": 7750
+      "max_tokens": 8000
     },
     "support.sponsor-recommendation.en": {
       "description": "English sponsor context for explicit user requests for model, AI image model, API/provider, or hosted-service recommendations.",
@@ -121,7 +157,7 @@
       "max_tokens": 83000
     },
     "route.create-template.layout": {
-      "description": "Create Layout standard/fidelity path through Template_Designer, the strategy-triggered native-shape bundle, SVG core, and the structured PPTX interface; mirror excludes the authored bundle.",
+      "description": "Create Layout standard/fidelity path through Template_Designer, the strategy-triggered native-shape bundle, SVG core, and the structured PPTX interface; mirror excludes the authored bundle. Ceiling raised after BUDGET_LOAD_SET reported 76053 tokens.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
@@ -138,27 +174,16 @@
         "skills/ppt-master/templates/README.md",
         "skills/ppt-master/templates/layouts/README.md"
       ],
-      "max_tokens": 76000
+      "max_tokens": 77000
     },
-    "route.enhance-native-pptx": {
-      "description": "Finished-PPTX native enhancement route.",
+    "route.edit-native-pptx": {
+      "description": "Edit Native PPTX route: fill, edit, restructure, or enhance an existing deck through the source-preserving round-trip workspace.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
       ],
       "files": [
-        "skills/ppt-master/workflows/native-enhance-pptx.md"
-      ],
-      "max_tokens": 13000
-    },
-    "route.fill-native-pptx": {
-      "description": "Raw-PPTX native fill route.",
-      "scope": "cumulative",
-      "include": [
-        "bootstrap.routing"
-      ],
-      "files": [
-        "skills/ppt-master/workflows/template-fill-pptx.md"
+        "skills/ppt-master/workflows/edit-native-pptx.md"
       ],
       "max_tokens": 14000
     },
@@ -170,18 +195,15 @@
       ],
       "files": [
         "skills/ppt-master/workflows/generate-pptx.md",
-        "skills/ppt-master/references/artifact-ownership.md",
         "skills/ppt-master/references/strategist.md",
         "skills/ppt-master/references/strategist-image.md",
         "skills/ppt-master/references/canvas-formats.md",
-        "skills/ppt-master/references/image-layout-spec.md",
-        "skills/ppt-master/references/image-layout-patterns.md",
         "skills/ppt-master/templates/design_spec_reference.md",
         "skills/ppt-master/templates/spec_lock_reference.md",
         "skills/ppt-master/references/modes/_index.md",
         "skills/ppt-master/references/visual-styles/_index.md",
         "skills/ppt-master/references/image-renderings/_index.md",
-        "skills/ppt-master/scripts/docs/confirm_ui.md",
+        "skills/ppt-master/references/confirm-surface.md",
         "skills/ppt-master/templates/icons/README.md",
         "skills/ppt-master/templates/charts/chart-vocabulary.md",
         "skills/ppt-master/templates/tables/table-vocabulary.md",
@@ -216,24 +238,18 @@
       "max_tokens": 130000
     },
     "route.generate.quick-generate": {
-      "description": "Self-contained one-pass Generate profile with source intake, the fixed planning-capability batch, a conservative audit envelope for only the resolved preset or exact custom bases, conditional resource preparation, and complete flat SVG visual-construction authorities. Ceiling raised after BUDGET_LOAD_SET reported 108610 tokens.",
+      "description": "Self-contained one-pass Generate profile with source intake, the fixed planning-capability batch, a conservative audit envelope for only the resolved preset or exact custom bases, conditional resource preparation, and complete flat SVG visual-construction authorities. Ceiling raised after BUDGET_LOAD_SET reported 128946 tokens.",
       "scope": "cumulative",
       "include": [
         "bootstrap.routing"
       ],
       "files": [
         "skills/ppt-master/workflows/profiles/quick-generate.md",
-        "skills/ppt-master/references/artifact-ownership.md",
         "skills/ppt-master/references/shared-standards-core.md",
-        "skills/ppt-master/references/svg-effects.md",
-        "skills/ppt-master/references/native-shape-authoring.md",
+        "skills/ppt-master/references/executor-base.md",
         "skills/ppt-master/references/preset-shape-vocabulary.md",
         "skills/ppt-master/references/semantic-svg.md",
-        "skills/ppt-master/references/executor-structure.md",
-        "skills/ppt-master/references/topology-assembly.md",
         "skills/ppt-master/references/canvas-formats.md",
-        "skills/ppt-master/references/image-layout-spec.md",
-        "skills/ppt-master/references/image-layout-patterns.md",
         "skills/ppt-master/references/modes/_index.md",
         "skills/ppt-master/references/visual-styles/_index.md",
         "skills/ppt-master/references/image-renderings/_index.md",
@@ -268,20 +284,20 @@
           "registry": "image-renderings"
         }
       ],
-      "max_tokens": 120000
+      "max_tokens": 115000
     },
     "route.generate.quick-generate.beautify": {
-      "description": "Quick Generate with the shared strict 1:1 Beautify profile. Ceiling raised after BUDGET_LOAD_SET reported 116355 tokens.",
+      "description": "Quick Generate with the shared strict 1:1 Beautify profile. Ceiling raised after BUDGET_LOAD_SET reported 136685 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "profile.generate.beautify-pptx"
       ],
       "files": [],
-      "max_tokens": 130000
+      "max_tokens": 140000
     },
     "route.generate.quick-generate.image-to-pptx": {
-      "description": "Codex-supported Quick-only Image to PPTX with registered reference-image layers and shared plates.",
+      "description": "Codex-supported Quick-only Image to PPTX with registered reference-image layers and shared plates. Ceiling raised after BUDGET_LOAD_SET reported 156580 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate.in-hand-image",
@@ -291,10 +307,10 @@
         "skills/ppt-master/references/image-base.md",
         "skills/ppt-master/references/image-generator.md"
       ],
-      "max_tokens": 145000
+      "max_tokens": 160000
     },
     "route.generate.quick-generate.video-design": {
-      "description": "Quick Generate with conditional video-delivery design, frozen-script notes, custom animation, and narration/audio delivery. Ceiling raised after BUDGET_LOAD_SET reported 154620 tokens.",
+      "description": "Quick Generate with conditional video-delivery design, frozen-script notes, custom animation, and narration/audio delivery. Ceiling raised after BUDGET_LOAD_SET reported 178699 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
@@ -304,69 +320,71 @@
         "stage.shared.generate-audio"
       ],
       "files": [],
-      "max_tokens": 175000
+      "max_tokens": 180000
     },
     "route.generate.quick-generate.template-fusion": {
-      "description": "Quick Generate with the maximum Brand, Style, Layout, and Deck exact-root fusion loaded for flat authoring. Ceiling raised after BUDGET_LOAD_SET reported 125689 tokens.",
+      "description": "Quick Generate with the maximum Brand, Style, Layout, and Deck exact-root fusion; installed Layout/Deck ownership determines flat or structured authoring. Ceiling raised after BUDGET_LOAD_SET reported 150785 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.template.fusion-brand-style-layout-deck"
       ],
-      "files": [],
-      "max_tokens": 140000
+      "files": [
+        "skills/ppt-master/references/pptx-structure-interface.md"
+      ],
+      "max_tokens": 155000
     },
     "route.generate.quick-generate.topic-research": {
-      "description": "Quick Generate with gap-targeted factual research before direct resource preparation and SVG authoring. Ceiling raised after BUDGET_LOAD_SET reported 111104 tokens.",
+      "description": "Quick Generate with gap-targeted factual research before direct resource preparation and SVG authoring. Ceiling raised after BUDGET_LOAD_SET reported 131440 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.topic-research"
       ],
       "files": [],
-      "max_tokens": 125000
+      "max_tokens": 135000
     },
     "route.generate.quick-generate.icon": {
-      "description": "Quick Generate with project-local bundled icon selection and synchronization; the icon capability contract is already in the fixed planning context. Ceiling raised after BUDGET_LOAD_SET reported 108610 tokens.",
+      "description": "Quick Generate with project-local bundled icon selection and synchronization; the icon capability contract is already in the fixed planning context. Ceiling raised after BUDGET_LOAD_SET reported 128946 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate"
       ],
       "files": [],
-      "max_tokens": 120000
+      "max_tokens": 130000
     },
     "route.generate.quick-generate.in-hand-image": {
-      "description": "Quick Generate with supplied, extracted, or placeholder image resources prepared before SVG authoring. Ceiling raised after BUDGET_LOAD_SET reported 113046 tokens.",
+      "description": "Quick Generate with supplied, extracted, or placeholder image resources prepared before SVG authoring. Ceiling raised after BUDGET_LOAD_SET reported 133387 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.executor.image"
       ],
       "files": [],
-      "max_tokens": 125000
+      "max_tokens": 135000
     },
     "route.generate.quick-generate.formula": {
-      "description": "Quick Generate with direct PowerPoint-native formula marker authoring. Ceiling raised after BUDGET_LOAD_SET reported 110614 tokens.",
+      "description": "Quick Generate with direct PowerPoint-native formula marker authoring. Ceiling raised after BUDGET_LOAD_SET reported 131188 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.executor.formula"
       ],
       "files": [],
-      "max_tokens": 125000
+      "max_tokens": 135000
     },
     "route.generate.quick-generate.hyperlink": {
-      "description": "Quick Generate with direct PowerPoint-native external and same-deck hyperlink authoring. Ceiling raised after BUDGET_LOAD_SET reported 110212 tokens.",
+      "description": "Quick Generate with direct PowerPoint-native external and same-deck hyperlink authoring. Ceiling raised after BUDGET_LOAD_SET reported 130116 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
         "stage.generate.executor.hyperlink"
       ],
       "files": [],
-      "max_tokens": 125000
+      "max_tokens": 135000
     },
     "route.generate.quick-generate.ai-two-types": {
-      "description": "Quick Generate with AI resource preparation, representative rendering inputs, and two local image types. Ceiling raised after BUDGET_LOAD_SET reported 140175 tokens.",
+      "description": "Quick Generate with AI resource preparation, representative rendering inputs, and two local image types. Ceiling raised after BUDGET_LOAD_SET reported 160162 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
@@ -374,7 +392,7 @@
         "stage.generate.executor.image"
       ],
       "files": [],
-      "max_tokens": 155000
+      "max_tokens": 165000
     },
     "route.generate.quick-generate.web-image": {
       "description": "Quick Generate with web resource preparation, provenance, attribution, and image execution. Ceiling raised after BUDGET_LOAD_SET reported 115146 tokens.",
@@ -389,7 +407,7 @@
       "max_tokens": 145000
     },
     "route.generate.quick-generate.visualization": {
-      "description": "Quick Generate with complete Chart/Table expression vocabularies already in the fixed planning context, their data-object branches, optional native-data metadata, and chart-coordinate verification before the final checker; the fixed Quick context already carries Shape Composition Grammar. Ceiling raised after BUDGET_LOAD_SET reported 126726 tokens.",
+      "description": "Quick Generate with complete Chart/Table expression vocabularies already in the fixed planning context, their data-object branches, optional native-data metadata, and chart-coordinate verification before the final checker; the fixed Quick context already carries Shape Composition Grammar. Ceiling raised after BUDGET_LOAD_SET reported 147143 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.quick-generate",
@@ -400,10 +418,10 @@
         "stage.generate.verify-charts"
       ],
       "files": [],
-      "max_tokens": 140000
+      "max_tokens": 150000
     },
     "route.generate.planning-image": {
-      "description": "Generate-PPTX planning context after a non-none image source is proposed or confirmed; image decision and layout authorities are already in the fixed planning context. Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
+      "description": "Generate-PPTX planning context after a non-none image source is proposed or confirmed; the image decision authority is already in the fixed planning context (image-layout files are Executor's). Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning"
@@ -421,7 +439,7 @@
       "max_tokens": 130000
     },
     "route.generate.planning-ai": {
-      "description": "Generate-PPTX planning after AI imagery is confirmed; the fixed context already carries image-layout and resource-planning decision authorities. Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
+      "description": "Generate-PPTX planning after AI imagery is confirmed; the fixed context already carries the resource-planning decision authorities (image-layout files are Executor's). Ceiling raised after BUDGET_LOAD_SET reported 116384 tokens.",
       "scope": "cumulative",
       "include": [
         "route.generate.planning-image"
@@ -626,11 +644,44 @@
       "files": [],
       "max_tokens": 215000
     },
-    "route.enhance-native-pptx.audio": {
-      "description": "Enhance Native PPTX with the shared narration-audio stage.",
+    "route.edit-native-pptx.edit": {
+      "description": "Edit Native PPTX with the always-loaded shared standards for page editing.",
       "scope": "cumulative",
       "include": [
-        "route.enhance-native-pptx",
+        "route.edit-native-pptx"
+      ],
+      "files": [
+        "skills/ppt-master/references/shared-standards-core.md"
+      ],
+      "max_tokens": 26000
+    },
+    "route.edit-native-pptx.edit-effects": {
+      "description": "Edit Native PPTX page editing that authors new visual elements.",
+      "scope": "cumulative",
+      "include": [
+        "route.edit-native-pptx.edit"
+      ],
+      "files": [
+        "skills/ppt-master/references/svg-effects.md"
+      ],
+      "max_tokens": 42000
+    },
+    "route.edit-native-pptx.edit-native-data": {
+      "description": "Edit Native PPTX page editing that changes native chart or table data.",
+      "scope": "cumulative",
+      "include": [
+        "route.edit-native-pptx.edit"
+      ],
+      "files": [
+        "skills/ppt-master/references/native-data-interface.md"
+      ],
+      "max_tokens": 34000
+    },
+    "route.edit-native-pptx.audio": {
+      "description": "Edit Native PPTX with the shared narration-audio stage.",
+      "scope": "cumulative",
+      "include": [
+        "route.edit-native-pptx",
         "stage.shared.generate-audio"
       ],
       "files": [],
@@ -731,17 +782,13 @@
       "max_tokens": 200000
     },
     "stage.generate.executor.flat": {
-      "description": "Incremental flat Executor core with complete visual-construction authorities and a conservative audit envelope for only the locked preset or exact custom references; selection indexes remain planning-only.",
+      "description": "Executor resident core for flat pages: execution rules, everyday devices and effects, module triggers, the preset vocabulary, plus the confirmed mode/style catalog file when the confirmation points to one (a custom without references reads none). Deeper modules load on their routing triggers.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/executor-base.md",
         "skills/ppt-master/references/shared-standards-core.md",
-        "skills/ppt-master/references/svg-effects.md",
-        "skills/ppt-master/references/native-shape-authoring.md",
-        "skills/ppt-master/references/preset-shape-vocabulary.md",
         "skills/ppt-master/references/semantic-svg.md",
-        "skills/ppt-master/references/executor-structure.md",
-        "skills/ppt-master/references/topology-assembly.md",
+        "skills/ppt-master/references/preset-shape-vocabulary.md",
         {
           "glob": "skills/ppt-master/references/modes/*.md",
           "exclude": [
@@ -763,7 +810,7 @@
           "allow_repeat": true
         }
       ],
-      "max_tokens": 71000
+      "max_tokens": 35000
     },
     "stage.generate.executor.structured": {
       "description": "Structured template execution layered on the flat/shared core.",
@@ -838,8 +885,7 @@
       ],
       "files": [
         "skills/ppt-master/workflows/generate-pptx.md",
-        "skills/ppt-master/workflows/stages/resume-execute.md",
-        "skills/ppt-master/references/artifact-ownership.md"
+        "skills/ppt-master/workflows/stages/resume-execute.md"
       ],
       "max_tokens": 115000
     },
@@ -929,7 +975,7 @@
       "max_tokens": 3000
     },
     "stage.generate.customize-animations": {
-      "description": "Object-animation stage plus animation resolution rules.",
+      "description": "Object-animation stage plus animation resolution rules. Ceiling raised after BUDGET_LOAD_SET reported 35742 tokens.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/workflows/stages/customize-animations.md",
@@ -938,7 +984,7 @@
         "skills/ppt-master/scripts/docs/pptx-transitions.md",
         "skills/ppt-master/scripts/docs/svg-pipeline.md"
       ],
-      "max_tokens": 35000
+      "max_tokens": 40000
     },
     "stage.generate.sound-selection": {
       "description": "Complete post-motion sound identity vocabulary after a concrete auditory cue job exists.",
@@ -1023,7 +1069,7 @@
         "route.generate.planning-ai"
       ],
       "files": [],
-      "max_tokens": 120000
+      "max_tokens": 125000
     },
     "stage.generate.executor.chart": {
       "description": "Conditional value-driven chart execution rules.",
@@ -1042,12 +1088,12 @@
       "max_tokens": 1250
     },
     "stage.generate.executor.table": {
-      "description": "Conditional semantic cell-grid construction rules.",
+      "description": "Conditional semantic cell-grid construction rules. Ceiling raised after the native projection step was added (BUDGET_FILE/BUDGET_LOAD_SET reported 1022 tokens).",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/executor-table.md"
       ],
-      "max_tokens": 1000
+      "max_tokens": 1250
     },
     "stage.generate.strategist.template": {
       "description": "Conditional Strategist module for an explicitly installed template workspace.",
@@ -1058,12 +1104,12 @@
       "max_tokens": 3000
     },
     "stage.generate.executor.native-data": {
-      "description": "Conditional preset-pattern and native chart/table metadata interface. Ceiling raised after BUDGET_FILE and BUDGET_LOAD_SET reported 6774 tokens.",
+      "description": "Conditional preset-pattern and native chart/table metadata interface. Ceiling raised after BUDGET_FILE and BUDGET_LOAD_SET reported 6774 tokens. Ceiling raised again after the table-payload completeness and ChartEx title clauses were added (7573 tokens).",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/native-data-interface.md"
       ],
-      "max_tokens": 7500
+      "max_tokens": 7750
     },
     "stage.generate.executor.formula": {
       "description": "Conditional direct authoring contract for PowerPoint-native inline and block formulas.",
@@ -1112,21 +1158,75 @@
       "max_tokens": 1000
     },
     "stage.generate.executor.native-shape": {
-      "description": "Complete stock PowerPoint shape vocabulary, selection, and Boolean materialization authority, always included in Generate Executor contexts. Ceiling raised after BUDGET_LOAD_SET reported 9139 tokens.",
+      "description": "Native-shape selection and Boolean construction; loaded the first time a page's contour reaches beyond basic primitives (the preset vocabulary stays in the resident core).",
       "scope": "incremental",
       "files": [
-        "skills/ppt-master/references/native-shape-authoring.md",
-        "skills/ppt-master/references/preset-shape-vocabulary.md"
+        "skills/ppt-master/references/native-shape-authoring.md"
       ],
-      "max_tokens": 10000
+      "max_tokens": 5000
     },
     "stage.shared.svg-effects": {
-      "description": "Advanced SVG paint, effects, transforms, and geometry authority, always included in Generate Executor contexts and conditionally loaded by other SVG-authoring routes.",
+      "description": "Advanced SVG paint, effects, transforms, and geometry authority, loaded by Generate Executor contexts on the executor-base trigger (first visual job beyond the everyday block) and conditionally by other SVG-authoring routes.",
       "scope": "incremental",
       "files": [
         "skills/ppt-master/references/svg-effects.md"
       ],
       "max_tokens": 16000
+    },
+    "governance.artifact-ownership": {
+      "description": "Global artifact ownership matrix, invariants, and regeneration rules; read on an ownership question, a recovery/resume, or a route that edits existing artifacts.",
+      "scope": "incremental",
+      "files": [
+        "skills/ppt-master/references/artifact-ownership.md"
+      ],
+      "max_tokens": 6000
+    },
+    "stage.generate.executor.effects": {
+      "description": "Advanced effects and constructed styles; loaded the first time a page's visual job reaches beyond the everyday block in executor-base.",
+      "scope": "incremental",
+      "files": [
+        "skills/ppt-master/references/svg-effects.md"
+      ],
+      "max_tokens": 10000
+    },
+    "stage.generate.executor.structure": {
+      "description": "Qualitative relationship grammar and topology assembly; loaded at the first page whose Structure decision is yes.",
+      "scope": "incremental",
+      "files": [
+        "skills/ppt-master/references/executor-structure.md",
+        "skills/ppt-master/references/topology-assembly.md"
+      ],
+      "max_tokens": 5000
+    },
+    "route.generate.quick-generate.effects": {
+      "description": "Quick Generate plus the effects module on its executor-base trigger.",
+      "scope": "cumulative",
+      "include": [
+        "route.generate.quick-generate",
+        "stage.generate.executor.effects"
+      ],
+      "files": [],
+      "max_tokens": 130000
+    },
+    "route.generate.quick-generate.native-shape": {
+      "description": "Quick Generate plus the native-shape module on its executor-base trigger.",
+      "scope": "cumulative",
+      "include": [
+        "route.generate.quick-generate",
+        "stage.generate.executor.native-shape"
+      ],
+      "files": [],
+      "max_tokens": 130000
+    },
+    "route.generate.quick-generate.structure": {
+      "description": "Quick Generate plus the structure module on its executor-base trigger.",
+      "scope": "cumulative",
+      "include": [
+        "route.generate.quick-generate",
+        "stage.generate.executor.structure"
+      ],
+      "files": [],
+      "max_tokens": 130000
     }
   },
   "duplicates": {
@@ -1139,15 +1239,6 @@
     "max_exact_results": 100,
     "max_near_results": 100,
     "accepted": [
-      {
-        "kind": "exact",
-        "fingerprint": "7c36a9231d14",
-        "paths": [
-          "skills/ppt-master/templates/decks/README.md",
-          "skills/ppt-master/templates/layouts/README.md"
-        ],
-        "reason": "Shared boilerplate between sibling template-kind docs; kept in lockstep on purpose."
-      },
       {
         "kind": "exact",
         "fingerprint": "d886e9fcb8dc",
@@ -1250,15 +1341,6 @@
       },
       {
         "kind": "exact",
-        "fingerprint": "6a432b0cc1df",
-        "paths": [
-          "skills/ppt-master/templates/decks/README.md",
-          "skills/ppt-master/templates/layouts/README.md"
-        ],
-        "reason": "Sibling Deck and Layout docs keep the shared replication-mode explanation in lockstep."
-      },
-      {
-        "kind": "exact",
         "fingerprint": "286b55cb84d7",
         "paths": [
           "skills/ppt-master/templates/styles/academic-research/templates/design_spec.md",
@@ -1353,15 +1435,6 @@
           "skills/ppt-master/templates/styles/workshop-teaching/templates/design_spec.md"
         ],
         "reason": "Style preset specs share the same method-only scope boundary by design."
-      },
-      {
-        "kind": "exact",
-        "fingerprint": "272bdc60fa52",
-        "paths": [
-          "skills/ppt-master/workflows/create-template/create-brand.md",
-          "skills/ppt-master/workflows/create-template/create-style.md"
-        ],
-        "reason": "Mutually exclusive child workflows share the same resolved-workspace handoff contract."
       }
     ]
   },
@@ -1525,6 +1598,111 @@
       "concern": "spec-lock-schema",
       "from": "skills/ppt-master/templates/spec_lock_reference.md",
       "to": "skills/ppt-master/templates/schemas/spec_lock.schema.json"
+    },
+    {
+      "concern": "create-template-workflow",
+      "from": "skills/ppt-master/workflows/routing.md",
+      "to": "skills/ppt-master/workflows/create-template.md"
+    },
+    {
+      "concern": "edit-native-pptx-workflow",
+      "from": "skills/ppt-master/workflows/routing.md",
+      "to": "skills/ppt-master/workflows/edit-native-pptx.md"
+    },
+    {
+      "concern": "image-to-pptx-profile",
+      "from": "skills/ppt-master/workflows/routing.md",
+      "to": "skills/ppt-master/workflows/profiles/image-to-pptx.md"
+    },
+    {
+      "concern": "beautify-profile",
+      "from": "skills/ppt-master/workflows/routing.md",
+      "to": "skills/ppt-master/workflows/profiles/beautify-pptx.md"
+    },
+    {
+      "concern": "create-brand-dispatch",
+      "from": "skills/ppt-master/workflows/create-template.md",
+      "to": "skills/ppt-master/workflows/create-template/create-brand.md"
+    },
+    {
+      "concern": "create-style-dispatch",
+      "from": "skills/ppt-master/workflows/create-template.md",
+      "to": "skills/ppt-master/workflows/create-template/create-style.md"
+    },
+    {
+      "concern": "create-layout-dispatch",
+      "from": "skills/ppt-master/workflows/create-template.md",
+      "to": "skills/ppt-master/workflows/create-template/create-layout.md"
+    },
+    {
+      "concern": "create-deck-dispatch",
+      "from": "skills/ppt-master/workflows/create-template.md",
+      "to": "skills/ppt-master/workflows/create-template/create-deck.md"
+    },
+    {
+      "concern": "quick-artifact-ownership",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/artifact-ownership.md"
+    },
+    {
+      "concern": "quick-svg-core-contract",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/shared-standards-core.md"
+    },
+    {
+      "concern": "quick-svg-effects-contract",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/svg-effects.md"
+    },
+    {
+      "concern": "quick-native-shape-contract",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/native-shape-authoring.md"
+    },
+    {
+      "concern": "quick-preset-vocabulary",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/preset-shape-vocabulary.md"
+    },
+    {
+      "concern": "quick-semantic-svg-contract",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/semantic-svg.md"
+    },
+    {
+      "concern": "quick-structure-routing",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/executor-structure.md"
+    },
+    {
+      "concern": "quick-topology-routing",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/topology-assembly.md"
+    },
+    {
+      "concern": "quick-structured-contract",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/pptx-structure-interface.md"
+    },
+    {
+      "concern": "quick-notes-routing",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/references/executor-notes.md"
+    },
+    {
+      "concern": "quick-chart-verification",
+      "from": "skills/ppt-master/workflows/profiles/quick-generate.md",
+      "to": "skills/ppt-master/workflows/stages/verify-charts.md"
+    },
+    {
+      "concern": "semantic-vocabulary-owner",
+      "from": "skills/ppt-master/references/shared-standards-core.md",
+      "to": "skills/ppt-master/references/semantic-svg.md"
+    },
+    {
+      "concern": "structured-interface-routing",
+      "from": "skills/ppt-master/references/shared-standards-core.md",
+      "to": "skills/ppt-master/references/pptx-structure-interface.md"
     }
   ],
   "registries": [
@@ -1762,26 +1940,26 @@
             {
               "path": "skills/ppt-master/references/executor-base.md",
               "role": "consumer",
-              "fingerprint": "d937b965024b",
+              "fingerprint": "696cdad21077",
               "reason": "This consumer needs the field contract for deterministic execution."
-            },
-            {
-              "path": "skills/ppt-master/references/strategist.md",
-              "role": "producer",
-              "fingerprint": "4c133143e2f2",
-              "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "90feed81f021",
+              "fingerprint": "71622518b209",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             },
             {
               "path": "skills/ppt-master/workflows/routing.md",
               "role": "consumer",
-              "fingerprint": "a287404b8f1e",
+              "fingerprint": "b3ea6e828373",
               "reason": "This consumer needs the field contract for deterministic execution."
+            },
+            {
+              "path": "skills/ppt-master/references/native-data-interface.md",
+              "role": "consumer",
+              "fingerprint": "b52102689f16",
+              "reason": "Table run typography mirrors the deck font contract for native export."
             }
           ]
         },
@@ -1792,13 +1970,13 @@
             {
               "path": "skills/ppt-master/references/image-generator.md",
               "role": "compatibility",
-              "fingerprint": "5a6f2f95be38",
+              "fingerprint": "f2c2cdc3b2a6",
               "reason": "This site documents a legacy or omission compatibility boundary."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "3d0b27f3d979",
+              "fingerprint": "c62e64b4caa3",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -1808,39 +1986,21 @@
           "owner_fingerprint": "0edfe64300c1",
           "projections": [
             {
-              "path": "skills/ppt-master/references/executor-structured.md",
-              "role": "compatibility",
-              "fingerprint": "a6ae3dfb6e6a",
-              "reason": "This site documents a legacy or omission compatibility boundary."
-            },
-            {
               "path": "skills/ppt-master/references/executor-visualization.md",
               "role": "compatibility",
-              "fingerprint": "055ab59c533e",
+              "fingerprint": "84c1c8a6bec5",
               "reason": "This site documents a legacy or omission compatibility boundary."
             },
             {
               "path": "skills/ppt-master/references/strategist-template.md",
               "role": "compatibility",
-              "fingerprint": "b0f9494f710a",
-              "reason": "This site documents a legacy or omission compatibility boundary."
-            },
-            {
-              "path": "skills/ppt-master/references/strategist.md",
-              "role": "compatibility",
-              "fingerprint": "ba50ab71bc88",
+              "fingerprint": "8f83a50b3f54",
               "reason": "This site documents a legacy or omission compatibility boundary."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "compatibility",
-              "fingerprint": "39d5baf1e189",
-              "reason": "This site documents a legacy or omission compatibility boundary."
-            },
-            {
-              "path": "skills/ppt-master/workflows/stages/resume-execute.md",
-              "role": "compatibility",
-              "fingerprint": "023cf4d8ecbd",
+              "fingerprint": "bed2b489ce81",
               "reason": "This site documents a legacy or omission compatibility boundary."
             }
           ]
@@ -1850,40 +2010,28 @@
           "owner_fingerprint": "64d28e112785",
           "projections": [
             {
-              "path": "skills/ppt-master/references/artifact-ownership.md",
-              "role": "reference",
-              "fingerprint": "be5e3881ee0d",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
               "path": "skills/ppt-master/references/executor-structured.md",
               "role": "consumer",
-              "fingerprint": "f77d8a752b85",
+              "fingerprint": "dcbb7a6baae7",
               "reason": "This consumer needs the field contract for deterministic execution."
-            },
-            {
-              "path": "skills/ppt-master/references/pptx-structure-interface.md",
-              "role": "reference",
-              "fingerprint": "60f4c8b8d08a",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "c35477d35410",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
-              "path": "skills/ppt-master/workflows/create-template.md",
-              "role": "reference",
-              "fingerprint": "b26d839b24b9",
+              "fingerprint": "da8a4f2ca816",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             },
             {
               "path": "skills/ppt-master/workflows/stages/apply-template-workspace.md",
-              "role": "compatibility",
-              "fingerprint": "1c393e47c311",
-              "reason": "This site documents a legacy or omission compatibility boundary."
+              "role": "consumer",
+              "fingerprint": "8490326d972a",
+              "reason": "This stage documents how each Generate runtime consumes the prototype mapping."
+            },
+            {
+              "path": "skills/ppt-master/references/strategist-template.md",
+              "role": "consumer",
+              "fingerprint": "bffb5ebb6180",
+              "reason": "Strategist plans page_layouts rows from complete Slide prototypes."
             }
           ]
         },
@@ -1892,45 +2040,21 @@
           "owner_fingerprint": "f436e6ae4bb8",
           "projections": [
             {
-              "path": "skills/ppt-master/references/artifact-ownership.md",
-              "role": "reference",
-              "fingerprint": "f91ef56378bb",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
               "path": "skills/ppt-master/references/executor-structured.md",
               "role": "consumer",
-              "fingerprint": "70d500bb46dc",
+              "fingerprint": "7213f2c7ffe7",
               "reason": "This consumer needs the field contract for deterministic execution."
             },
             {
               "path": "skills/ppt-master/references/pptx-structure-interface.md",
               "role": "reference",
-              "fingerprint": "b4596417aeec",
+              "fingerprint": "9cef05268f4f",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
-              "path": "skills/ppt-master/references/shared-standards-core.md",
-              "role": "reference",
-              "fingerprint": "8afb713e37e8",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
-              "path": "skills/ppt-master/references/strategist-template.md",
-              "role": "producer",
-              "fingerprint": "fb6d05bac6e4",
-              "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "a67117d67b3e",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
-              "path": "skills/ppt-master/workflows/create-template.md",
-              "role": "reference",
-              "fingerprint": "40b13ab57503",
+              "fingerprint": "54bc291612c1",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -1942,19 +2066,19 @@
             {
               "path": "skills/ppt-master/references/executor-base.md",
               "role": "consumer",
-              "fingerprint": "4925a1ead978",
+              "fingerprint": "b63e7a4de45e",
               "reason": "This consumer needs the field contract for deterministic execution."
             },
             {
               "path": "skills/ppt-master/references/strategist.md",
               "role": "producer",
-              "fingerprint": "c326f18fa7c3",
+              "fingerprint": "8121d65895a2",
               "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "25aabdb0ee04",
+              "fingerprint": "9e8775a83943",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -1964,33 +2088,27 @@
           "owner_fingerprint": "b3cdf822635a",
           "projections": [
             {
-              "path": "skills/ppt-master/references/executor-structured.md",
-              "role": "consumer",
-              "fingerprint": "105f5e4ce2ce",
-              "reason": "This consumer needs the field contract for deterministic execution."
-            },
-            {
               "path": "skills/ppt-master/references/executor-visualization.md",
               "role": "consumer",
-              "fingerprint": "8b173848afa7",
+              "fingerprint": "35b3aa28bcad",
               "reason": "This consumer needs the field contract for deterministic execution."
             },
             {
               "path": "skills/ppt-master/references/strategist.md",
               "role": "producer",
-              "fingerprint": "1c8aa960c9e4",
+              "fingerprint": "0bf67e7eef14",
               "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "f45f26b4d11c",
+              "fingerprint": "6232ca5f6243",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             },
             {
               "path": "skills/ppt-master/workflows/profiles/beautify-pptx.md",
               "role": "producer",
-              "fingerprint": "308c0a3ef9d9",
+              "fingerprint": "e1bd978fcc83",
               "reason": "This producer projects the owner field into the planning contract."
             }
           ]
@@ -2000,33 +2118,27 @@
           "owner_fingerprint": "1037e878eaa1",
           "projections": [
             {
-              "path": "skills/ppt-master/references/artifact-ownership.md",
-              "role": "reference",
-              "fingerprint": "447cd531facc",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
               "path": "skills/ppt-master/references/executor-structured.md",
               "role": "consumer",
-              "fingerprint": "5174447ee0a8",
+              "fingerprint": "dc21169163b7",
               "reason": "This consumer needs the field contract for deterministic execution."
             },
             {
               "path": "skills/ppt-master/references/pptx-structure-interface.md",
               "role": "reference",
-              "fingerprint": "6f93a0561460",
+              "fingerprint": "b10eddc66b34",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             },
             {
               "path": "skills/ppt-master/references/strategist-template.md",
               "role": "producer",
-              "fingerprint": "f97c538adf92",
+              "fingerprint": "3d83dfd41293",
               "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "2d6dba6c449e",
+              "fingerprint": "7e10bef30c30",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -2036,33 +2148,27 @@
           "owner_fingerprint": "7cbe6ec7056e",
           "projections": [
             {
-              "path": "skills/ppt-master/references/artifact-ownership.md",
-              "role": "reference",
-              "fingerprint": "7eba0fa766a6",
-              "reason": "This reference mirrors the owner field grammar or ownership boundary."
-            },
-            {
               "path": "skills/ppt-master/references/executor-structured.md",
               "role": "consumer",
-              "fingerprint": "e5dcb49a9a61",
+              "fingerprint": "7568538df9f4",
               "reason": "This consumer needs the field contract for deterministic execution."
             },
             {
               "path": "skills/ppt-master/references/pptx-structure-interface.md",
               "role": "reference",
-              "fingerprint": "92a978e5d229",
+              "fingerprint": "51fe75ceb256",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             },
             {
               "path": "skills/ppt-master/references/strategist-template.md",
               "role": "producer",
-              "fingerprint": "29a9e58295a9",
+              "fingerprint": "5eff475d59c9",
               "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "89b01fc1b354",
+              "fingerprint": "77ed36c8efe8",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -2074,19 +2180,19 @@
             {
               "path": "skills/ppt-master/references/executor-base.md",
               "role": "consumer",
-              "fingerprint": "96e0f7380de0",
+              "fingerprint": "fd5bce3b80c9",
               "reason": "This consumer needs the field contract for deterministic execution."
             },
             {
               "path": "skills/ppt-master/references/strategist.md",
               "role": "producer",
-              "fingerprint": "e267f1759749",
+              "fingerprint": "0efce3f9be37",
               "reason": "This producer projects the owner field into the planning contract."
             },
             {
               "path": "skills/ppt-master/templates/spec_lock_reference.md",
               "role": "reference",
-              "fingerprint": "ebbb28e8b7e7",
+              "fingerprint": "dfda31146866",
               "reason": "This reference mirrors the owner field grammar or ownership boundary."
             }
           ]
@@ -2205,6 +2311,26 @@
       {
         "glob": "skills/ppt-master/templates/schemas/*.json",
         "reason": "Machine-consumed validation schemas; they are not loaded into model runtime context."
+      },
+      {
+        "glob": "skills/ppt-master/scripts/docs/svg-contract.md",
+        "reason": "Closed SVG grammar reference for checker/exporter behavior; the always-read core carries the canonical forms, and generation roles open this file only when a check fails."
+      },
+      {
+        "glob": "skills/ppt-master/scripts/docs/confirm_ui.md",
+        "reason": "Confirm UI server/schema reference; the Strategist reads references/confirm-surface.md for the surface decision and authoring payloads."
+      },
+      {
+        "glob": "skills/ppt-master/scripts/docs/svg_editor.md",
+        "reason": "Browser editor behavior and lifecycle reference; the live-preview stage carries the launch and annotation procedure."
+      },
+      {
+        "glob": "skills/ppt-master/scripts/docs/narration.md",
+        "reason": "Narration tool behavior and flag reference; the generate-audio stage carries the procedure and confirmation contract."
+      },
+      {
+        "glob": "skills/ppt-master/scripts/docs/template-tools.md",
+        "reason": "Template creation tool behavior reference; create-template.md and template-designer.md carry the procedure and contract."
       }
     ]
   }

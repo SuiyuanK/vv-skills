@@ -231,12 +231,11 @@ Outputs (per source deck, prefixed by file stem):
 - `<stem>.slide_library.json` — text slots, geometry, native tables, native chart display caches, and SmartArt nodes/connections
 - `source_profile.json` — the single multi-deck index: a compact Strategist-facing digest per deck (over identity, tables, charts, SmartArt, and page types) under `decks[]`, with prefixed artifact pointers
 
-`project_manager.py import-sources` runs this automatically for PPTX/PPTM/PPSX/PPSM/POTX/POTM inputs and stores the bundle directly under `analysis/`. Multi-deck per project: importing several PPTX files gives each its own `<stem>.*` artifacts and a `decks[]` entry in the shared `source_profile.json` index (re-importing the same stem replaces its entry). The beautify profile and Fill Native PPTX route stay single-deck and read one chosen deck's `<stem>.*` artifacts.
+`project_manager.py import-sources` runs this automatically for PPTX/PPTM/PPSX/PPSM/POTX/POTM inputs and stores the bundle directly under `analysis/`. Multi-deck per project: importing several PPTX files gives each its own `<stem>.*` artifacts and a `decks[]` entry in the shared `source_profile.json` index (re-importing the same stem replaces its entry). The beautify profile stays single-deck and reads one chosen deck's `<stem>.*` artifacts.
 
 Usage boundary:
 - Standard generation uses these fields as facts and recommendation candidates; it does not inherit source slide coordinates or page order by default.
 - Beautify promotes selected identity/content fields into locked constraints after confirmation and redraws SmartArt meaning with ordinary editable shapes.
-- Template-fill uses the slide library as the native PPTX fill contract; SmartArt is inventory-only and remains unchanged.
 
 ## `pptx_to_svg.py`
 
@@ -368,8 +367,10 @@ claiming native reconstruction. It records `formula-not-reconstructed`;
 ### Native table and chart import claims
 
 Supported text-grid tables and conservative classic-chart caches carry a
-`data-pptx-replace-with` claim beside their SVG fallback, with the replacement
-payload in a child `<metadata type="application/json">`. The parent claim
+`data-pptx-replace-with` claim plus
+`data-pptx-native-authority="json"` beside their SVG preview, with the
+authoritative replacement payload in a child
+`<metadata type="application/json">`. The parent claim
 selects the table or chart schema. Table import requires
 exact physical row/grid topology and accepts canonical rectangular merges,
 safe solid/no-fill per-side borders, plain multi-paragraph cells, and a closed
@@ -413,21 +414,16 @@ warning when the SVG fallback itself is complete. Imported table/chart groups
 under this contract carry `data-pptx-import-source="pptx"`, whether active or
 fallback-only; generated authoring omits this provenance attribute.
 
-Active imported markers also carry `data-pptx-fallback-sha256`, computed over
-their canonical fallback plus reachable document-level SVG fragment definitions.
-A later visible edit, reachable definition change, local reference-target
-change, or marker transform makes the replacement metadata stale. The mandatory
-quality checker reports the mismatch; default export keeps the edited fallback,
-while `--native-charts-and-tables` fails before replacement so it cannot discard that edit.
-`visibility:hidden` content, marker-local unused definitions, and explicitly
-referenced document-level target roots (even when hidden) are included
-conservatively; marker-local `display:none` subtrees are excluded, and external
-file bytes are not read.
-Generated authoring and reusable templates omit import provenance and do not
-preseed a static fallback hash; that state is normal and does not warn. A legacy
-imported marker that still carries PPTX import provenance but lacks the hash
-remains native-compatible and warns in the checker/native route that stale
-detection is unavailable.
+JSON-first imported markers do not use preview freshness to veto native export;
+their preview may be normalized or approximate. Free-designed Chart/Table
+markers omit the authority attribute and are SVG-first. After their visible
+fallback and JSON are synchronized, `stamp_native_fallbacks.py --write` records
+`data-pptx-fallback-sha256` over the canonical fallback plus reachable
+document-level SVG definitions. A later visible/reference/transform edit makes
+that baseline stale. Default export keeps the edited fallback; canonical check
+and `--native-charts-and-tables` fail before replacement. A missing/invalid
+SVG-first baseline also fails native replacement. The hash detects later edits;
+it does not prove that independently authored JSON matches the SVG.
 
 Legacy `data-pptx-native*`, `data-pptx-visual-status`, and
 `data-pptx-route-status` spellings remain read-compatible. New importer output

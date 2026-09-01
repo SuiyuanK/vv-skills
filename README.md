@@ -148,9 +148,9 @@
 
 - 上游来源：[chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)
 - 跟踪分支：上游 `main`
-- 当前同步基线：提交 [`c455fc5`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/c455fc593d98c72bc6bdb33f928a49e58a857b82)
+- 当前同步基线：提交 [`33a88f5`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/33a88f5063ac138bf2eedc687263ad56c59b055d)
 - 本目录是上游内容在 `vv-skills` 中的已审核镜像，不替代或冒充上游仓库。
-- 基线从 `e7f8573` 更新到 `c455fc5`（2026-08-27），覆盖 sky 0.6.16/0.6.17 Computer Use helper 支持、Chrome native-host v2 桌面托管 app-server 条目、Desktop 26.814/26.818 网关匹配、未安装（package-gated）Computer Use 时的续打补丁、本地 marketplace JSON 去除 UTF-8 BOM、staged 包所有权与版本选择、保留本地 skill overlay 的 self-update、0.149 的 reserved marketplace source 策略等变更。
+- 基线从 `c455fc5` 更新到 `33a88f5`（2026-09-01），新增 sky 0.6.17/0.6.24 Windows 10 helper 与 Desktop 26.818/26.825 适配、外部执行器 Computer Use 验收路径、账户功能门控的 bundled descriptor 判断、`in_app_browser` 能力锚点修复，以及 codex-cli 0.149+ reserved marketplace source 的补充规则；上游已删除旧 PowerShell 自更新器，本镜像继续由 CC Switch 和 `vv-skills` 统一管理更新。
 - `vv-skills` 保留本机验证后的安全调整：Provider 历史等数据层修复必须由用户手动关闭和重新打开 Codex，不自动停止或拉起应用；该调整已随本次基线更新重新应用。
 
 主要安全边界：
@@ -181,10 +181,10 @@
 
 - 上游来源：[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)
 - 跟踪分支：上游 `main`
-- 当前同步基线：提交 [`ebd74d1`](https://github.com/hugohe3/ppt-master/commit/ebd74d1f1d61a686f0f80e10abde5029fc4beeca)
-- 注意：上游历史已被改写，旧基线 `b87f5f5` 已不可达；本次升级为文件级整目录同步（无法做提交级 diff），当前上游版本为 5.0.0。
+- 当前同步基线：提交 [`4e6fdc5`](https://github.com/hugohe3/ppt-master/commit/4e6fdc50136c3aea64a746f6bb4adf1c3305ec87)
+- 上游历史曾改写，旧基线 `b87f5f5` 已不可达；本次从可达基线 `ebd74d1` 升级到 `4e6fdc5`（2026-09-01），当前上游版本为 6.1.0。
 - 本目录镜像上游的 `skills/ppt-master/` 可安装 skill，并附带上游 MIT `LICENSE`；不复制网站、示例演示文稿和项目工作区。
-- 上游新增了 `.env.example` 配置模板；`requirements.txt` 增加 `PyYAML>=6.0`（模板注册前端解析设计说明时的可选依赖）。
+- 6.1.0 新增 PPTX 往返编辑、`pptx_workspace`、SVG authoring contract、语义表格、文本测量与更完整的质量检查；原 Native Enhance 和 Template Fill 路由合并为 Edit Native PPTX。`requirements.txt` 相比 5.0.0 未新增 Python 依赖，仍包含模板注册所需的 `PyYAML>=6.0`。
 - Python 3.10+ 依赖记录在 `ppt-master/requirements.txt`，应安装到实际执行 skill 脚本的 Python 解释器。
 
 ## 本地管理

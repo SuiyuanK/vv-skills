@@ -105,6 +105,7 @@ _PALETTE_ROLES = (
     'body_text',
 )
 _TYPOGRAPHY_SIZE_ROLES = ('title', 'subtitle', 'annotation')
+_DESIGN_SPEC_DEPTH_VALUES = {'brief', 'complete'}
 _HEX_COLOR_RE = re.compile(r'#?(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\Z')
 
 # Static option universe served at /api/catalogs (canvas synced live from config).
@@ -162,6 +163,13 @@ def _read_json_object(path: Path, retries: int = 2, delay: float = 0.08) -> dict
     raise last_error
 
 
+def _read_result_object(path: Path, retries: int = 2, delay: float = 0.08) -> dict:
+    """Read result.json and apply the legacy Design Spec depth default."""
+    data = _read_json_object(path, retries=retries, delay=delay)
+    data.setdefault('design_spec_depth', 'complete')
+    return data
+
+
 def _write_json_atomic(path: Path, data: dict) -> None:
     """Write a JSON object with replace semantics so waiters never see a partial file."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -206,13 +214,11 @@ _TEMPLATE_SPEC_NAME_RE = re.compile(
 def _template_design_specs(workspace_root: Path) -> list[Path]:
     """Return every Design Spec one template workspace root exposes.
 
-    A single-kind workspace keeps the exact ``templates/design_spec.md``, and a
-    compatible legacy-flat root keeps ``design_spec.md`` beside its pages. A
+    A single-kind workspace keeps the exact ``templates/design_spec.md``. A
     multi-kind workspace keeps one ``templates/design_spec.<kind>.<id>.md`` per
-    kind — the same shape the apply stage installs into a consuming project — so
-    one root can carry, for example, a Brand plus a Style. Order is stable so
-    candidate keys and the options digest do not depend on directory listing
-    order.
+    kind — the same shape the apply stage installs into a consuming project.
+    Order is stable so candidate keys and the options digest do not depend on
+    directory listing order.
     """
     templates_dir = workspace_root / 'templates'
     current = templates_dir / 'design_spec.md'
@@ -231,12 +237,9 @@ def _template_design_specs(workspace_root: Path) -> list[Path]:
         return [current]
     if multi:
         return multi
-    legacy = workspace_root / 'design_spec.md'
-    if legacy.is_file():
-        return [legacy]
     raise ValueError(
         'template workspace is missing templates/design_spec.md, '
-        'templates/design_spec.<kind>.<id>.md, or legacy design_spec.md: '
+        'or templates/design_spec.<kind>.<id>.md: '
         f'{workspace_root}'
     )
 
@@ -1204,7 +1207,7 @@ def _result_stage(result_file: Path) -> Optional[str]:
     if not result_file.is_file():
         return None
     try:
-        data = _read_json_object(result_file)
+        data = _read_result_object(result_file)
     except (OSError, json.JSONDecodeError, ValueError):
         return None
     stage = _stage_key(data.get('stage'))
@@ -1395,6 +1398,28 @@ def _stage2_production_recommendations_error(
         or not isinstance(refine_spec.get('value'), bool)
     ):
         return 'Stage 2 recommendations must include refine_spec.value as a boolean'
+    design_spec_depth = recommendations.get('design_spec_depth')
+    design_spec_depth_value = (
+        design_spec_depth.get('value')
+        if isinstance(design_spec_depth, dict)
+        else None
+    )
+    if (
+        not isinstance(design_spec_depth_value, str)
+        or design_spec_depth_value not in _DESIGN_SPEC_DEPTH_VALUES
+    ):
+        return (
+            'Stage 2 recommendations must include design_spec_depth.value as '
+            '"brief" or "complete"'
+        )
+    if design_spec_depth_value == 'brief' and (
+        generation_mode == 'split' or refine_spec['value']
+    ):
+        return (
+            'Stage 2 recommendations must set design_spec_depth.value to '
+            '"complete" when recommend.generation_mode is "split" or '
+            'refine_spec.value is true'
+        )
     if _uses_ai_images(recommendations):
         image_ai_path = recommend.get('image_ai_path')
         if not isinstance(image_ai_path, str) or not image_ai_path.strip():
@@ -1412,6 +1437,22 @@ def _stage2_production_result_error(result: dict) -> Optional[str]:
         return 'final Stage 2 payload must include non-empty generation_mode'
     if not isinstance(result.get('refine_spec'), bool):
         return 'final Stage 2 payload must include refine_spec as a boolean'
+    design_spec_depth = result.get('design_spec_depth')
+    if (
+        not isinstance(design_spec_depth, str)
+        or design_spec_depth not in _DESIGN_SPEC_DEPTH_VALUES
+    ):
+        return (
+            'final Stage 2 payload must include design_spec_depth as "brief" '
+            'or "complete"'
+        )
+    if design_spec_depth == 'brief' and (
+        generation_mode == 'split' or result['refine_spec']
+    ):
+        return (
+            'final Stage 2 payload must set design_spec_depth to "complete" '
+            'when generation_mode is "split" or refine_spec is true'
+        )
     if _uses_ai_images(result):
         image_ai_path = result.get('image_ai_path')
         if not isinstance(image_ai_path, str) or not image_ai_path.strip():
@@ -1777,7 +1818,7 @@ def _submission_stage_error(
 
     if rec_stage_number == 2:
         try:
-            previous_result = _read_json_object(confirm_dir / RESULT_NAME)
+            previous_result = _read_result_object(confirm_dir / RESULT_NAME)
         except (OSError, json.JSONDecodeError, ValueError):
             previous_result = {}
         language_source = (
@@ -2157,7 +2198,7 @@ def _normalize_proactive_execution_result(
 def _merge_confirmed_choices(data: dict, result_file: Path) -> None:
     """Fold already-confirmed choices into later-stage recommendations."""
     try:
-        res = _read_json_object(result_file)
+        res = _read_result_object(result_file)
     except (OSError, json.JSONDecodeError, ValueError):
         return
     if _result_stage(result_file) != 'stage1':
@@ -2195,7 +2236,7 @@ def _apply_locked_recommendations(
     previous = {}
     if carry_previous:
         try:
-            previous = _read_json_object(previous_result_file)
+            previous = _read_result_object(previous_result_file)
         except (OSError, json.JSONDecodeError, ValueError):
             previous = {}
     previous_locks = previous.get(_LOCKED_RECOMMENDATIONS_KEY)
@@ -2809,7 +2850,7 @@ def create_app(
         previous_result = {}
         if rec_stage_number >= 2:
             try:
-                previous_result = _read_json_object(result_file)
+                previous_result = _read_result_object(result_file)
             except (OSError, json.JSONDecodeError, ValueError):
                 pass
         main_language = None
