@@ -219,6 +219,21 @@ alias vcs='~/.local/bin/vcs'
   `~/.local/bin/vcs` 只在检测到 `-kdb`、`-debug_acc*` 或 `-debug_access*` 时注入
   compat+Qt5+platform lib，普通 VCS 编译不携带 Verdi Qt 环境。
 
+#### VCS + KDB 真实工程回归记录
+
+2026-09-01 在 CachyOS 上用 `/home/vv/TMP/syn_fifo` 做了全新隔离构建，不复用工程原有
+`sim_data` 缓存。许可证地址按第 7 节从当前登录 shell 的实际 rc 文件解析；本次登录 shell
+是 zsh，`~/.zshrc` 的有效值为 `27080@vv-cachyos`。运行：
+
+```bash
+vcs -full64 -debug_acc -kdb -R -l vrun.log -v fifo.v tb_fifo.v
+```
+
+结果：VCS X-2025.06 编译、链接、仿真退出 0；VCS 私有 `gcc/g++` 为 13.4.1，系统 GCC 保持
+16.2.1；仿真在时间 455 正常 `$finish`，预期的满写溢出和空读下溢各触发 2 次；
+`simv.daidir/simv.kdb` 非空，并打印 `Verdi KDB elaboration done and the database successfully
+generated`。`grep/egrep` 的过时语法 warning 是 vendor 脚本噪音，不作为失败。
+
 ---
 
 ## 3. Verdi
@@ -452,19 +467,42 @@ allocator，而且会全系统改变 systemd-resolved、分接口 DNS、VPN/LLMN
    ```
 3. **端口一致**：`SNPSLMD_LICENSE_FILE` 里的端口必须等于 license `SERVER` 行端口。
 
-环境变量（客户端配置，正确没问题）：
-```zsh
-export SNPSLMD_LICENSE_FILE=27080@vv-mint
-export LM_LICENSE_FILE=/opt/EDA/Synopsys/synopsys.lic
-export SCL_HOME=/opt/EDA/Synopsys/scl/2025.03
+### 7.1 从实际 shell 配置发现客户端许可证地址
+
+**不要**从本 skill、参考样例、旧日志或另一台机器复制 `端口@主机名`。每次排障或回归先识别
+当前用户的登录 shell，再检查该 shell 的实际 rc 文件；非交互式 agent 进程继承的环境可能是
+旧值，不能单独作为依据：
+
+```bash
+getent passwd "$USER" | cut -d: -f1,7
+rg -n '(^|[[:space:]])(export[[:space:]]+)?(SNPSLMD_LICENSE_FILE|LM_LICENSE_FILE)[[:space:]]*=' \
+  "$HOME/.zshrc" "$HOME/.bashrc" 2>/dev/null
 ```
+
+- 登录 shell 是 zsh：以 `~/.zshrc` 为主，并用
+  `zsh -lic 'typeset -p SNPSLMD_LICENSE_FILE LM_LICENSE_FILE'` 查看新登录交互 shell 的有效值。
+- 登录 shell 是 Bash：以 `~/.bashrc` 为主；若值只在登录配置中定义，再检查
+  `~/.bash_profile`/`~/.profile`，并用
+  `bash -lic 'declare -p SNPSLMD_LICENSE_FILE LM_LICENSE_FILE'` 查看有效值。
+- rc 文件不存在、变量未定义、存在互相冲突的多处定义，或 shell 输出无法明确解析时，停止并
+  向用户确认；不要根据主机名、license 文件名或历史记录猜值。
+
+确认当前 shell 已加载正确配置后再验证；命令直接使用实际变量，不写死地址：
+
+```bash
+: "${SNPSLMD_LICENSE_FILE:?not set; inspect the active shell rc file first}"
+lmutil lmstat -c "$SNPSLMD_LICENSE_FILE"
+```
+
+`LM_LICENSE_FILE` 通常指向本机 license 文件，`SCL_HOME` 指向安装目录；同样优先读取实际 rc
+配置，不要用本文示例覆盖用户已有值。
 
 ### 7.4 lmgrd 启动必须带 `-c <licfile>`（最隐蔽的坑，已踩）
 
 **症状**：scl 的 license server 启动后 snpslmd 每 ~10 秒退出一次，日志出现：
 ```
 (snpslmd) Error getting server information.
-(snpslmd) Error opening the license file, 27080@vv-cachyos
+(snpslmd) Error opening the license file, <port>@<license-host>
 (lmgrd) snpslmd exited with status 1 signal = 17
 (lmgrd) manager (lmgrd) will attempt to re-start the vendor daemon.
 (lmgrd) ... restarts ~10 次后放弃: Please correct problem and restart daemons
@@ -474,8 +512,8 @@ export SCL_HOME=/opt/EDA/Synopsys/scl/2025.03
 
 **根因**：若只写 `lmgrd -l <log>` 而不加 `-c`，lmgrd 靠 `LM_LICENSE_FILE` 找到 license 文件，
 但 vendor daemon `snpslmd` 启动时继承 shell 环境里的
-`SNPSLMD_LICENSE_FILE=27080@vv-cachyos`（server 引用形式），把该**字符串当 license 文件路径**去
-打开 → `Error opening the license file, 27080@vv-cachyos` → 崩溃循环。
+`SNPSLMD_LICENSE_FILE=<port>@<license-host>`（server 引用形式），把该**字符串当 license 文件路径**去
+打开 → `Error opening the license file, <port>@<license-host>` → 崩溃循环。
 
 **修复**：启动必须带 `-c`（lmgrd 会把真实路径传给 snpslmd，进程参数会出现
 `-c :/opt/…/synopsys.lic:`），手动启动时再加 `env -u` 双保险：
@@ -485,7 +523,7 @@ env -u SNPSLMD_LICENSE_FILE -u LM_LICENSE_FILE \
   -c /opt/EDA/Synopsys/synopsys.lic \
   -l /opt/EDA/Synopsys/synopsys_licnese.log
 ```
-> 注意：`SNPSLMD_LICENSE_FILE=27080@host`、`LM_LICENSE_FILE=<file>` 作为**客户端**连接配置是对的，
+> 注意：`SNPSLMD_LICENSE_FILE=<port>@<host>`、`LM_LICENSE_FILE=<file>` 作为**客户端**连接配置是对的，
 > 错在它们出现在**启动 lmgrd 的进程**环境里（systemd 环境干净则天然无此问题）。
 
 ### 7.5 systemd 开机自启（Type=simple + -z，实测）
@@ -651,7 +689,8 @@ lc_shell -f xxx.tcl && echo "exit=$?"
 spyglass -version | grep 'SpyGlass Predictive Analyzer'
 
 # License
-lmutil lmstat -c 27080@vv-mint   # license server UP / snpslmd UP
+: "${SNPSLMD_LICENSE_FILE:?inspect the active shell rc file first}"
+lmutil lmstat -c "$SNPSLMD_LICENSE_FILE"   # license server UP / snpslmd UP
 ```
 
 ---
@@ -664,5 +703,5 @@ lmutil lmstat -c 27080@vv-mint   # license server UP / snpslmd UP
 - `scripts/lc_shell_wrapper.sh` — LC 旧 krb5 与退出清理崩溃的窄化处理
 - `scripts/verdi_wrapper.sh` — Verdi 老 ABI compat 与系统 Fontconfig 的进程级注入
 - `reference/zshrc.example` — 实测机器的完整 `~/.zshrc` EDA 工具链配置参考
-  （Synopsys 六套工具 env/alias、最终 PATH 断言与 wrapper 的关系、Xilinx 段可忽略），
-  主机为 CachyOS，主机名 `vv-cachyos`，license 端口 27080
+  （Synopsys 六套工具 env/alias、最终 PATH 断言与 wrapper 的关系、Xilinx 段可忽略）。这是某次
+  实测快照，不是许可证地址的发现来源；实际排障必须按第 7.1 节读取当前用户的 shell rc。

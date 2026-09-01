@@ -65,7 +65,8 @@ source /opt/EDA/Xilinx/DocNav/.settings64-DocNav.sh
 
 # --- Synopsys ---
 
-export SNPSLMD_LICENSE_FILE=27080@vv-cachyos
+# 用当前机器实际的 ~/.zshrc 或 ~/.bashrc 配置许可证地址；这里故意不提供可复制的固定值。
+# export SNPSLMD_LICENSE_FILE=<port>@<license-host>
 export LM_LICENSE_FILE=/opt/EDA/Synopsys/synopsys.lic
 
 # scl
