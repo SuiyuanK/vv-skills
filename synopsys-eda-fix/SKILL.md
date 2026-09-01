@@ -197,13 +197,19 @@ alias vcs='~/.local/bin/vcs'
   **修复**：`sudo pacman -S time`。
 - **gcc 16 把隐式函数声明升级为 error**：`rmapats.c:20:9: error: implicit declaration of function
   'vcs_simpSetEBlkEvtID'`。VCS 内部 Makefile 的 `CC_CG=gcc` 按 PATH 解析（不用 `VCS_CC`，所以
-  `-CFLAGS`/`-cc`/`VCS_CC` 都绕不过 rmapats.o 这条规则）。**不要**把 gcc wrapper 放入
-  `~/.local/bin` 全局 shadow；安装到 `~/.local/libexec/synopsys-vcs/gcc`，仅由 VCS wrapper
-  给子进程临时前置 PATH：
+  `-CFLAGS`/`-cc`/`VCS_CC` 都绕不过 rmapats.o 这条规则）。本机已并行安装 GCC 13，因此不再
+  给 GCC 16 全局或局部降级诊断，而是把 `scripts/vcs_gcc_wrapper.sh` 安装为
+  `~/.local/libexec/synopsys-vcs/gcc`，并把 `g++`、`cc`、`c++`、`cpp`、`gcc-ar`、`gcc-nm`、
+  `gcc-ranlib` 链接到同一 dispatcher。`~/.local/bin/vcs` 只给 VCS 子进程临时前置这个目录：
   ```bash
-  #!/usr/bin/env bash
-  exec /usr/bin/gcc -Wno-implicit-function-declaration "$@"
+  install -Dm755 scripts/vcs_gcc_wrapper.sh ~/.local/libexec/synopsys-vcs/gcc
+  for name in g++ cc c++ cpp gcc-ar gcc-nm gcc-ranlib; do
+    ln -sfn gcc "$HOME/.local/libexec/synopsys-vcs/$name"
+  done
   ```
+  **不要**把这些通用名放入 `~/.local/bin` 或全局 PATH；普通终端、MATLAB 以及其它 EDA 工具
+  应继续使用各自的编译器策略。先验证 `/usr/bin/gcc-13`、`g++-13`、`cpp-13` 和三个
+  `gcc-*-13` helper 均存在，再部署。
   端到端验证：`vcs -full64 -sverilog -o simv t.v && ./simv` 输出 `VCS OK`；
   运行时有 ASLR 提示（`-no_save` 或无副作用，正常）。
 - **`-kdb`/`-debug_acc`（Verdi 集成）必须带 Verdi compat 路径**（已踩）：
@@ -654,7 +660,7 @@ lmutil lmstat -c 27080@vv-mint   # license server UP / snpslmd UP
 
 - `scripts/fix_spyglass_linux7.sh` — SpyGlass 内核判断修复（备份+改+验证）
 - `scripts/vcs_wrapper.sh` — VCS 链接参数合并、KDB 条件 compat、专用 GCC PATH
-- `scripts/vcs_gcc_wrapper.sh` — 仅供 VCS 子进程使用的 GCC 16 workaround
+- `scripts/vcs_gcc_wrapper.sh` — 仅供 VCS 子进程使用的 GCC 13 通用名 dispatcher
 - `scripts/lc_shell_wrapper.sh` — LC 旧 krb5 与退出清理崩溃的窄化处理
 - `scripts/verdi_wrapper.sh` — Verdi 老 ABI compat 与系统 Fontconfig 的进程级注入
 - `reference/zshrc.example` — 实测机器的完整 `~/.zshrc` EDA 工具链配置参考

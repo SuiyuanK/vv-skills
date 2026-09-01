@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VCS X-2025.06 wrapper for modern Linux linkers, GCC 16, and optional KDB libs.
+# VCS X-2025.06 wrapper for modern Linux linkers, private GCC 13, and optional KDB libs.
 set -u
 
 export VCS_HOME="${VCS_HOME:-/opt/EDA/Synopsys/vcs/X-2025.06}"
@@ -17,9 +17,9 @@ if [ "$need_verdi_compat" = "1" ]; then
     export LD_LIBRARY_PATH="/opt/EDA/Synopsys/.compat/verdi:$VERDI_HOME/platform/LINUXAMD64/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/lib:$VERDI_HOME/platform/LINUXAMD64/lib/Qt5/plugins:${LD_LIBRARY_PATH:-}"
 fi
 
-vcs_gcc_dir="${VCS_GCC_WRAPPER_DIR:-$HOME/.local/libexec/synopsys-vcs}"
-if [ -x "$vcs_gcc_dir/gcc" ]; then
-    export PATH="$vcs_gcc_dir:$PATH"
+vcs_gcc13_dir="${VCS_GCC13_DIR:-${VCS_GCC_WRAPPER_DIR:-$HOME/.local/libexec/synopsys-vcs}}"
+if [ -x "$vcs_gcc13_dir/gcc" ]; then
+    export PATH="$vcs_gcc13_dir:$PATH"
 fi
 
 original_args=("$@")
