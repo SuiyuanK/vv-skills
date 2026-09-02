@@ -26,7 +26,7 @@
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`matlab-cachyos-fix`](./matlab-cachyos-fix/SKILL.md) | 自研 | Arch/CachyOS、Linux x86_64 | 修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX 与启动入口问题。 | binutils/systemd 诊断工具、可选 devtools/GCC 13 |
+| [`matlab-cachyos-fix`](./matlab-cachyos-fix/SKILL.md) | 自研 | Arch/CachyOS、GNOME、Linux x86_64 | 修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX、GNOME 菜单/Dock 图标及新版 glibc 退出崩溃问题。 | binutils/systemd 诊断工具、xorg-xprop、desktop-file-utils、util-linux、可选 devtools/GCC 13/gperftools |
 | [`synopsys-eda-fix`](./synopsys-eda-fix/SKILL.md) | 自研 | Arch/CachyOS、Ubuntu/Linux、Linux x86_64 | 诊断并修复 Synopsys X-2025.06 工具链在新 glibc 与 Linux 7.x 上的兼容问题。 | tcsh/csh、bc、time、numactl、libselinux、可选 GCC 13 |
 | [`update-verible`](./update-verible/SKILL.md) | 自研 | Linux x86_64 | 从 chipsalliance/verible 官方 Releases 选择、安装、回退和清理 Linux x86_64 版本。 | bash、curl、git、tar、findutils |
 | [`vivado-ubuntu26-ncurses-fix`](./vivado-ubuntu26-ncurses-fix/SKILL.md) | 自研 | Ubuntu/Linux、Linux x86_64 | 修复 Vivado/Vitis 2025.2.1 在 Ubuntu 26.04 上因 ncurses 搜索路径导致的安装卡死。 | Vivado/Vitis 2025.2.1 自带兼容库、bash |

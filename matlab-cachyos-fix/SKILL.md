@@ -4,18 +4,22 @@ description: >-
   Diagnose and fix MATLAB R2025b on x86_64 CachyOS/Arch Linux, including
   installer lc_init/GnuTLS/leancrypto SIGSEGV, download or extraction failures,
   GCC 13 AUR bootstrap failures after Linux removed linux/scc.h, and a
-  MATLAB-only GCC 13 wrapper for MEX that leaves the system GCC unchanged.
-  Use for these specific MATLAB installer, MEX compiler, or launcher symptoms
-  on an Arch-family host; rediscover paths and versions before applying fixes.
+  MATLAB-only GCC 13 wrapper for MEX that leaves the system GCC unchanged,
+  plus GNOME menu/Dock integration and glibc smallbin corruption on shutdown.
+  Use for these specific MATLAB installer, MEX compiler, launcher, icon, or
+  teardown symptoms on an Arch-family host; rediscover paths and versions
+  before applying fixes.
 ---
 
 # MATLAB R2025b on CachyOS / Arch
 
-This skill covers two independent failure domains:
+This skill covers three independent failure domains:
 
 1. the MathWorks installer crashes or fails while downloading/extracting; and
 2. MATLAB is installed, but R2025b needs a supported GCC for MEX while the
-   rolling system compiler is newer.
+   rolling system compiler is newer; and
+3. MATLAB works from a terminal, but GNOME menu launch, Dock icon matching, or
+   shutdown fails on a newer glibc.
 
 Identify the phase before changing anything. Do not apply the installer
 workaround to a compiler problem, or rebuild GCC to explain an incomplete
@@ -53,6 +57,12 @@ Read [references/gcc13-mex.md](references/gcc13-mex.md). This includes the
 clean-chroot and incremental-resume paths, split-package installation, and the
 MATLAB-only wrapper.
 
+### GNOME menu does not open, running icon is generic, or shutdown corrupts malloc
+
+Read [references/desktop-glibc.md](references/desktop-glibc.md). Keep menu
+launch, window matching, and allocator diagnosis separate: each has a
+different runtime identity and verification method.
+
 ## Completion criteria
 
 Do not report success from package presence or exit code alone. Verify the
@@ -65,8 +75,14 @@ relevant outcome:
   GFortran 13.
 - MEX: configure C/C++ deliberately and compile and execute a small real MEX
   module; do not stop at `mex -setup` output.
-- Desktop: the user-local desktop entry calls the same wrapper used by the
-  shell, and the entry validates without errors.
+- Desktop launch: the user-local desktop entry reaches the same wrapper used by
+  the shell, opens a real GUI from GNOME, and validates without errors.
+- Dock icon: compare the launcher's `StartupWMClass` with the second value of
+  the currently mapped main window's measured `WM_CLASS`; then close and reopen
+  MATLAB to verify the official icon replaces the generic running-app icon.
+- Shutdown: after any allocator workaround, prove the alternate allocator is
+  loaded inside MATLAB, then close a real GUI and confirm no smallbin error,
+  crash dump, or orphaned backend remains.
 - Health: for a broader request, use isolated `TMPDIR` and `MATLAB_PREFDIR` and
   test numeric work, headless graphics, Simulink loading, and compiler state.
 

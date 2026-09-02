@@ -88,9 +88,9 @@
       "path": "matlab-cachyos-fix",
       "kind": "self",
       "category": "eda-fpga",
-      "platforms": ["arch-linux", "linux-x86_64"],
-      "summary": "修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX 与启动入口问题。",
-      "dependencies": ["binutils/systemd 诊断工具", "可选 devtools/GCC 13"],
+      "platforms": ["arch-linux", "gnome", "linux-x86_64"],
+      "summary": "修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX、GNOME 菜单/Dock 图标及新版 glibc 退出崩溃问题。",
+      "dependencies": ["binutils/systemd 诊断工具", "xorg-xprop", "desktop-file-utils", "util-linux", "可选 devtools/GCC 13/gperftools"],
       "status": "active"
     },
     {
