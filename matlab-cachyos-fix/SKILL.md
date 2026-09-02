@@ -77,9 +77,9 @@ relevant outcome:
   module; do not stop at `mex -setup` output.
 - Desktop launch: the user-local desktop entry reaches the same wrapper used by
   the shell, opens a real GUI from GNOME, and validates without errors.
-- Dock icon: compare the launcher's `StartupWMClass` with the second value of
-  the currently mapped main window's measured `WM_CLASS`; then close and reopen
-  MATLAB to verify the official icon replaces the generic running-app icon.
+- Dock icon: use `$gnome-xwayland-dock-icon-fix` for the shared `WM_CLASS` and
+  launcher workflow, plus the MATLAB-specific exceptions in the desktop
+  reference; then close and reopen MATLAB to verify the official icon.
 - Shutdown: after any allocator workaround, prove the alternate allocator is
   loaded inside MATLAB, then close a real GUI and confirm no smallbin error,
   crash dump, or orphaned backend remains.

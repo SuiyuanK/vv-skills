@@ -1,4 +1,0 @@
-interface:
-  display_name: "微信 AppImage GNOME 图标修复"
-  short_description: "修复微信 AppImage 的 GNOME Dock 图标匹配"
-  default_prompt: "使用 $wechat-appimage-gnome-icon-fix 诊断并修复微信 AppImage 在 GNOME Dock 中显示错误图标的问题。"

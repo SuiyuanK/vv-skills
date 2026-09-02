@@ -153,9 +153,10 @@ still contain unsaved state.
 
 ## 4. Generic blue icon after MATLAB opens
 
-Follow the same evidence rule as an AppImage Dock fix: the menu icon being
-correct only proves `Icon=` resolves. GNOME groups the running XWayland window
-using the window's actual `WM_CLASS`.
+Use `$gnome-xwayland-dock-icon-fix` for the shared launcher discovery,
+host-session `xprop` measurement, user-level `StartupWMClass` edit, database
+refresh, and close/reopen verification. Keep only these MATLAB-specific facts
+in this workflow:
 
 Do not infer `StartupWMClass` from:
 
@@ -165,41 +166,25 @@ Do not infer `StartupWMClass` from:
 - the generated hidden `mw-matlab.desktop` URI handler.
 
 Those guesses were tested and did not fix the running icon. Adding the official
-PNG to `mw-matlab.desktop` also did not fix grouping.
+PNG to MathWorks' hidden `mw-matlab.desktop` URI handler also did not fix
+grouping. Match the visible launcher that calls the PTY helper and MATLAB-only
+wrapper.
 
-Wait until the main window is fully mapped, then measure every XWayland client:
-
-```bash
-for window_id in $(
-  xprop -root _NET_CLIENT_LIST 2>/dev/null | grep -oE '0x[0-9a-f]+'
-); do
-  printf 'WINDOW=%s ' "$window_id"
-  xprop -id "$window_id" _NET_WM_PID WM_CLASS _NET_WM_NAME 2>/dev/null \
-    | tr '\n' ' '
-  printf '\n'
-done | grep -i matlab
-```
-
-The verified R2025b Update 6 main window reported:
+Wait until the full main window is mapped. The verified R2025b Update 6 main
+window reported:
 
 ```text
 WM_CLASS(STRING) = "Matlab-GLEE", "MATLAB R2025b Update 6"
 ```
 
-The first value is the instance and the second is the class. Set the visible
-launcher to the measured class, preserving `Exec=` and the working official
-icon:
+Use the second string as the class. Preserve the working `Exec=` and official
+`Icon=` while setting the visible launcher's measured value:
 
 ```ini
 Icon=/current/MATLAB/bin/glnxa64/cef_resources/matlab_icon.png
 StartupWMClass=MATLAB R2025b Update 6
 ```
 
-Do not hard-code this value for another update. Remeasure after MATLAB updates,
-because the class contains the update number. Ensure exactly one user-visible
-desktop entry claims the measured class, validate it, and refresh the user
-desktop database.
-
-Close and reopen MATLAB; an existing mapped window need not be regrouped
-dynamically. Verify that the Dock and overview show the official MATLAB icon
-and that menu launch still uses the PTY helper and MATLAB-only GCC wrapper.
+Do not hard-code this value for another update: the class contains the update
+number. After applying the generic workflow, also verify that menu launch still
+uses the PTY helper and MATLAB-only GCC wrapper.

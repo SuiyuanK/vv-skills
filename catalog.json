@@ -165,16 +165,6 @@
       "status": "active"
     },
     {
-      "name": "wechat-appimage-gnome-icon-fix",
-      "path": "wechat-appimage-gnome-icon-fix",
-      "kind": "self",
-      "category": "linux-desktop-apps",
-      "platforms": ["arch-linux", "gnome", "wayland"],
-      "summary": "修复微信 AppImage 在 GNOME Dock 和任务切换器中显示通用图标的窗口匹配问题。",
-      "dependencies": ["xorg-xprop", "desktop-file-utils"],
-      "status": "active"
-    },
-    {
       "name": "linux-ext4-superblock-recovery",
       "path": "linux-ext4-superblock-recovery",
       "kind": "self",

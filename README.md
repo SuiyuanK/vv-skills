@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **17 个 active skills**：**14 个个人**、**3 个第三方**。
+当前收录 **16 个 active skills**：**13 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -39,7 +39,6 @@
 | [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
 | [`gnome-xwayland-dock-icon-fix`](./gnome-xwayland-dock-icon-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 按实测 WM_CLASS 修复 GNOME XWayland 应用运行后显示通用图标、重复 Dock 项或错误分组的问题。 | xorg-xprop、desktop-file-utils |
 | [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
-| [`wechat-appimage-gnome-icon-fix`](./wechat-appimage-gnome-icon-fix/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 修复微信 AppImage 在 GNOME Dock 和任务切换器中显示通用图标的窗口匹配问题。 | xorg-xprop、desktop-file-utils |
 
 ### 系统恢复
 
