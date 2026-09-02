@@ -1,0 +1,4 @@
+interface:
+  display_name: "GNOME XWayland Dock Icon Fix"
+  short_description: "Fix generic or duplicate GNOME Dock icons"
+  default_prompt: "Use $gnome-xwayland-dock-icon-fix to diagnose and repair this running application icon mismatch."

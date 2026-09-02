@@ -145,6 +145,16 @@
       "supersedes": ["gnome-default-terminal-ghostty", "nemo-cinnamon-ghostty"]
     },
     {
+      "name": "gnome-xwayland-dock-icon-fix",
+      "path": "gnome-xwayland-dock-icon-fix",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": ["gnome", "wayland", "linux"],
+      "summary": "按实测 WM_CLASS 修复 GNOME XWayland 应用运行后显示通用图标、重复 Dock 项或错误分组的问题。",
+      "dependencies": ["xorg-xprop", "desktop-file-utils"],
+      "status": "active"
+    },
+    {
       "name": "qqmusic-linux-fix",
       "path": "qqmusic-linux-fix",
       "kind": "self",
