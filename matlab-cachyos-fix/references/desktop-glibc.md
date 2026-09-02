@@ -1,9 +1,9 @@
-# MATLAB R2025b GNOME launcher, Dock icon, and glibc teardown
+# MATLAB R2025b GNOME launcher, browser handoff, Dock icon, and glibc teardown
 
 Use this reference when terminal launch works but GNOME menu launch does not,
-the running MATLAB window has a generic blue icon, or closing MATLAB prints
-`free(): chunks in smallbin corrupted` / `malloc(): smallbin double linked list
-corrupted`.
+the running MATLAB window has a generic blue icon, an account link does not
+open the browser, or closing MATLAB prints `free(): chunks in smallbin
+corrupted` / `malloc(): smallbin double linked list corrupted`.
 
 Treat these as separate problems. A working menu does not prove window-icon
 matching, and a correct icon does not prove clean shutdown.
@@ -151,7 +151,63 @@ dump appears and that the session backend exits. Do not terminate stale MATLAB
 backends without explicit authorization because inaccessible sessions can
 still contain unsaved state.
 
-## 4. Generic blue icon after MATLAB opens
+## 4. Account or help link does not open the external browser
+
+First verify the system handlers instead of assuming MIME ownership is broken:
+
+```bash
+xdg-settings get default-web-browser
+xdg-mime query default x-scheme-handler/http
+xdg-mime query default x-scheme-handler/https
+gio mime x-scheme-handler/https
+```
+
+Then reproduce through MATLAB itself with an isolated `TMPDIR` and
+`MATLAB_PREFDIR`. Print both the allocator and resolved opener before calling
+`web`:
+
+```matlab
+fprintf('LD_PRELOAD=%s\n',getenv('LD_PRELOAD'));
+system('command -v xdg-open');
+status = web('https://www.mathworks.com/','-browser');
+fprintf('WEB_STATUS=%d\n',status);
+```
+
+Do not accept `WEB_STATUS=0` as proof that a browser survived. On the verified
+host, MATLAB returned 0 while systemd-coredump recorded a new Chrome process
+dumping core with its top frames in `libtcmalloc_minimal.so.4`. MATLAB's
+process-local `LD_PRELOAD` had propagated through `xdg-open` into Chrome.
+
+Keep tcmalloc loaded in MATLAB to preserve the teardown workaround, but strip
+it at the external-browser boundary. Install an `xdg-open` shim only inside the
+MATLAB wrapper's private PATH directory, alongside its GCC shims:
+
+```bash
+#!/usr/bin/env bash
+
+unset LD_PRELOAD
+exec /usr/bin/xdg-open "$@"
+```
+
+Make the shim executable and have the MATLAB wrapper prepend that private
+directory before launching MATLAB. Use an absolute `/usr/bin/xdg-open` in the
+shim to avoid recursion. Do not replace the system `xdg-open`, globally unset
+`LD_PRELOAD`, or force a browser with a global `BROWSER` variable. Keep a
+reversible copy of the wrapper before editing it.
+
+Fully exit and reopen MATLAB because an existing process retains its old PATH.
+Repeat the isolated test and require all of the following:
+
+- MATLAB still reports the intended `libtcmalloc_minimal.so` preload;
+- `command -v xdg-open` inside MATLAB resolves to the private shim;
+- the requested page visibly opens in the user's configured browser;
+- no newer browser coredump appears; and
+- the real account/help link opens successfully after a GUI restart.
+
+The verified post-fix test kept tcmalloc inside MATLAB, resolved `xdg-open` to
+the private shim, returned `WEB_STATUS=0`, and produced no new Chrome coredump.
+
+## 5. Generic blue icon after MATLAB opens
 
 Use `$gnome-xwayland-dock-icon-fix` for the shared launcher discovery,
 host-session `xprop` measurement, user-level `StartupWMClass` edit, database
