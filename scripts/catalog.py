@@ -31,7 +31,7 @@ ALLOWED_PLATFORMS = {
     "wayland",
     "windows",
 }
-KIND_LABELS = {"self": "自研", "third-party": "第三方"}
+KIND_LABELS = {"self": "个人", "third-party": "第三方"}
 PLATFORM_LABELS = {
     "arch-linux": "Arch/CachyOS",
     "cinnamon": "Cinnamon/Nemo",
@@ -224,7 +224,7 @@ def render_block(data: dict[str, Any], skills: list[dict[str, Any]]) -> str:
     lines = [
         START_MARKER,
         "",
-        f"当前收录 **{len(active)} 个 active skills**：**{self_count} 个自研**、**{third_party_count} 个第三方**。",
+        f"当前收录 **{len(active)} 个 active skills**：**{self_count} 个个人**、**{third_party_count} 个第三方**。",
     ]
 
     for category in categories:

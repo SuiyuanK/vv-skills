@@ -26,7 +26,7 @@ python scripts/catalog.py --check
 3. 根 README 的生成索引；
 4. 第三方变更对应的 `docs/THIRD_PARTY.md`。
 
-自研 skill 的详细工作流只维护在自身 `SKILL.md` 和必要的 `references/` 中，不在根 README 重复长篇说明。
+个人 skill 的详细工作流只维护在自身 `SKILL.md` 和必要的 `references/` 中，不在根 README 重复长篇说明。
 
 ## 修改前检查
 
@@ -41,7 +41,7 @@ git rev-list --left-right --count main...origin/main
 - 有未提交改动、分叉或冲突时停止，不强制拉取或覆盖。
 - 本地仅落后且工作区干净时使用 `git pull --ff-only`。
 
-## 自研 skill
+## 个人 skill
 
 在 CC Switch 规范目录中创建或修改。入口描述应准确区分触发场景；复杂的环境或模式拆到按需读取的 references。验证至少包括：
 

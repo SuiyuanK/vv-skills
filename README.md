@@ -10,41 +10,41 @@
 
 <!-- catalog:start -->
 
-当前收录 **16 个 active skills**：**13 个自研**、**3 个第三方**。
+当前收录 **16 个 active skills**：**13 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 自研 | Arch/CachyOS、Linux x86_64 | 把 OpenAI 官方 ChatGPT/Codex Desktop amd64 deb 构建为可验证的 Arch/CachyOS 软件包。 | bash、curl、libarchive/bsdtar、pacman/makepkg |
-| [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 自研 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
-| [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 自研 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
+| [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 个人 | Arch/CachyOS、Linux x86_64 | 把 OpenAI 官方 ChatGPT/Codex Desktop amd64 deb 构建为可验证的 Arch/CachyOS 软件包。 | bash、curl、libarchive/bsdtar、pacman/makepkg |
+| [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 个人 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
+| [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 个人 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
 | [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。 | PowerShell、Windows Store/MSIX Codex、可选 Python/Rust/MSVC |
-| [`opencode-wl-clipboard-copy-fix`](./opencode-wl-clipboard-copy-fix/SKILL.md) | 自研 | Arch/CachyOS、Wayland | 修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。 | wl-clipboard、可选 xclip |
+| [`opencode-wl-clipboard-copy-fix`](./opencode-wl-clipboard-copy-fix/SKILL.md) | 个人 | Arch/CachyOS、Wayland | 修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。 | wl-clipboard、可选 xclip |
 
 ### EDA/FPGA
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`matlab-cachyos-fix`](./matlab-cachyos-fix/SKILL.md) | 自研 | Arch/CachyOS、GNOME、Linux x86_64 | 修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX、GNOME 菜单/Dock 图标及新版 glibc 退出崩溃问题。 | binutils/systemd 诊断工具、xorg-xprop、desktop-file-utils、util-linux、可选 devtools/GCC 13/gperftools |
-| [`synopsys-eda-fix`](./synopsys-eda-fix/SKILL.md) | 自研 | Arch/CachyOS、Ubuntu/Linux、Linux x86_64 | 诊断并修复 Synopsys X-2025.06 工具链在新 glibc 与 Linux 7.x 上的兼容问题。 | tcsh/csh、bc、time、numactl、libselinux、可选 GCC 13 |
-| [`update-verible`](./update-verible/SKILL.md) | 自研 | Linux x86_64 | 从 chipsalliance/verible 官方 Releases 选择、安装、回退和清理 Linux x86_64 版本。 | bash、curl、git、tar、findutils |
-| [`vivado-ubuntu26-ncurses-fix`](./vivado-ubuntu26-ncurses-fix/SKILL.md) | 自研 | Ubuntu/Linux、Linux x86_64 | 修复 Vivado/Vitis 2025.2.1 在 Ubuntu 26.04 上因 ncurses 搜索路径导致的安装卡死。 | Vivado/Vitis 2025.2.1 自带兼容库、bash |
-| [`windows-vivado-clean-uninstall`](./windows-vivado-clean-uninstall/SKILL.md) | 自研 | Windows | 为 Windows Vivado/Xilinx 卸载残留提供只读审计、确认门控和可回滚清理流程。 | PowerShell |
+| [`matlab-cachyos-fix`](./matlab-cachyos-fix/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Linux x86_64 | 修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX、GNOME 菜单/Dock 图标及新版 glibc 退出崩溃问题。 | binutils/systemd 诊断工具、xorg-xprop、desktop-file-utils、util-linux、可选 devtools/GCC 13/gperftools |
+| [`synopsys-eda-fix`](./synopsys-eda-fix/SKILL.md) | 个人 | Arch/CachyOS、Ubuntu/Linux、Linux x86_64 | 诊断并修复 Synopsys X-2025.06 工具链在新 glibc 与 Linux 7.x 上的兼容问题。 | tcsh/csh、bc、time、numactl、libselinux、可选 GCC 13 |
+| [`update-verible`](./update-verible/SKILL.md) | 个人 | Linux x86_64 | 从 chipsalliance/verible 官方 Releases 选择、安装、回退和清理 Linux x86_64 版本。 | bash、curl、git、tar、findutils |
+| [`vivado-ubuntu26-ncurses-fix`](./vivado-ubuntu26-ncurses-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 修复 Vivado/Vitis 2025.2.1 在 Ubuntu 26.04 上因 ncurses 搜索路径导致的安装卡死。 | Vivado/Vitis 2025.2.1 自带兼容库、bash |
+| [`windows-vivado-clean-uninstall`](./windows-vivado-clean-uninstall/SKILL.md) | 个人 | Windows | 为 Windows Vivado/Xilinx 卸载残留提供只读审计、确认门控和可回滚清理流程。 | PowerShell |
 
 ### Linux 桌面与应用
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 自研 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
-| [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 自研 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
-| [`wechat-appimage-gnome-icon-fix`](./wechat-appimage-gnome-icon-fix/SKILL.md) | 自研 | Arch/CachyOS、GNOME、Wayland | 修复微信 AppImage 在 GNOME Dock 和任务切换器中显示通用图标的窗口匹配问题。 | xorg-xprop、desktop-file-utils |
+| [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
+| [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
+| [`wechat-appimage-gnome-icon-fix`](./wechat-appimage-gnome-icon-fix/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 修复微信 AppImage 在 GNOME Dock 和任务切换器中显示通用图标的窗口匹配问题。 | xorg-xprop、desktop-file-utils |
 
 ### 系统恢复
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`linux-ext4-superblock-recovery`](./linux-ext4-superblock-recovery/SKILL.md) | 自研 | Linux | 安全诊断和恢复 EXT4 超级块校验、备用超级块和无法启动问题。 | e2fsprogs、util-linux |
+| [`linux-ext4-superblock-recovery`](./linux-ext4-superblock-recovery/SKILL.md) | 个人 | Linux | 安全诊断和恢复 EXT4 超级块校验、备用超级块和无法启动问题。 | e2fsprogs、util-linux |
 
 ### 研究与内容创作
 
