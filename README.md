@@ -1,236 +1,90 @@
 # VV Skills
 
-这个仓库用于收录个人可复用的 agent skills、第三方 skill 镜像与自动化工作流，不限定只能用于 Codex。Windows 维护类 skills 重点强调只读诊断、备份和确认门控。
+这个仓库保存个人可复用的 agent skills、经过审核的第三方 skill 镜像与配套自动化工作流。它同时是 Linux 上 CC Switch 的规范 skill 目录和 GitHub 仓库 [`SuiyuanK/vv-skills`](https://github.com/SuiyuanK/vv-skills) 的本地工作副本。
 
-## 个人 Skills
+所有 active skill 保持为顶层目录，便于 CC Switch 发现并部署到 Codex、Claude、opencode 等 Agent。每个 skill 的入口是目录内的 `SKILL.md`；详细操作、风险边界和按需参考资料以该目录为准。
 
-### `chatgpt-arch-deb-updater`
+## Skill 索引
 
-在 Arch Linux/CachyOS x86_64 上把 OpenAI 官方最新 ChatGPT/Codex Desktop `amd64` deb 构建为规范的本地 Arch 软件包，适用于 AUR/发行版包落后或 debtap 产生错误依赖与元数据的情况。
+以下区块由 `catalog.json` 生成，请勿手工编辑表格内容。
 
-- `scripts/auto-deb-install.sh`：下载官方 latest deb 或接受本地 deb，校验包名、架构、版本和 SHA-256，再通过 fakeroot 下的 `makepkg` 构建，并验证 `.PKGINFO`、`.MTREE` 及包内全部条目的数值 UID/GID 均为 0。
-- `scripts/PKGBUILD.chatgpt`：显式维护 Debian 到 Arch 的运行时依赖映射，避免 debtap 引入 KDE、交叉工具链、`lib32-*` 等错误依赖；保留 AppArmor、Git 与音频服务为可选依赖。
-- `scripts/chatgpt.install`：仅在系统已启用 AppArmor 时加载或卸载官方 Electron user-namespace 兼容 profile，不配置 Debian APT 软件源。
-- 以普通用户构建，全部临时内容和产物写入调用工作区的 `./tmp/`；构建本身不安装系统包，得到授权后使用 `yay -U` 安装，并在宿主真实环境运行 `pacman -Qkk chatgpt` 验证零变化文件，避免 UID/GID 映射沙箱把 `root:root` 误报为 `nobody:nobody`。
-- 依赖 bash、curl、libarchive/bsdtar、pacman/makepkg、gzip、gawk、grep、findutils 和常用 GNU 工具；仅支持官方 `chatgpt` `amd64` deb。
+<!-- catalog:start -->
 
-### update-verible
+当前收录 **16 个 active skills**：**13 个自研**、**3 个第三方**。
 
-从官方 chipsalliance/verible GitHub Releases 读取全部版本，交互选择 Release，核对实际 Linux x86_64 资产名称，并将 Verible 安装到 ~/.local/bin。
+### AI 与开发工具
 
-- scripts/update-verible.sh：提供全交互菜单，完成 Release 列举、资产校验、下载、升级、同版本重装、旧版本备份和备份清理。
-- 旧的 verible-* 命令在覆盖前备份到 ~/.local/share/verible-backups；清理时输入保留数量、显示删除目标并要求确认。
-- 仅支持 Linux x86_64，依赖 bash、curl、git、tar、find 和常用 GNU 工具；网络只访问官方 GitHub 仓库。
-- 以普通用户运行，不使用 sudo；临时下载和解压内容写入 /home/vv/TMP/tmp。
+| Skill | 类型 | 平台 | 用途 | 依赖摘要 |
+| --- | --- | --- | --- | --- |
+| [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 自研 | Arch/CachyOS、Linux x86_64 | 把 OpenAI 官方 ChatGPT/Codex Desktop amd64 deb 构建为可验证的 Arch/CachyOS 软件包。 | bash、curl、libarchive/bsdtar、pacman/makepkg |
+| [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 自研 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
+| [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 自研 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
+| [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。 | PowerShell、Windows Store/MSIX Codex、可选 Python/Rust/MSVC |
+| [`opencode-wl-clipboard-copy-fix`](./opencode-wl-clipboard-copy-fix/SKILL.md) | 自研 | Arch/CachyOS、Wayland | 修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。 | wl-clipboard、可选 xclip |
 
-### `matlab-cachyos-fix`
+### EDA/FPGA
 
-诊断并修复 MATLAB R2025b 在 x86_64 CachyOS/Arch 上的安装器、并行 GCC 13、MEX 与启动入口问题，同时保持系统默认 GCC 不变。
+| Skill | 类型 | 平台 | 用途 | 依赖摘要 |
+| --- | --- | --- | --- | --- |
+| [`matlab-cachyos-fix`](./matlab-cachyos-fix/SKILL.md) | 自研 | Arch/CachyOS、Linux x86_64 | 修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX 与启动入口问题。 | binutils/systemd 诊断工具、可选 devtools/GCC 13 |
+| [`synopsys-eda-fix`](./synopsys-eda-fix/SKILL.md) | 自研 | Arch/CachyOS、Ubuntu/Linux、Linux x86_64 | 诊断并修复 Synopsys X-2025.06 工具链在新 glibc 与 Linux 7.x 上的兼容问题。 | tcsh/csh、bc、time、numactl、libselinux、可选 GCC 13 |
+| [`update-verible`](./update-verible/SKILL.md) | 自研 | Linux x86_64 | 从 chipsalliance/verible 官方 Releases 选择、安装、回退和清理 Linux x86_64 版本。 | bash、curl、git、tar、findutils |
+| [`vivado-ubuntu26-ncurses-fix`](./vivado-ubuntu26-ncurses-fix/SKILL.md) | 自研 | Ubuntu/Linux、Linux x86_64 | 修复 Vivado/Vitis 2025.2.1 在 Ubuntu 26.04 上因 ncurses 搜索路径导致的安装卡死。 | Vivado/Vitis 2025.2.1 自带兼容库、bash |
+| [`windows-vivado-clean-uninstall`](./windows-vivado-clean-uninstall/SKILL.md) | 自研 | Windows | 为 Windows Vivado/Xilinx 卸载残留提供只读审计、确认门控和可回滚清理流程。 | PowerShell |
 
-- 安装器：用 coredump 和动态库证据识别 MathWorks 激活库与 Arch GnuTLS/leancrypto 的 `lc_init` 符号冲突，只对安装器进程预加载 `/usr/lib/libleancrypto.so.1`，不降级系统 GnuTLS；区分下载超时导致的加密组件解压失败，并避免把大型安装写入容量不足的 `/tmp` tmpfs。
-- GCC 13：识别自定义 makepkg 优化引发的 stage2/stage3 bootstrap comparison 失败，优先使用 `devtools` 干净 chroot；覆盖 2026 年 Linux 移除 `linux/scc.h` 后旧 GCC 13 `libsanitizer` 构建失败，并附带经 GCC 13 源码实际验证的上游派生补丁。
-- 增量恢复：记录 `extra-x86_64-build` 保留树、`compare`/`.bad_compare` 判据、Arch `arch-nspawn` 参数顺序、`/startdir`/`/pkgdest` 重新挂载和 split package 归档验证，避免每次都重新编译一小时。
-- MATLAB-only 编译器：通过用户级 `~/.local/bin/matlab` wrapper 和 `.desktop` 覆盖，只在 MATLAB 子进程内把 `gcc-13`、`g++-13`、`gfortran-13` 暴露为通用命令；禁止全局替换 `/usr/bin/gcc`，并要求用真实 batch 与 MEX 模块验证。
-- 依赖按故障路径选择：安装器路径使用系统 `ldd`/`nm`/coredump 工具；GCC 源码构建路径使用 Arch `devtools`、`patch`、`makepkg`/`pacman` 和足够磁盘空间。所有安装、chroot、系统或 vendor 修改均需按实际授权执行。
+### Linux 桌面与应用
 
-### codex-html-mime-fix
+| Skill | 类型 | 平台 | 用途 | 依赖摘要 |
+| --- | --- | --- | --- | --- |
+| [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 自研 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
+| [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 自研 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
+| [`wechat-appimage-gnome-icon-fix`](./wechat-appimage-gnome-icon-fix/SKILL.md) | 自研 | Arch/CachyOS、GNOME、Wayland | 修复微信 AppImage 在 GNOME Dock 和任务切换器中显示通用图标的窗口匹配问题。 | xorg-xprop、desktop-file-utils |
 
-诊断并修复 Linux Codex/ChatGPT Desktop 启动后把 text/html 默认程序从 Google Chrome 改成 chatgpt.desktop 的问题。
+### 系统恢复
 
-- scripts/setup-codex-html-fix.sh：安装用户级启动包装器和 ~/.local/share/applications/chatgpt.desktop 覆盖。
-- 启动 Codex 后监测 MIME 关联 15 秒，发现变化就恢复为 google-chrome.desktop。
-- 依赖 Debian/Ubuntu 的 chatgpt 包布局、Google Chrome、xdg-mime 和 update-desktop-database。
-- 只修改用户目录，不使用 sudo；APT 重装或升级通常不会覆盖该用户级修复。
+| Skill | 类型 | 平台 | 用途 | 依赖摘要 |
+| --- | --- | --- | --- | --- |
+| [`linux-ext4-superblock-recovery`](./linux-ext4-superblock-recovery/SKILL.md) | 自研 | Linux | 安全诊断和恢复 EXT4 超级块校验、备用超级块和无法启动问题。 | e2fsprogs、util-linux |
 
-### `codex-history-recovery`
+### 研究与内容创作
 
-安全诊断、恢复、合并和修复 Codex Desktop 本地历史，包括会话、归档、SQLite 元数据、已保存项目与侧边栏标题。
+| Skill | 类型 | 平台 | 用途 | 依赖摘要 |
+| --- | --- | --- | --- | --- |
+| [`ppt-master`](./ppt-master/SKILL.md) | 第三方 | 跨平台 | 生成、重建、编辑和验证可编辑 PowerPoint，支持模板、原生对象、动画与旁白。 | Python 3.10+、requirements.txt、可选 Playwright/FFmpeg/Pandoc |
+| [`research-writing-assistant`](./research-writing-skill/SKILL.md) | 第三方 | 跨平台 | 提供论文头脑风暴、文献综述、章节写作、LaTeX、统计分析、图表与审稿工作流。 | Python、requests/PyMuPDF、可选科研计算与 LaTeX 环境 |
 
-主要安全边界：
+<!-- catalog:end -->
 
-- 备份始终按只读来源处理。
-- 不覆盖当前账号、配置、新任务或用户主动删除的内容。
-- 修改前创建回滚快照，并在数据库操作前后执行完整性检查。
-- 不从备份整体恢复 `auth.json`、`config.toml` 等敏感配置。
-- 数据修复前由用户手动关闭 Codex，验证完成后由用户手动重新打开；脚本不自动结束或拉起 Desktop。
+## 使用方式
 
-### `windows-vivado-clean-uninstall`
+- 通过 Agent 的 skill 发现机制按名称或任务语义调用。
+- CC Switch 负责选择哪些 skill 暴露给各 Agent；不要直接修改 Agent 自身的 skill 目录或软连接。
+- 不同 skill 可能限定操作系统、发行版、桌面环境、产品版本或硬件架构，执行前读取对应 `SKILL.md` 并重新核验当前环境。
+- 需要 Python 环境的第三方套件使用各自目录中的依赖说明；本地 `.venv/`、缓存和生成产物不进入 Git。
 
-为 Windows 上的 Vivado/Xilinx 卸载残留诊断和清理规划提供安全工作流。
+## 维护入口
 
-主要安全边界：
+- [第三方来源、同步基线与本地调整](./docs/THIRD_PARTY.md)
+- [目录、更新、归档、验证与发布流程](./docs/MAINTENANCE.md)
+- 机器可读目录：[catalog.json](./catalog.json)
 
-- 默认仅进行只读检查并输出分阶段计划。
-- 未经明确授权，不卸载 Vivado、不删除目录、不修改注册表、服务或环境变量。
-- 执行任何清理前，先列出精确目标并准备备份。
+更新目录或 README 索引：
 
-### `vivado-ubuntu26-ncurses-fix`
-
-修复 Xilinx Vivado/Vitis 2025.2.1 在 Ubuntu 26.04（及任何 `ldlibpath.sh` 未识别的发行版）上安装时卡在 "Generating installed device list" 的问题。
-
-- 根因：`ldlibpath.sh` 只识别 Ubuntu 18/20/22/24，26.04 匹配不到，导致 `libncurses.so.5`/`libtinfo.so.5`（存放在 `lib/lnx64.o/Ubuntu/24/`）永远不会进入动态库搜索路径，安装器最后一步的 Vivado 批处理子进程死锁。
-- `scripts/vivado_fix_ncurses.sh`：幂等修复脚本，复制库到三个产品的 `lib/lnx64.o/` 根级 + 安装器目录根级（防重装卡死），并在器件列表缺失时自动重新生成。
-- `references/diagnosis.md`：完整排查过程记录（症状、根因、诊断命令、验证方法）。
-
-### `synopsys-eda-fix`
-
-诊断并修复 Synopsys X-2025.06 EDA 工具在 Linux Mint 22.3（Ubuntu 24.04 基础、glibc 2.39）以及 CachyOS/Arch（glibc 2.44、Linux kernel 7.x）上的兼容问题，覆盖 VCS、Verdi、Design Compiler、Library Compiler、SpyGlass 和 SCL 2025.03。附带 `reference/zshrc.example`：实测机器的完整 `~/.zshrc` 工具链配置参考（含最终 PATH 断言与 wrapper 方案）。
-
-主要修复范围：
-
-- 先检查发行版实际的 `/bin/sh`：只在非 Bash 解释器上复现 `Illegal option -h`/Bashism 错误后，才把受影响的 Synopsys vendor 脚本改为 `#!/bin/bash -h`；CachyOS 的 `/bin/sh -> bash` 可保留 vendor 原状。`snps_platform` 依赖在 Ubuntu/Mint 由 `csh` 包提供，在 Arch/CachyOS 由 `tcsh` 包提供。
-- 为 VCS 合并 `--no-as-needed`，只在 VCS 子进程内前置并行安装的 GCC 13 私有 toolchain，并仅在 KDB/Verdi 集成时注入 compat/Qt 库；系统 GCC、MATLAB 和其它 EDA 工具不受影响。
-- 用 VCS 私有 grep dispatcher 将废弃的 `egrep` 转为 `grep -E`，并把旧式字面连字符 `\-` 规范化为 `[-]`；不修改系统 grep，也不批量改写 vendor 主脚本，并要求用真实 KDB 工程回归。
-- License 排障不固定端口或主机名：先识别当前登录 shell，读取用户实际的 `~/.zshrc` 或 `~/.bashrc` 并核对新登录 shell 的有效变量；缺失或冲突时停止确认，不从参考样例或旧日志猜值。已记录 `syn_fifo` 的 VCS + KDB + GCC 13 + license 端到端回归。
-- 补全 SpyGlass 对 `Linux-7*` 的平台识别，并提供备份、修改和验证脚本。
-- 修复 SpyGlass 在 glibc 2.44 上由默认 SNPSMEM、`libnss_resolve` 与缺失 `malloc_usable_size` 共同触发的启动 SIGSEGV；使用 HOME 与 customer 配置切换到厂商自带 jemalloc，覆盖 `LINT_VCUM` 入口，并记录 `-version` 与 270-rule `lint/lint_rtl` 端到端验证。
-- 为 Library Compiler 仅在 LC 子进程内注入兼容 krb5，避免污染日志管道；只在成功横幅之后发生已知退出清理崩溃时归一化退出码，并可选验证输出文件。
-- 为 Verdi 提供进程级 wrapper：补齐老 ABI 依赖，并预加载系统 Fontconfig，消除旧版 vendor 解析器读取 CachyOS 新配置时的 `xsi:nil`/`invalid constant` 告警，不修改系统字体配置。
-- 覆盖 Verdi supplementary post-install 失败以及 FlexLM `lmgrd`/`snpslmd` 的 `/usr/tmp`、CRLF、端口和 systemd 配置问题。
-- 严格限定已验证的系统和产品版本；其他发行版、内核或 Synopsys 版本不得直接套用。
-
-### `qqmusic-linux-fix`
-
-诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04、x86_64、Linux kernel 7 环境中启动闪退的问题。
-
-主要安全边界：
-
-- 先通过终端输出区分动态库缺失与 GPU compositor 崩溃，只对已确认的图形栈问题应用启动参数。
-- 逐项验证 `--disable-gpu-sandbox` 等候选参数，不把登录或网络告警误判为闪退根因。
-- 优先创建用户级 `.desktop` 覆盖，不直接修改系统启动器，使修复可回滚并避免被软件包更新覆盖。
-
-### `nemo-cinnamon-ghostty`
-
-诊断并修复 Cinnamon/Nemo 的“在终端中打开”被现有 Ghostty 窗口工作目录覆盖的问题。
-
-主要安全边界：
-
-- 先核对 Cinnamon terminal 设置、Ghostty single-instance 行为和 wrapper 目标，不把 `xdg-terminal-exec` 的结果直接当作修复依据。
-- 仅在目标文件不存在或内容已知时创建、替换用户级 wrapper，并在写入前展示内容、备份与回滚方案。
-- wrapper 显式保留 Nemo 传入的当前目录并禁用 Ghostty GTK single-instance；不修改系统 desktop 文件，也不转发不兼容的 `exec-arg`。
-
-### `opencode-wl-clipboard-copy-fix`
-
-诊断并修复 opencode TUI 在 Wayland（CachyOS/Arch，Ptyxis 等 GTK/Qt 终端）下复制失效的问题：界面提示"复制成功"，但系统剪贴板始终没有内容。
-
-- 根因：Wayland 下剪贴板内容由持有者进程实时提供，opencode 通过调用 `wl-copy`（来自 `wl-clipboard` 包）写入剪贴板；系统缺少该工具时复制静默失败，但 TUI 仍显示成功提示。
-- 修复：安装 `wl-clipboard` 后**重启 opencode**（剪贴板支持仅在启动时初始化）；`xclip` 仅作 X11 侧诊断可选，opencode 不依赖它。
-- 中键粘贴补充：opencode 只写 CLIPBOARD 不写 PRIMARY，中键粘贴需在 `~/.local/bin` 安装 `wl-copy` 双写包装脚本（见 skill 内 `Middle-click paste does not work` 一节）。
-- opencode 窗口内中键粘贴：TUI 捕获鼠标事件所致，Shift+中键 可绕过；或设 `OPENCODE_DISABLE_MOUSE=1` 永久禁用鼠标捕获（见 skill 内 `Middle-click paste inside opencode itself` 一节）。
-- 验证：`wl-paste` 应输出刚复制的文本，`ps aux | grep wl-copy` 应有持有剪贴板的进程（Wayland 正常机制）。
-- 依赖：archlinux/cachyos 的 `pacman`；仅安装一个小型包，无源码改动。
-
-### `wechat-appimage-gnome-icon-fix`
-
-诊断并修复微信 AppImage 在 GNOME 中“应用菜单图标正常，但运行窗口、Dock 或任务切换器显示通用 AppImage 图标”的窗口匹配问题。
-
-- 根因：AppImage 集成生成的用户级 `.desktop` 缺少或写错 `StartupWMClass`，GNOME 无法把运行窗口的实际 `WM_CLASS` 与菜单启动器关联。
-- 流程：动态发现重装后当前的 AppImage 与 `.desktop`，用 `Exec=`/`TryExec=` 唯一对应，再从 XWayland 窗口读取真实 `WM_CLASS`；禁止沿用旧文件名或根据窗口标题猜值。
-- 修复：使用 `desktop-file-edit` 仅设置当前启动器的 `StartupWMClass`，运行 `desktop-file-validate` 与 `update-desktop-database`，正常退出并从应用菜单重开后验证 Dock 分组。
-- 安全边界：只修改 `~/.local/share/applications/` 中已确认的微信启动器，不改 AppImage 内部或系统启动器，不强制结束微信；不需要 sudo 或网络。
-- 依赖 `xprop`（`xorg-xprop`）与 `desktop-file-utils`；已在 CachyOS/Arch、GNOME Wayland/XWayland、微信 4.1.1 AppImage 上验证。
-
-### `gnome-default-terminal-ghostty`
-
-配置并诊断 CachyOS/Arch + GNOME 桌面下的默认终端：切换默认终端到 Ghostty、绑定 Ctrl+Alt+T 快捷键、安全卸载其他终端（Ptyxis/Alacritty）。
-
-- 根因：CachyOS + GNOME 环境下终端由 gsettings 多处独立控制（默认终端 exec、media-keys 自定义键绑定），且 GNOME 的 `panel-terminal` 键在安装 Ptyxis 的环境中不存在，需用自定义键绑定替代。
-- 流程：检查现状 → 设默认终端 exec 为 ghostty → 加 `Ctrl+Alt+T` 自定义键绑定 → 验证 → 确认新终端可用后 `pacman -Rns` 卸载旧终端。
-- 安全边界：仅修改 gsettings；卸载前先按 `Ctrl+Alt+T` 确认 Ghostty 可用；sudo 命令由用户在终端执行。
-- 已在 CachyOS + GNOME 会话 + Ptyxis 50.1 / Ghostty 1.3.1 / Alacritty 组合上实际验证。
-
-### `linux-ext4-superblock-recovery`
-
-安全诊断和恢复无法启动或无法识别的 EXT4 文件系统，覆盖 dracut UUID 超时、超级块校验失败、备用超级块验证，以及 DiskGenius 修改卷标后未同步更新 `metadata_csum` 的实证案例。
-
-主要安全边界：
-
-- 每次启动后按型号、容量、偏移、UUID 和 PARTUUID 重新确认目标；不把 `/dev/nvme0n1p3` 等设备名当作稳定身份。
-- 默认只读检查，禁止将 `mkfs`、`e2fsck -y`、`ntfsfix` 或 Windows 分区修复工具用于尚未确认的文件系统。
-- 仅在多个超级块结构一致、错误局限于校验和且目录可读时，才允许带撤销文件的最小 `debugfs` 写入。
-- 正式修复后必须再次执行 `dumpe2fs`、只读 `e2fsck` 和启动后日志验证。
-
-## 第三方 Skills
-
-### `codex-windows-fast-patch-skill`
-
-诊断和修复 Windows Codex Desktop 的 Fast Mode、插件、浏览器、Computer Use、模型可见性、Provider 会话历史与升级后功能漂移。
-
-- 上游来源：[chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill)
-- 跟踪分支：上游 `main`
-- 当前同步基线：提交 [`33a88f5`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/33a88f5063ac138bf2eedc687263ad56c59b055d)
-- 本目录是上游内容在 `vv-skills` 中的已审核镜像，不替代或冒充上游仓库。
-- 基线从 `c455fc5` 更新到 `33a88f5`（2026-09-01），新增 sky 0.6.17/0.6.24 Windows 10 helper 与 Desktop 26.818/26.825 适配、外部执行器 Computer Use 验收路径、账户功能门控的 bundled descriptor 判断、`in_app_browser` 能力锚点修复，以及 codex-cli 0.149+ reserved marketplace source 的补充规则；上游已删除旧 PowerShell 自更新器，本镜像继续由 CC Switch 和 `vv-skills` 统一管理更新。
-- `vv-skills` 保留本机验证后的安全调整：Provider 历史等数据层修复必须由用户手动关闭和重新打开 Codex，不自动停止或拉起应用；该调整已随本次基线更新重新应用。
-
-主要安全边界：
-
-- 优先执行只读检查和 `-DryRun`，根据证据选择最小修复路径。
-- 修改配置、历史数据库或应用包前创建备份，并验证修复后的状态。
-- Provider 会话同步不修改 `config.toml`，同时对 SQLite 与会话 JSONL 元数据进行一致性修复。
-- Provider 历史等数据层修复由用户手动关闭和重新打开 Codex，不依赖进程路径筛选或自动 AppX 拉起。
-
-### `research-writing-skill`
-
-面向论文、学位论文和研究文章的模块化科研写作 skill 套件，包含头脑风暴、文献综述、证据驱动写作、章节写作、实验结果规划、LaTeX、统计分析、图表和审稿流程。
-
-- 上游来源：[Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill)
-- 跟踪分支：上游 `main`
-- 当前同步基线：提交 [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c)
-- 本目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
-- 保留上游的 `LICENSE`、README、多平台配置、模块、脚本和子 skills。
-
-本地修复：
-
-- `hooks/hooks.json` 的 SessionStart 钩子在上游被指向 Windows 批处理 `hooks/run-hook.cmd`（首行 `@echo off`），Linux 下 shell 无法解析，导致每次启动会话报错 `@echo: 未找到命令` 且上下文注入失败。本仓库改为通过 `bash` 显式调用 Bash 脚本 `hooks/session-start` 并赋予其可执行权限；Cursor 版 `hooks-cursor.json` 上游本就用该脚本，不受影响。
-- 自 2026-08-18 起 SessionStart 钩子整体禁用：`hooks/hooks.json` 重命名为 `hooks/hooks.json.disabled`（文件保留，bash 修复仍然有效）。原因：该钩子在每次会话启动、`/clear` 和上下文压缩时无条件向上下文注入约 6.4KB 的强制路由指令（`skills/using-research-writing/SKILL.md` 全文），与实际任务无关，并导致小模型（如 deepseek-v4-flash）指令遵循崩溃、输出中英混杂。套件内全部子 skills 及入口 skill 仍可通过 Skill 工具按需调用，功能不受影响。如需恢复自动注入，将文件名改回 `hooks.json` 即可。
-
-### `ppt-master`
-
-将 PDF、DOCX、URL、Markdown 等资料转换为可编辑的 PowerPoint，支持原生形状、图表、表格、模板、演讲者备注、动画和音频旁白工作流。
-
-- 上游来源：[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master)
-- 跟踪分支：上游 `main`
-- 当前同步基线：提交 [`4e6fdc5`](https://github.com/hugohe3/ppt-master/commit/4e6fdc50136c3aea64a746f6bb4adf1c3305ec87)
-- 上游历史曾改写，旧基线 `b87f5f5` 已不可达；本次从可达基线 `ebd74d1` 升级到 `4e6fdc5`（2026-09-01），当前上游版本为 6.1.0。
-- 本目录镜像上游的 `skills/ppt-master/` 可安装 skill，并附带上游 MIT `LICENSE`；不复制网站、示例演示文稿和项目工作区。
-- 6.1.0 新增 PPTX 往返编辑、`pptx_workspace`、SVG authoring contract、语义表格、文本测量与更完整的质量检查；原 Native Enhance 和 Template Fill 路由合并为 Edit Native PPTX。`requirements.txt` 相比 5.0.0 未新增 Python 依赖，仍包含模板注册所需的 `PyYAML>=6.0`。
-- Python 3.10+ 依赖记录在 `ppt-master/requirements.txt`，应安装到实际执行 skill 脚本的 Python 解释器。
-
-## 本地管理
-
-CC Switch 的规范 skill 目录同时是 `vv-skills` 的本地 Git 工作副本，不需要把 skill 再复制到另一份本地仓库。Linux 下该目录为 `/home/vv/.cc-switch/skills`；Windows 或其他系统应以 CC Switch 的实际配置为准。
-
-Claude、Codex、Cursor、Gemini 等 Agent 使用的 skill 目录及软连接由 CC Switch 管理，不要直接在这些 Agent 目录中新增、修改、删除或重建 skill 和软连接。skill 变更后，通过 CC Switch 刷新配置，并在新任务中确认相应 skill 可以被发现。
-
-`ppt-master` 的 Python 依赖记录在 `ppt-master/requirements.txt`。确认实际执行脚本的 Python 环境后，可在仓库根目录安装：
-
-```shell
-python -m pip install -r ./ppt-master/requirements.txt
+```bash
+python scripts/catalog.py --render
+python scripts/catalog.py --check
 ```
 
-`research-writing-skill` 是包含多个子 skills 的套件，其子目录暴露方式由 CC Switch 配置管理，不要直接修改 Agent 目录中的软连接。
+## 仓库结构
 
-## 第三方 Skill 更新流程
+```text
+skill-name/
+├── SKILL.md
+├── scripts/       # 可选：确定性工具
+├── references/    # 可选：按场景加载的详细说明
+└── assets/        # 可选：输出所需资源
 
-仅在用户明确要求检查或更新第三方 skill 时执行：
-
-1. 在 CC Switch 规范目录检查当前分支、未提交改动以及本地 `main` 与远程 `main` 的同步状态；本地仅落后时先执行 `git pull --ff-only`。
-2. 从根目录 `README.md` 读取目标 skill 的上游仓库、跟踪分支和当前同步基线。
-3. 将上游内容获取到本次任务工作区的 `./tmp/`，不得写入系统 `/tmp`、`/var/tmp` 或 Agent skill 目录。
-4. 比较当前版本与上游版本，检查许可证、敏感信息、文件增删、依赖和本仓库保留的本地调整；不得未经比较直接覆盖。
-5. 在 CC Switch 规范目录中完成更新或合并，运行适用的结构验证、脚本测试和核心功能检查。
-6. 同步更新本 README 中的用途、依赖、跟踪分支和当前版本标签或提交哈希。
-7. 只暂存本次相关文件，提交并直接推送 `main`；推送后再次检查本地、远程、README 和上游基线是否一致。
-
-各第三方 skill 的附加要求：
-
-- `codex-windows-fast-patch-skill`：同步上游可安装 skill 文件集（`SKILL.md`、`agents/`、`scripts/`、`references/` 和 `assets/`），不引入上游仓库级 `AGENTS.md`、README、SECURITY 或 Git 配置文件；不自动调用上游的就地更新脚本，统一通过本节流程审查上游。更新后重新应用和验证 Provider History 安全调整；数据层修复必须由用户手动关闭和重新打开 Codex，不得自动停止或拉起应用。
-- `ppt-master`：只同步上游的 `skills/ppt-master/`，保留该目录内的许可证，不复制上游网站、示例项目或其他工作区内容；不得覆盖或提交本机 `.venv`、缓存和生成产物。
-- `research-writing-skill`：保留上游许可证、README、多平台配置、模块、脚本和子 skills，并确认 CC Switch 对子 skills 的暴露配置仍然有效。每次更新时检查上游 `hooks/hooks.json` 的 SessionStart 钩子：若上游仍未修复（仍指向 `hooks/run-hook.cmd`），更新后重新应用本仓库的本地修复（见该条目下的"本地修复"说明）；若上游已修复，直接采用上游版本，并移除该条目下对应的"本地修复"说明。无论上游是否修复，更新后都应保持 SessionStart 钩子处于禁用状态（`hooks.json` 保持重命名为 `hooks.json.disabled`），除非用户明确要求恢复自动注入。
-
-## 使用说明
-
-每个 skill 的入口是各自目录下的 `SKILL.md`。配套脚本和参考资料分别位于 `scripts/` 与 `references/`。
-
-这些工具可能涉及本地历史数据库或软件卸载规划。执行任何写入、删除或系统配置变更前，请先核对目标和备份。
+catalog.json       # 目录元数据源
+scripts/catalog.py # 目录校验与 README 索引生成
+docs/              # 第三方与维护文档
+```

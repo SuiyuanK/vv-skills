@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "categories": [
+    {
+      "id": "ai-dev-tools",
+      "name": "AI 与开发工具",
+      "order": 10
+    },
+    {
+      "id": "eda-fpga",
+      "name": "EDA/FPGA",
+      "order": 20
+    },
+    {
+      "id": "linux-desktop-apps",
+      "name": "Linux 桌面与应用",
+      "order": 30
+    },
+    {
+      "id": "system-recovery",
+      "name": "系统恢复",
+      "order": 40
+    },
+    {
+      "id": "research-content",
+      "name": "研究与内容创作",
+      "order": 50
+    }
+  ],
+  "skills": [
+    {
+      "name": "chatgpt-arch-deb-updater",
+      "path": "chatgpt-arch-deb-updater",
+      "kind": "self",
+      "category": "ai-dev-tools",
+      "platforms": ["arch-linux", "linux-x86_64"],
+      "summary": "把 OpenAI 官方 ChatGPT/Codex Desktop amd64 deb 构建为可验证的 Arch/CachyOS 软件包。",
+      "dependencies": ["bash", "curl", "libarchive/bsdtar", "pacman/makepkg"],
+      "status": "active"
+    },
+    {
+      "name": "codex-history-recovery",
+      "path": "codex-history-recovery",
+      "kind": "self",
+      "category": "ai-dev-tools",
+      "platforms": ["windows"],
+      "summary": "安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。",
+      "dependencies": ["PowerShell", "Python"],
+      "status": "active"
+    },
+    {
+      "name": "codex-html-mime-fix",
+      "path": "codex-html-mime-fix",
+      "kind": "self",
+      "category": "ai-dev-tools",
+      "platforms": ["ubuntu-linux"],
+      "summary": "修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。",
+      "dependencies": ["Google Chrome", "xdg-utils", "desktop-file-utils"],
+      "status": "active"
+    },
+    {
+      "name": "codex-windows-fast-patch",
+      "path": "codex-windows-fast-patch-skill",
+      "kind": "third-party",
+      "category": "ai-dev-tools",
+      "platforms": ["windows"],
+      "summary": "修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。",
+      "dependencies": ["PowerShell", "Windows Store/MSIX Codex", "可选 Python/Rust/MSVC"],
+      "status": "active",
+      "upstream": {
+        "repository": "https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill",
+        "branch": "main",
+        "baseline": "33a88f5063ac138bf2eedc687263ad56c59b055d"
+      }
+    },
+    {
+      "name": "opencode-wl-clipboard-copy-fix",
+      "path": "opencode-wl-clipboard-copy-fix",
+      "kind": "self",
+      "category": "ai-dev-tools",
+      "platforms": ["arch-linux", "wayland"],
+      "summary": "修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。",
+      "dependencies": ["wl-clipboard", "可选 xclip"],
+      "status": "active"
+    },
+    {
+      "name": "matlab-cachyos-fix",
+      "path": "matlab-cachyos-fix",
+      "kind": "self",
+      "category": "eda-fpga",
+      "platforms": ["arch-linux", "linux-x86_64"],
+      "summary": "修复 MATLAB R2025b 在 CachyOS/Arch 上的安装器、GCC 13、MEX 与启动入口问题。",
+      "dependencies": ["binutils/systemd 诊断工具", "可选 devtools/GCC 13"],
+      "status": "active"
+    },
+    {
+      "name": "synopsys-eda-fix",
+      "path": "synopsys-eda-fix",
+      "kind": "self",
+      "category": "eda-fpga",
+      "platforms": ["arch-linux", "ubuntu-linux", "linux-x86_64"],
+      "summary": "诊断并修复 Synopsys X-2025.06 工具链在新 glibc 与 Linux 7.x 上的兼容问题。",
+      "dependencies": ["tcsh/csh", "bc", "time", "numactl", "libselinux", "可选 GCC 13"],
+      "status": "active"
+    },
+    {
+      "name": "update-verible",
+      "path": "update-verible",
+      "kind": "self",
+      "category": "eda-fpga",
+      "platforms": ["linux-x86_64"],
+      "summary": "从 chipsalliance/verible 官方 Releases 选择、安装、回退和清理 Linux x86_64 版本。",
+      "dependencies": ["bash", "curl", "git", "tar", "findutils"],
+      "status": "active"
+    },
+    {
+      "name": "vivado-ubuntu26-ncurses-fix",
+      "path": "vivado-ubuntu26-ncurses-fix",
+      "kind": "self",
+      "category": "eda-fpga",
+      "platforms": ["ubuntu-linux", "linux-x86_64"],
+      "summary": "修复 Vivado/Vitis 2025.2.1 在 Ubuntu 26.04 上因 ncurses 搜索路径导致的安装卡死。",
+      "dependencies": ["Vivado/Vitis 2025.2.1 自带兼容库", "bash"],
+      "status": "active"
+    },
+    {
+      "name": "windows-vivado-clean-uninstall",
+      "path": "windows-vivado-clean-uninstall",
+      "kind": "self",
+      "category": "eda-fpga",
+      "platforms": ["windows"],
+      "summary": "为 Windows Vivado/Xilinx 卸载残留提供只读审计、确认门控和可回滚清理流程。",
+      "dependencies": ["PowerShell"],
+      "status": "active"
+    },
+    {
+      "name": "ghostty-desktop-integration",
+      "path": "ghostty-desktop-integration",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": ["arch-linux", "gnome", "cinnamon"],
+      "summary": "配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。",
+      "dependencies": ["Ghostty", "gsettings", "GNOME 或 Cinnamon/Nemo"],
+      "status": "active",
+      "supersedes": ["gnome-default-terminal-ghostty", "nemo-cinnamon-ghostty"]
+    },
+    {
+      "name": "qqmusic-linux-fix",
+      "path": "qqmusic-linux-fix",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": ["ubuntu-linux", "linux-x86_64"],
+      "summary": "诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。",
+      "dependencies": ["官方 QQ 音乐客户端", "可选 desktop-file-utils"],
+      "status": "active"
+    },
+    {
+      "name": "wechat-appimage-gnome-icon-fix",
+      "path": "wechat-appimage-gnome-icon-fix",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": ["arch-linux", "gnome", "wayland"],
+      "summary": "修复微信 AppImage 在 GNOME Dock 和任务切换器中显示通用图标的窗口匹配问题。",
+      "dependencies": ["xorg-xprop", "desktop-file-utils"],
+      "status": "active"
+    },
+    {
+      "name": "linux-ext4-superblock-recovery",
+      "path": "linux-ext4-superblock-recovery",
+      "kind": "self",
+      "category": "system-recovery",
+      "platforms": ["linux"],
+      "summary": "安全诊断和恢复 EXT4 超级块校验、备用超级块和无法启动问题。",
+      "dependencies": ["e2fsprogs", "util-linux"],
+      "status": "active"
+    },
+    {
+      "name": "ppt-master",
+      "path": "ppt-master",
+      "kind": "third-party",
+      "category": "research-content",
+      "platforms": ["cross-platform"],
+      "summary": "生成、重建、编辑和验证可编辑 PowerPoint，支持模板、原生对象、动画与旁白。",
+      "dependencies": ["Python 3.10+", "requirements.txt", "可选 Playwright/FFmpeg/Pandoc"],
+      "status": "active",
+      "upstream": {
+        "repository": "https://github.com/hugohe3/ppt-master",
+        "branch": "main",
+        "baseline": "4e6fdc50136c3aea64a746f6bb4adf1c3305ec87",
+        "version": "6.1.0"
+      }
+    },
+    {
+      "name": "research-writing-assistant",
+      "path": "research-writing-skill",
+      "kind": "third-party",
+      "category": "research-content",
+      "platforms": ["cross-platform"],
+      "summary": "提供论文头脑风暴、文献综述、章节写作、LaTeX、统计分析、图表与审稿工作流。",
+      "dependencies": ["Python", "requests/PyMuPDF", "可选科研计算与 LaTeX 环境"],
+      "status": "active",
+      "upstream": {
+        "repository": "https://github.com/Norman-bury/research-writing-skill",
+        "branch": "main",
+        "baseline": "6f7959554b4614d879d79cb4ece9ed04a7c8a88c",
+        "version": "3.1.0"
+      }
+    }
+  ]
+}
