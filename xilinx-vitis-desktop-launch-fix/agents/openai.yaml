@@ -1,0 +1,4 @@
+interface:
+  display_name: "Xilinx Vitis Desktop Launch Fix"
+  short_description: "Fix Vitis CLI and Model Composer menu launch failures"
+  default_prompt: "Use $xilinx-vitis-desktop-launch-fix to diagnose and repair Vitis CLI or Model Composer menu launch failures on GNOME Linux."

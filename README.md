@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **16 个 active skills**：**13 个个人**、**3 个第三方**。
+当前收录 **17 个 active skills**：**14 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -31,6 +31,7 @@
 | [`update-verible`](./update-verible/SKILL.md) | 个人 | Linux x86_64 | 从 chipsalliance/verible 官方 Releases 选择、安装、回退和清理 Linux x86_64 版本。 | bash、curl、git、tar、findutils |
 | [`vivado-ubuntu26-ncurses-fix`](./vivado-ubuntu26-ncurses-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 修复 Vivado/Vitis 2025.2.1 在 Ubuntu 26.04 上因 ncurses 搜索路径导致的安装卡死。 | Vivado/Vitis 2025.2.1 自带兼容库、bash |
 | [`windows-vivado-clean-uninstall`](./windows-vivado-clean-uninstall/SKILL.md) | 个人 | Windows | 为 Windows Vivado/Xilinx 卸载残留提供只读审计、确认门控和可回滚清理流程。 | PowerShell |
+| [`xilinx-vitis-desktop-launch-fix`](./xilinx-vitis-desktop-launch-fix/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Linux x86_64 | 修复 Vitis CLI 菜单启动后立即退出，以及 Model Composer 只启动后台 MATLAB 而不显示窗口的问题。 | desktop-file-utils、util-linux/script、GNOME、可用终端模拟器 |
 
 ### Linux 桌面与应用
 

@@ -124,6 +124,16 @@
       "status": "active"
     },
     {
+      "name": "xilinx-vitis-desktop-launch-fix",
+      "path": "xilinx-vitis-desktop-launch-fix",
+      "kind": "self",
+      "category": "eda-fpga",
+      "platforms": ["arch-linux", "gnome", "linux-x86_64"],
+      "summary": "修复 Vitis CLI 菜单启动后立即退出，以及 Model Composer 只启动后台 MATLAB 而不显示窗口的问题。",
+      "dependencies": ["desktop-file-utils", "util-linux/script", "GNOME", "可用终端模拟器"],
+      "status": "active"
+    },
+    {
       "name": "windows-vivado-clean-uninstall",
       "path": "windows-vivado-clean-uninstall",
       "kind": "self",
