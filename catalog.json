@@ -160,7 +160,7 @@
       "kind": "self",
       "category": "linux-desktop-apps",
       "platforms": ["gnome", "wayland", "linux"],
-      "summary": "按实测 WM_CLASS 修复 GNOME XWayland 应用运行后显示通用图标、重复 Dock 项或错误分组的问题。",
+      "summary": "按实测 WM_CLASS 修复 GNOME XWayland 应用图标和分组，并处理自动生成启动项反复覆盖修复的问题。",
       "dependencies": ["xorg-xprop", "desktop-file-utils"],
       "status": "active"
     },

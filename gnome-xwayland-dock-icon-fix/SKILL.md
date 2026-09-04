@@ -5,8 +5,9 @@ description: >-
   correct but whose running window shows a generic icon, creates a second Dock
   item, or groups under the wrong launcher. Use for launcher-to-window matching
   failures across AppImage, Java/Tk, EDA, and other XWayland applications when
-  no more specific app skill applies; do not use for missing menu entries,
-  launch failures, or native Wayland app-id problems.
+  no more specific app skill applies, including repairs that repeatedly vanish
+  because an integration tool regenerates the launcher; do not use for missing
+  menu entries, launch failures, or native Wayland app-id problems.
 ---
 
 # GNOME XWayland Dock icon matching
@@ -139,6 +140,40 @@ Validation warnings about deprecated vendor-generated fields can be reported
 without rewriting unrelated keys. Treat actual validation errors as a failed
 repair. Ensure only the intended visible launcher claims the measured class.
 
+## Handle launchers that are regenerated
+
+Before treating a repair as complete, determine whether the selected launcher
+is owned by an AppImage integration or another generator. A repair that works
+once but disappears after launching, updating, reinstalling, or logging in is
+usually evidence that the generated launcher was replaced, not that GNOME
+forgot `StartupWMClass`.
+
+Compare the launcher's timestamps and identity fields before and after the
+trigger. When useful, compare it with the application's embedded desktop
+template. If the file is regenerated and the template lacks the measured
+class, do not keep patching that filename. Do not make it immutable, replace it
+with a symlink, edit the AppImage, or modify a system launcher.
+
+After authorization, create a separate user launcher with a stable, distinct
+desktop ID, preferably a reverse-DNS-style name that the generator does not
+own. Copy the confirmed generated launcher's current `Exec=`, `TryExec=`,
+`Icon=`, names, and launch behavior, then add only the measured
+`StartupWMClass`. Preserve the generated launcher as a rollback source.
+
+If GNOME app folders or favorites refer to the generated ID, capture their
+current ordered values and replace only that ID with the stable one. Remove
+stale duplicate IDs only after confirming that their desktop files no longer
+exist. Do not disturb unrelated entries or add an application to favorites
+when it was not already pinned.
+
+The validated WeChat 4.1.1 AppImage repair used this pattern: its generated
+`wechatlinux_x86_64.desktop` was recreated from an embedded template without
+`StartupWMClass`, while the live main window exposed class `wechat`. A separate
+`com.tencent.WeChat.desktop` retained the same AppImage `Exec=`, icon, and
+`TryExec=`, declared `StartupWMClass=wechat`, and became the GNOME app-folder
+identity. These names and values are historical evidence only; remeasure and
+rediscover them on every machine.
+
 ## Verify observable behavior
 
 Static checks are necessary but not sufficient:
@@ -156,6 +191,10 @@ Confirm that:
 - it joins the expected Dock item instead of creating a generic second item;
 - `Exec=`, `TryExec=`, and `Icon=` remain unchanged; and
 - the application still launches normally.
+
+For a stable-ID repair, also trigger the operation that previously regenerated
+the vendor launcher and confirm that the independent launcher still exists,
+still validates, and still uniquely claims the measured class.
 
 If the wrong pinned item remains, distinguish stale GNOME pinning from window
 matching: unpin the obsolete generic item and pin the correctly matched
