@@ -166,13 +166,29 @@ stale duplicate IDs only after confirming that their desktop files no longer
 exist. Do not disturb unrelated entries or add an application to favorites
 when it was not already pinned.
 
+Check the application menu after introducing the stable ID. If both the stable
+launcher and the old user-generated launcher are visible, keep the stable
+launcher visible and set `NoDisplay=true` only on the confirmed generated
+launcher. Preserve its `Exec=`, `TryExec=`, and `Icon=` fields, validate both
+files, refresh the user desktop database, and ensure app-folder membership
+contains only the stable visible ID. `NoDisplay=true` hides a menu entry; it is
+not a substitute for `StartupWMClass` on the launcher that owns the window.
+
+If the generator later removes `NoDisplay=true`, identify its package, user
+service, autostart entry, or update trigger before choosing another persistent
+mechanism. Do not add a watcher, daemon, immutable bit, or recurring rewrite
+without separate authorization and evidence that a continuously active
+generator actually requires it.
+
 The validated WeChat 4.1.1 AppImage repair used this pattern: its generated
 `wechatlinux_x86_64.desktop` was recreated from an embedded template without
 `StartupWMClass`, while the live main window exposed class `wechat`. A separate
 `com.tencent.WeChat.desktop` retained the same AppImage `Exec=`, icon, and
 `TryExec=`, declared `StartupWMClass=wechat`, and became the GNOME app-folder
-identity. These names and values are historical evidence only; remeasure and
-rediscover them on every machine.
+identity. When both entries appeared in the menu, the generated entry alone
+received `NoDisplay=true`; the stable entry remained visible and retained the
+window class. These names and values are historical evidence only; remeasure
+and rediscover them on every machine.
 
 ## Verify observable behavior
 
@@ -194,7 +210,8 @@ Confirm that:
 
 For a stable-ID repair, also trigger the operation that previously regenerated
 the vendor launcher and confirm that the independent launcher still exists,
-still validates, and still uniquely claims the measured class.
+still validates, still uniquely claims the measured class, and does not create
+a duplicate visible menu entry.
 
 If the wrong pinned item remains, distinguish stale GNOME pinning from window
 matching: unpin the obsolete generic item and pin the correctly matched
