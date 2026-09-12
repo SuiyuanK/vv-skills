@@ -10,7 +10,8 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly WORKSPACE_ROOT="$(realpath "${CHATGPT_ARCH_WORKSPACE:-$PWD}")"
 readonly WORKBASE="$WORKSPACE_ROOT/tmp"
-readonly DOWNLOAD_URL="https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb"
+readonly REPOSITORY_URL="https://persistent.oaistatic.com/codex-app-prod/linux/deb"
+readonly INDEX_URL="$REPOSITORY_URL/dists/stable/main/binary-amd64/Packages"
 readonly PKGBUILD_TEMPLATE="$SCRIPT_DIR/PKGBUILD.chatgpt"
 readonly INSTALL_TEMPLATE="$SCRIPT_DIR/chatgpt.install"
 
@@ -25,7 +26,7 @@ if (( $# > 1 )); then
   exit 1
 fi
 
-required=(bsdtar makepkg sha256sum realpath awk grep gzip find mktemp)
+required=(bsdtar makepkg sha256sum realpath awk grep gzip find mktemp curl stat uname date cp vercmp)
 if (( $# == 0 )); then
   required+=(curl)
 fi
@@ -45,6 +46,7 @@ done
   exit 1
 }
 
+[[ $(uname -m) == x86_64 ]] || { echo "Error: x86_64 host required" >&2; exit 1; }
 mkdir -p "$WORKBASE"
 STAGE="$(mktemp -d "$WORKBASE/chatgpt-build.XXXXXXXX")"
 cleanup() {
@@ -56,25 +58,37 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+export TMPDIR="$STAGE"
 DEB="$STAGE/chatgpt.deb"
+# The index is fetched over HTTPS; this is not repository signature verification.
+curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --connect-timeout 20 \
+  --output "$STAGE/Packages" "$INDEX_URL"
+awk 'BEGIN { RS=""; FS="\n" }
+{ delete f; for(i=1;i<=NF;i++) { n=index($i,": "); if(n) f[substr($i,1,n-1)]=substr($i,n+2) }
+  if(f["Package"]=="chatgpt" && f["Architecture"]=="amd64")
+    print f["Version"] "\t" f["Filename"] "\t" f["SHA256"] "\t" f["Size"]
+}' "$STAGE/Packages" > "$STAGE/releases.tsv"
+[[ -s $STAGE/releases.tsv ]] || { echo 'Error: no amd64 chatgpt in official index' >&2; exit 1; }
+source_kind=local
 if (( $# == 0 )); then
-  echo "[1/5] Downloading the latest official OpenAI deb..."
-  curl \
-    --fail \
-    --location \
-    --retry 3 \
-    --retry-all-errors \
-    --connect-timeout 20 \
-    --output "$DEB.part" \
-    "$DOWNLOAD_URL"
+  source_kind=download
+  # Do not assume index ordering when several versions are published.
+  selected_version=''
+  while IFS=$'\t' read -r version filename digest size; do
+    if [[ -z $selected_version ]] || (( $(vercmp "$version" "$selected_version") > 0 )); then
+      selected_version=$version
+      selected_filename=$filename
+    fi
+  done < "$STAGE/releases.tsv"
+  [[ $selected_filename == pool/main/c/chatgpt/chatgpt_*_amd64.deb && $selected_filename != *..* ]] || exit 1
+  source_url="$REPOSITORY_URL/$selected_filename"
+  echo "[1/5] Downloading $selected_version from the official repository..."
+  curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --connect-timeout 20 \
+    --output "$DEB.part" "$source_url"
   mv -- "$DEB.part" "$DEB"
 else
   SOURCE_DEB="$(realpath "$1")"
-  [[ -f "$SOURCE_DEB" && -r "$SOURCE_DEB" ]] || {
-    echo "Error: deb file does not exist or is unreadable: $1" >&2
-    exit 1
-  }
-  echo "[1/5] Using local deb: $SOURCE_DEB"
+  [[ -f $SOURCE_DEB && -r $SOURCE_DEB ]] || { echo 'Error: unreadable deb' >&2; exit 1; }
   cp --reflink=auto -- "$SOURCE_DEB" "$DEB"
 fi
 
@@ -104,12 +118,27 @@ if [[ $pkgver =~ [[:space:]/] || -z $pkgver ]]; then
 fi
 
 deb_sha256="$(sha256sum "$DEB" | awk '{print $1}')"
+match_count=0
+while IFS=$'\t' read -r version filename digest size; do
+  if [[ $version == "$deb_version" && $digest == "$deb_sha256" && $size == "$(stat -c %s "$DEB")" ]]; then
+    [[ $filename == pool/main/c/chatgpt/chatgpt_*_amd64.deb && $filename != *..* ]] || exit 1
+    source_url="$REPOSITORY_URL/$filename"
+    match_count=$((match_count + 1))
+  fi
+done < "$STAGE/releases.tsv"
+[[ $match_count == 1 ]] || {
+  echo 'Error: deb does not uniquely match official index version/size/SHA-256; refusing build.' >&2
+  exit 1
+}
 echo "      Version: $deb_version"
 echo "      SHA-256: $deb_sha256"
 
 echo "[3/5] Preparing makepkg workspace..."
 cp -- "$PKGBUILD_TEMPLATE" "$STAGE/PKGBUILD"
 cp -- "$INSTALL_TEMPLATE" "$STAGE/chatgpt.install"
+cp -- "$SCRIPT_DIR/chatgpt-launcher.sh" "$STAGE/chatgpt-launcher.sh"
+cp -- "$0" "$STAGE/builder.sh"
+launcher_sha256=$(sha256sum "$STAGE/chatgpt-launcher.sh" | awk '{print $1}')
 mkdir -p "$STAGE/makepkg-tmp" "$STAGE/pkgdest"
 
 echo "[4/5] Building the Arch package with makepkg..."
@@ -117,6 +146,7 @@ echo "[4/5] Building the Arch package with makepkg..."
   cd "$STAGE"
   export CHATGPT_PKGVER="$pkgver"
   export CHATGPT_DEB_SHA256="$deb_sha256"
+  export CHATGPT_LAUNCHER_SHA256="$launcher_sha256"
   export PKGDEST="$STAGE/pkgdest"
   export TMPDIR="$STAGE/makepkg-tmp"
   makepkg --cleanbuild --clean --force --noconfirm
@@ -132,7 +162,7 @@ echo "[5/5] Verifying and saving the package..."
 PKG="${built_packages[0]}"
 PKGINFO="$(bsdtar -xOf "$PKG" .PKGINFO)"
 grep -qx 'pkgname = chatgpt' <<<"$PKGINFO"
-grep -qx "pkgver = $pkgver-1" <<<"$PKGINFO"
+grep -qx "pkgver = $pkgver-2" <<<"$PKGINFO"
 grep -qx 'arch = x86_64' <<<"$PKGINFO"
 bsdtar -xOf "$PKG" .MTREE | gzip -t
 if ! bsdtar --numeric-owner -tvf "$PKG" |
@@ -141,11 +171,23 @@ if ! bsdtar --numeric-owner -tvf "$PKG" |
   exit 1
 fi
 
+bsdtar -tf "$PKG" > "$STAGE/package-files.txt"
+for member in usr/lib/chatgpt/ChatGPT usr/lib/chatgpt/codex-launcher usr/share/applications/chatgpt.desktop .INSTALL; do
+  grep -Fxq "$member" "$STAGE/package-files.txt" || { echo "Error: missing $member" >&2; exit 1; }
+done
 PACKAGE_ROOT="$WORKBASE/chatgpt-packages"
 mkdir -p "$PACKAGE_ROOT"
 FINAL_DIR="$(mktemp -d "$PACKAGE_ROOT/${pkgver}.XXXXXXXX")"
 FINAL_PKG="$FINAL_DIR/$(basename "$PKG")"
 cp -- "$PKG" "$FINAL_PKG"
+cp -- "$STAGE/Packages" "$STAGE/PKGBUILD" "$STAGE/chatgpt.install" "$STAGE/chatgpt-launcher.sh" "$STAGE/builder.sh" "$FINAL_DIR/"
+{
+  printf 'built_at_utc=%s\nsource_kind=%s\nindex_url=%s\nsource_url=%s\ndeb_version=%s\ndeb_sha256=%s\nverification=https-index-sha256-size-version; no signature verification\n' \
+    "$(date -u +%FT%TZ)" "$source_kind" "$INDEX_URL" "$source_url" "$deb_version" "$deb_sha256"
+  printf 'builder_git_commit=%s\n' "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo unavailable)"
+  printf 'Builder snapshots below are authoritative even with uncommitted changes.\n'
+  sha256sum "$FINAL_DIR/PKGBUILD" "$FINAL_DIR/chatgpt.install" "$FINAL_DIR/chatgpt-launcher.sh" "$FINAL_DIR/builder.sh" "$FINAL_PKG"
+} > "$FINAL_DIR/build-record.txt"
 
 echo
 echo "Build complete: $FINAL_PKG"

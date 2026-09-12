@@ -6,6 +6,16 @@ _chatgpt_load_apparmor() {
   command -v apparmor_parser >/dev/null 2>&1 || return 0
   aa-enabled --quiet || return 0
 
+  [[ -f /etc/apparmor.d/abi/4.0 ]] || {
+    echo 'ChatGPT: AppArmor ABI 4.0 unavailable; profile not loaded' >&2
+    return 0
+  }
+  if [[ -e /etc/apparmor.d/disable/chatgpt || -L /etc/apparmor.d/disable/chatgpt ]]; then
+    return 0
+  fi
+  if [[ -e $profile.pacnew ]]; then
+    echo 'ChatGPT: review and merge /etc/apparmor.d/chatgpt.pacnew' >&2
+  fi
   apparmor_parser -r -W -T "$profile" ||
     echo 'ChatGPT: warning: failed to load the AppArmor profile' >&2
 }
@@ -24,6 +34,12 @@ pre_remove() {
   if command -v aa-enabled >/dev/null 2>&1 &&
      command -v apparmor_parser >/dev/null 2>&1 &&
      aa-enabled --quiet && [[ -f $profile ]]; then
-    apparmor_parser -R "$profile" || true
+    [[ -f /etc/apparmor.d/abi/4.0 ]] || return 0
+    if [[ -r /sys/kernel/security/apparmor/profiles ]] &&
+       ! grep -q '^chatgpt (' /sys/kernel/security/apparmor/profiles; then
+      return 0
+    fi
+    apparmor_parser -R "$profile" ||
+      echo 'ChatGPT: warning: failed to unload the AppArmor profile' >&2
   fi
 }

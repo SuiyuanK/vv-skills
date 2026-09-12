@@ -16,7 +16,7 @@
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 个人 | Arch/CachyOS、Linux x86_64 | 把 OpenAI 官方 ChatGPT/Codex Desktop amd64 deb 构建为可验证的 Arch/CachyOS 软件包。 | bash、curl、libarchive/bsdtar、pacman/makepkg |
+| [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 个人 | Arch/CachyOS、Linux x86_64 | 把官方 amd64 deb 按 HTTPS 软件源索引校验版本/大小/SHA-256 后构建为 Arch 包；保留构建溯源记录，支持参数文件与 AppArmor 检查。入口见 skill；仅构建，不自动安装。 | bash、curl、libarchive/bsdtar、pacman/makepkg/vercmp、GNU 工具；行为验证需 Python 3；不验证源签名 |
 | [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 个人 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
 | [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 个人 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
 | [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。 | PowerShell、Windows Store/MSIX Codex、可选 Python/Rust/MSVC |
