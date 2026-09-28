@@ -3,7 +3,7 @@ param(
   [string]$HelperPath,
   # Profile labels, not raw @oai/sky versions: one sky version can ship more than one
   # helper binary across Desktop builds, so each label pins its own hash pair.
-  [ValidateSet('0.4.20-F2B2F56F', '0.5.2-2C4CAC16', '0.6.6', '0.6.11', '0.6.11-7A95D14E', '0.6.16', '0.6.16-BEB498C2', '0.6.17-29D5E113', '0.6.17-DB8F4486', '0.6.17-4250FF66', '0.6.17-4319D3A2', '0.6.17-D967386B', '0.6.23-8423CA8C', '0.6.24-DE3696C0', '0.6.24-4DB7B670', '0.6.24-9BAB6E1B')]
+  [ValidateSet('0.4.20-F2B2F56F', '0.5.2-2C4CAC16', '0.6.6', '0.6.11', '0.6.11-7A95D14E', '0.6.16', '0.6.16-BEB498C2', '0.6.17-29D5E113', '0.6.17-DB8F4486', '0.6.17-4250FF66', '0.6.17-4319D3A2', '0.6.17-D967386B', '0.6.23-8423CA8C', '0.6.24-DE3696C0', '0.6.24-4DB7B670', '0.6.24-9BAB6E1B', '0.6.24-3B60A7E0', '0.6.26-7D9EB53D', '0.6.26-52928CCC', '0.6.26-71BAEAFD', '0.6.26-243F203E', '0.6.26-06EBD6D6', '0.6.26-6DDFB6A8', '0.6.26-7A2C7F70', '0.6.26-935D23E1', '0.6.32-BAD605EF', '0.7.1-B49B8682', '0.6.26-4A87D459', '0.6.26-84B38D77', '0.7.1-D09A2F3F', '0.7.1-9493AF2C', '0.7.1-2AA2A7A9')]
   [string]$SkyVersion = '0.6.16'
 )
 
@@ -90,6 +90,99 @@ $Profiles = @{
     SkyVersion = '0.6.24-premerge-pr-1369830-395ab116910c'
     OriginalHash = '9BAB6E1B59D31D97530F2F6681DAEF76E39C7AD0836147C6E0B55A9B47A33EBF'
     PatchedHash = 'B86B1FCB9EBD7184526AF49D40333FDA02F774FA62E0E9A3528BA5F87EB68AB7'
+  }
+  # Fourth binary on the same 0.6.24 sky version string, shipped by Desktop 26.825.6671.0.
+  '0.6.24-3B60A7E0' = [ordered]@{
+    SkyVersion = '0.6.24-premerge-pr-1369830-395ab116910c'
+    OriginalHash = '3B60A7E0746C9FCEEBC3E0735C33BF97734B4B2AA04E0ED030201251E48D1BB6'
+    PatchedHash = '8B09F9EFD541E059D6611B0D00C6984A2ACF19971B45F292DF3EE13F746009D7'
+  }
+  # First 0.6.26 helper, shipped by Desktop 26.831.1445.0 with a bare version string.
+  '0.6.26-7D9EB53D' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '7D9EB53D9C7C6AFFD05443227C9D93720B9FBD7EADF9B98D7A83D28703ACA95D'
+    PatchedHash = '79EF9E7971E3B7BBF0FFFA6D096107196F08F008BF70D73E9141D96991748228'
+  }
+  # Same code as 7D9EB53D re-signed under a prerelease version string, shipped by
+  # Desktop 26.831.2377.0. Selection needs SkyVersion equality, so it needs its own entry.
+  '0.6.26-52928CCC' = [ordered]@{
+    SkyVersion = '0.6.26-premerge-pr-1403760-d558d5ad5c81'
+    OriginalHash = '52928CCCDECCFC245661733E5903335642AEC1726A6DA4B3A8A8E683805A2769'
+    PatchedHash = '0680CEBCA4C7EB49783578BAEA42DDD0B620379EC2AAA3A4DEBC8FA21BFB832A'
+  }
+  # Same code as 7D9EB53D and 52928CCC re-signed again, shipped by Desktop 26.901.1978.0.
+  '0.6.26-71BAEAFD' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '71BAEAFD97639C170BA2954DFBF6677B6C30171E570C8105290265705C86E102'
+    PatchedHash = '06EBD6D68DF7CF3D3DAB02BD8D886D49D9D181949986DDF2F567A947F75C3A13'
+  }
+  # Fourth re-sign of the same code, shipped by Desktop 26.901.2854.0. Only the PE
+  # CheckSum field and the certificate table differ from 71BAEAFD; all 10 section
+  # bodies are byte-identical, so the five patch offsets carry over unchanged.
+  '0.6.26-243F203E' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '243F203ED85CDA954A12872A0214FF8D43FD09F265AAE172D96AF1A1C1BBFF6B'
+    PatchedHash = 'C62CBDCC42EF6238CD96FD123246D7D820DA2EA341FD63B9F1890B124A530B40'
+  }
+  '0.6.26-06EBD6D6' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '06EBD6D68DF7CF3D3DAB02BD8D886D49D9D181949986DDF2F567A947F75C3A13'
+    PatchedHash = '06EBD6D68DF7CF3D3DAB02BD8D886D49D9D181949986DDF2F567A947F75C3A13'
+  }
+  '0.6.26-6DDFB6A8' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '6DDFB6A81089954C2FC32ECD14A7B25BFB1164711C89A43D5A745BA28CFAE27F'
+    PatchedHash = '663981ACAE0893442F02376EA7090ED1CCBD4E42B3B6178E21926AA87BF0F418'
+  }
+  '0.6.26-7A2C7F70' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '7A2C7F7052EF2A8FA8B2BEF692DFA980F26392D19C64720AA42C9F4C9F480FAE'
+    PatchedHash = 'E67E847ED5D12FCD5480B9E03E00FD8F05E108A82A7A6B24FDA84D7B40110B9C'
+  }
+  '0.6.26-935D23E1' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '935D23E1DB9B0D5C492662ACAB9EBD4A8B96BCCD0DBB48C55A24E497CA79F8F3'
+    PatchedHash = '93866B85718EBEFC0C661CBE69A60B80C51133383070808352105DF615ADA98D'
+  }
+  '0.6.32-BAD605EF' = [ordered]@{
+    SkyVersion = '0.6.32'
+    OriginalHash = 'BAD605EF7A800D2E2EBE2D9205DB6F9AB73EF193524392F5CAA1FA2E1A0DAE2C'
+    PatchedHash = '977D265B145232BA30B2916D8DED6D9B30037A084CF8A90EBBEDACEC91FCBEAC'
+    EndToEndValidatedDesktopVersion = $null
+  }
+  '0.7.1-B49B8682' = [ordered]@{
+    SkyVersion = '0.7.1'
+    OriginalHash = 'B49B868226C9EB6AB0C1A00903F7B3C7188F5ECC8C59A23488F83DC6DDF1EBC4'
+    PatchedHash = '53B9DC200AFA8A1227A93F43BB5BB52EA69734BCE831339A33531762FF0AD785'
+    EndToEndValidatedDesktopVersion = '26.917.6896.0'
+  }
+  '0.6.26-4A87D459' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '4A87D45924EB67BB0D300F6D8539090BB6EC36AF4143B04DA5F0E6F5A0BE90DC'
+    PatchedHash = '8D791666A9E45336CBAA0E706BA916E8D1266682473199F38A2F65CCB673CC02'
+  }
+  '0.6.26-84B38D77' = [ordered]@{
+    SkyVersion = '0.6.26'
+    OriginalHash = '84B38D77587AD0C19E7C19ABB7E691A343897570A123728D2DBBB1147C0C39CD'
+    PatchedHash = 'F4D65FED22A1B9E46F1F3085F55B360430462010B7A530BB9BC10CF7A2A78180'
+  }
+  '0.7.1-D09A2F3F' = [ordered]@{
+    SkyVersion = '0.7.1'
+    OriginalHash = 'D09A2F3F4C144BE9C180509F5CD67D60F4B0B6FBB62E0F5A1EE131F4B653C512'
+    PatchedHash = 'F406A337F4EA6D794DB2E804DFBE880CE06BF8FBAEC565212411474D02E9545D'
+    EndToEndValidatedDesktopVersion = '26.915.4065.0'
+  }
+  '0.7.1-9493AF2C' = [ordered]@{
+    SkyVersion = '0.7.1'
+    OriginalHash = '9493AF2CEBD3C11E2E38CE692F6CCD8E00F4320BDBBCF14F242D036A9736635F'
+    PatchedHash = 'AA7DA8D22911398790EED442A22F7D747339FF89E2DD4DB49931A611E6EEDB79'
+    EndToEndValidatedDesktopVersion = $null
+  }
+  '0.7.1-2AA2A7A9' = [ordered]@{
+    SkyVersion = '0.7.1'
+    OriginalHash = '2AA2A7A93F5CF48399987CA0959DE5588293E6C7F04B68860812FA3D5412598C'
+    PatchedHash = 'D958F97F3B0D694A8472E17DE64113831A72E8F6B7D031D405A45F39949B3999'
+    EndToEndValidatedDesktopVersion = $null
   }
 }
 $ProfileLabel = $SkyVersion
@@ -253,6 +346,9 @@ try {
   $before = Get-Status $testHelper $codexHome
   Assert-Equal $before.State 'original-patchable' 'original state mismatch'
   Assert-Equal $before.Sha256 $ExpectedOriginalHash 'original status hash mismatch'
+  if ($Profiles[$ProfileLabel].Contains('EndToEndValidatedDesktopVersion')) {
+    Assert-Equal $before.EndToEndValidatedDesktopVersion $Profiles[$ProfileLabel].EndToEndValidatedDesktopVersion 'pending capture acceptance must not be reported as end-to-end validated'
+  }
 
   $candidateHash = @(& $Patcher -HelperPath $testHelper -CodexHome $codexHome -ComputeCandidateHash) | Select-Object -Last 1
   Assert-Equal $candidateHash $ExpectedPatchedHash 'candidate hash mismatch'

@@ -6,8 +6,8 @@
 
 | Skill | 上游 | 分支 | 当前基线 | 版本 |
 | --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`33a88f5`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/33a88f5063ac138bf2eedc687263ad56c59b055d) | 上游未单独标记 |
-| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`4e6fdc5`](https://github.com/hugohe3/ppt-master/commit/4e6fdc50136c3aea64a746f6bb4adf1c3305ec87) | `6.1.0` |
+| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`76cc497`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/76cc497b37a35d03435b67cd3e2c70220f5057ea) | 上游未单独标记 |
+| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`680de11`](https://github.com/hugohe3/ppt-master/commit/680de11f1bef4628b68d5daad9dffec569fbd51f) | `6.6.0` |
 | `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` |
 
 这些目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
@@ -18,7 +18,7 @@
 - 不引入上游仓库级 `AGENTS.md`、README、SECURITY 或 Git 配置，也不运行上游就地更新器。
 - 保留本机验证后的安全调整：Provider History 等数据层修复由用户手动关闭和重新打开 Codex，不自动停止或拉起应用。
 - 每次同步后重新检查 Provider History 安全调整、PowerShell 脚本语法、MSIX dry-run 路由和敏感信息。
-- 主要依赖 Windows PowerShell 与 Store/MSIX Codex；原生远控构建才额外需要 Python、Rust、MSVC 或 Windows SDK。
+- 主要依赖 Windows PowerShell、Store/MSIX Codex 与 Node.js；原生远控构建才额外需要 Python、Rust、MSVC 或 Windows SDK。
 
 ## `ppt-master`
 

@@ -20,7 +20,7 @@
 | [`chatgpt-linux-sigchld-fix`](./chatgpt-linux-sigchld-fix/SKILL.md) | 个人 | Linux x86_64、Arch/CachyOS | 修复 Linux ChatGPT/Codex 会话一直转圈及 SIGCHLD 子进程回收异常；精确哈希门控、升级停用和回滚。 | Python 3.11+、GCC/libc headers、binutils/procps、可选 bubblewrap/desktop-file-utils |
 | [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 个人 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
 | [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 个人 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
-| [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。 | PowerShell、Windows Store/MSIX Codex、可选 Python/Rust/MSVC |
+| [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。 | PowerShell、Windows Store/MSIX Codex、Node.js、可选 Python/Rust/MSVC/Windows SDK |
 | [`opencode-wl-clipboard-copy-fix`](./opencode-wl-clipboard-copy-fix/SKILL.md) | 个人 | Arch/CachyOS、Wayland | 修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。 | wl-clipboard、可选 xclip |
 
 ### EDA/FPGA

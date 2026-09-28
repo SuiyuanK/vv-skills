@@ -9,10 +9,12 @@ param(
   [switch]$KeepBuild,
   [switch]$SkipMarketplace,
   [switch]$SkipComputerUse,
+  [switch]$PatchWindows10ScreenshotHelper,
   [switch]$VerifyAllBundledPluginsAvailable,
   [switch]$RegisterMarketplaceOnly,
   [switch]$ForceRebuild,
   [string]$OutputRoot,
+  [string[]]$CustomModels,
   [switch]$InstallModelInstructionsFile,
   [string]$ModelInstructionsSource,
   [string]$ModelInstructionsDestination = (Join-Path $env:USERPROFILE '.codex\prompts\system-prompt.md')
@@ -469,9 +471,9 @@ if (-not $SkipMarketplace) {
 
 if (-not $SkipComputerUse) {
   if ($DryRun) {
-    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX dry run' -VerifyOnly -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable -AllowPackageGateFallback
+    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX dry run' -VerifyOnly -AllowPackageGateFallback
   } else {
-    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX patch' -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable -AllowPackageGateFallback
+    Invoke-ComputerUseInstaller -Stage 'preflight before MSIX patch' -AllowPackageGateFallback
   }
 }
 
@@ -489,6 +491,12 @@ if (-not (Test-Path -LiteralPath $PatchScript)) {
 }
 
 $patchArgs = @()
+if ($PSBoundParameters.ContainsKey('CustomModels')) {
+  $patchArgs += @('-CustomModels', ($CustomModels -join ','))
+}
+if ($PatchWindows10ScreenshotHelper) {
+  $patchArgs += '-PatchWindows10ScreenshotHelper'
+}
 if ($DryRun) {
   $patchArgs += '-DryRun'
   $patchArgs += '-ForceRebuild'
@@ -556,11 +564,11 @@ for ($patchAttempt = 1; $patchAttempt -le $maxPatchAttempts; $patchAttempt++) {
       if ($script:ComputerUsePackageGateFallback) {
         Write-Log 'post-dry-run Computer Use verification skipped because the installed package is expected to fail the same package-gated trusted-paths check until MSIX installation'
       } else {
-        Invoke-ComputerUseInstaller -Stage 'post-dry-run final verification' -VerifyOnly -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
+        Invoke-ComputerUseInstaller -Stage 'post-dry-run final verification' -VerifyOnly
       }
     } else {
-      Invoke-ComputerUseInstaller -Stage 'post-patch refresh after Codex startup' -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
-      Invoke-ComputerUseInstaller -Stage 'post-patch final verification' -VerifyOnly -VerifyAllBundledPluginsAvailable:$VerifyAllBundledPluginsAvailable
+      Invoke-ComputerUseInstaller -Stage 'post-patch refresh after Codex startup'
+      Invoke-ComputerUseInstaller -Stage 'post-patch final verification' -VerifyOnly
     }
   }
 

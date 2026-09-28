@@ -83,12 +83,12 @@
       "category": "ai-dev-tools",
       "platforms": ["windows"],
       "summary": "修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。",
-      "dependencies": ["PowerShell", "Windows Store/MSIX Codex", "可选 Python/Rust/MSVC"],
+      "dependencies": ["PowerShell", "Windows Store/MSIX Codex", "Node.js", "可选 Python/Rust/MSVC/Windows SDK"],
       "status": "active",
       "upstream": {
         "repository": "https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill",
         "branch": "main",
-        "baseline": "33a88f5063ac138bf2eedc687263ad56c59b055d"
+        "baseline": "76cc497b37a35d03435b67cd3e2c70220f5057ea"
       }
     },
     {
@@ -214,8 +214,8 @@
       "upstream": {
         "repository": "https://github.com/hugohe3/ppt-master",
         "branch": "main",
-        "baseline": "4e6fdc50136c3aea64a746f6bb4adf1c3305ec87",
-        "version": "6.1.0"
+        "baseline": "680de11f1bef4628b68d5daad9dffec569fbd51f",
+        "version": "6.6.0"
       }
     },
     {

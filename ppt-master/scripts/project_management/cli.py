@@ -27,6 +27,7 @@ import argparse
 import filecmp
 import json
 import os
+import stat
 import re
 import shutil
 import subprocess
@@ -105,6 +106,31 @@ DEFERRED_CANVAS_MESSAGE = (
 )
 
 
+def _is_project_tree(source_path: Path) -> bool:
+    """Return whether a file under projects/ sits inside an initialized project.
+
+    A sibling directory such as ``projects/<slug>_web_sources/`` (topic-research
+    output) is scratch material, not another project's tree.
+    """
+    projects_root = PROJECTS_ROOT.resolve()
+    source_path = source_path.resolve()
+    try:
+        relative = source_path.relative_to(projects_root)
+    except ValueError:
+        return False
+    if not relative.parts:
+        return False
+    for root in source_path.parents:
+        if root == projects_root:
+            break
+        if any(
+            (root / marker).exists()
+            for marker in ("svg_output", "design_spec.md", "spec_lock.md", "README.md")
+        ):
+            return True
+    return False
+
+
 def _validate_image_manifest(
     payload: object,
     path: Path,
@@ -163,6 +189,12 @@ def _read_existing_image_manifest(path: Path) -> list[dict]:
 
 def _write_json_atomic(path: Path, payload: object) -> None:
     """Write JSON through a same-directory temporary file and atomic rename."""
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     fd, temp_name = tempfile.mkstemp(
         prefix=f"{path.stem}.",
         suffix=".tmp",
@@ -172,6 +204,8 @@ def _write_json_atomic(path: Path, payload: object) -> None:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False, indent=2)
             handle.write("\n")
+        # mkstemp creates 0600; keep the file's own (or the default) mode.
+        os.chmod(temp_name, mode)
         os.replace(temp_name, path)
     except Exception:
         try:
@@ -230,7 +264,7 @@ class ProjectManager:
     CANVAS_FORMATS = CANVAS_FORMATS
 
     def __init__(self, base_dir: str | Path | None = None) -> None:
-        self.base_dir = Path(base_dir) if base_dir is not None else Path.cwd() / "projects"
+        self.base_dir = Path(base_dir) if base_dir is not None else PROJECTS_ROOT
 
     def scaffold_artifact(self, project_path: str, artifact: str) -> str:
         """Delegate deterministic Markdown scaffold rendering."""
@@ -269,13 +303,21 @@ class ProjectManager:
 
         date_str = datetime.now().strftime("%Y%m%d")
         if normalized_format is None:
-            project_dir_name = f"{project_name}_{date_str}"
+            # A name already carrying a `_<YYYYMMDD>` suffix (e.g. a full
+            # project dir name pasted back into init) is used as-is —
+            # re-appending would produce `name_20260101_20260102`.
+            if re.search(r"_\d{8}$", project_name):
+                project_dir_name = project_name
+            else:
+                project_dir_name = f"{project_name}_{date_str}"
         else:
             # A name already carrying a `_<format>_<YYYYMMDD>` suffix (e.g. a
             # full project dir name pasted back into init) is used as-is —
             # re-appending would produce
             # `name_ppt169_20260101_ppt169_20260102`.
-            if re.search(rf"_{re.escape(normalized_format)}_\d{{8}}$", project_name):
+            if re.search(r"_\d{8}$", project_name):
+                # `_<format>_<YYYYMMDD>` or a plain `_<YYYYMMDD>`: the caller
+                # pinned the directory name; --format still sets the canvas.
                 project_dir_name = project_name
             else:
                 project_dir_name = f"{project_name}_{normalized_format}_{date_str}"
@@ -710,7 +752,7 @@ class ProjectManager:
         self._merge_image_manifest(rebased_items, images_dir / "image_manifest.json")
         print(
             f"Propagated {copied_count} image asset(s) + manifest "
-            f"from {asset_dir} → images/ (namespace: {namespace})"
+            f"from {asset_dir} → images/ (filenames unchanged; source_namespace {namespace!r} recorded in image_manifest.json)"
         )
 
     def _propagate_companion_image_assets(self, markdown_path: Path, project_dir: Path) -> None:
@@ -767,6 +809,7 @@ class ProjectManager:
         source_items: list[str],
         move: bool = False,
         copy: bool = False,
+        propagate_images: bool = True,
     ) -> dict[str, list[str]]:
         if move and copy:
             raise ValueError("--move and --copy are mutually exclusive")
@@ -787,6 +830,7 @@ class ProjectManager:
             "notes": [],
             "skipped": [],
         }
+        moved_web_sources: dict[Path, Path] = {}
 
         expanded_items: list[str] = []
         supplied_dirs: list[Path] = []
@@ -840,20 +884,50 @@ class ProjectManager:
                     continue
 
                 summary["markdown"].append(str(markdown_path))
-                self._propagate_companion_image_assets(markdown_path, project_dir)
+                if propagate_images:
+                    self._propagate_companion_image_assets(markdown_path, project_dir)
                 continue
 
             source_path = Path(item)
             if not source_path.exists():
-                summary["skipped"].append(f"{item}: path not found")
+                moved_home = next(
+                    (
+                        moved
+                        for origin, moved in moved_web_sources.items()
+                        if is_within_path(source_path, origin)
+                    ),
+                    None,
+                )
+                if moved_home is not None:
+                    summary["notes"].append(
+                        f"{item}: already imported with its research pair under {moved_home}"
+                    )
+                else:
+                    summary["skipped"].append(f"{item}: path not found")
                 continue
             if source_path.is_dir():
                 summary["skipped"].append(f"{item}: directories are not supported")
                 continue
 
             inside_projects = is_within_path(source_path, PROJECTS_ROOT)
+            # A file inside another project's tree (projects/<other>/...) is
+            # that project's material: taking it by default emptied a finished
+            # project's images/ once. Copy unless --move is explicit.
+            inside_other_project = (
+                inside_projects
+                and not is_within_path(source_path, project_dir.resolve())
+                and source_path.resolve().parent != PROJECTS_ROOT.resolve()
+                and _is_project_tree(source_path)
+            )
             if copy:
                 effective_move = False
+            elif inside_other_project and not move:
+                effective_move = False
+                print(
+                    f"note: {source_path} belongs to another project; copied "
+                    f"(not moved). Pass --move to take it out of that project.",
+                    file=sys.stderr,
+                )
             elif inside_projects:
                 effective_move = True
             else:
@@ -864,7 +938,7 @@ class ProjectManager:
                     f"(not moved). Only sources under projects/ may be moved.",
                     file=sys.stderr,
                 )
-            elif inside_projects and not move and not copy:
+            elif inside_projects and not inside_other_project and not move and not copy:
                 print(
                     f"note: {source_path} is under projects/; moved into the target "
                     f"project. Pass --copy to preserve it.",
@@ -875,13 +949,22 @@ class ProjectManager:
             if suffix in {".md", ".markdown"}:
                 duplicate_markdown = self._find_equivalent_markdown(source_path, sources_dir)
                 if duplicate_markdown is not None:
-                    summary["markdown"].append(str(duplicate_markdown))
-                    self._propagate_companion_image_assets(duplicate_markdown, project_dir)
+                    if str(duplicate_markdown) not in summary["markdown"]:
+                        summary["markdown"].append(str(duplicate_markdown))
+                    if propagate_images:
+                        self._propagate_companion_image_assets(duplicate_markdown, project_dir)
+                    # A moved source must leave projects/ even when its content
+                    # already sits in the project under another name.
+                    removed = ""
+                    if effective_move and source_path.resolve() != duplicate_markdown.resolve():
+                        source_path.unlink()
+                        removed = "; the moved duplicate was removed"
                     summary["notes"].append(
-                        f"{item}: skipped duplicate markdown import because equivalent content already exists as {duplicate_markdown.name}"
+                        f"{item}: skipped duplicate markdown import because equivalent content already exists as {duplicate_markdown.name}{removed}"
                     )
                     continue
 
+                web_sources = source_path.with_name(f"{source_path.stem}_web_sources")
                 archived_markdown, asset_dir, note = self._import_markdown_with_assets(
                     source_path,
                     sources_dir,
@@ -889,9 +972,28 @@ class ProjectManager:
                 )
                 summary["archived"].append(str(archived_markdown))
                 summary["markdown"].append(str(archived_markdown))
+                if (
+                    effective_move
+                    and web_sources.is_dir()
+                    and web_sources.resolve().parent == PROJECTS_ROOT.resolve()
+                ):
+                    # topic-research fetches pages beside its pair under
+                    # projects/; they travel with the pair as provenance
+                    # rather than staying behind in the shared directory.
+                    target = project_dir / "analysis" / "research_web_sources" / web_sources.name
+                    if target.exists():
+                        summary["notes"].append(
+                            f"{web_sources}: left in place; {target} already exists"
+                        )
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(web_sources), str(target))
+                        summary["analysis"].append(str(target))
+                        moved_web_sources[web_sources] = target
                 if asset_dir is not None:
                     summary["assets"].append(str(asset_dir))
-                    self._propagate_image_assets(asset_dir, project_dir)
+                    if propagate_images:
+                        self._propagate_image_assets(asset_dir, project_dir)
                 if note:
                     summary["notes"].append(note)
                 continue
@@ -923,7 +1025,8 @@ class ProjectManager:
                     continue
                 if canonical_markdown_path.exists():
                     summary["markdown"].append(str(canonical_markdown_path))
-                    self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
                     summary["notes"].append(
                         f"{item}: skipped PDF auto-conversion because {canonical_markdown_path.name} already exists"
                     )
@@ -932,7 +1035,8 @@ class ProjectManager:
                 try:
                     self._import_pdf(archived_path, markdown_path)
                     summary["markdown"].append(str(markdown_path))
-                    self._propagate_companion_image_assets(markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(markdown_path, project_dir)
                 except Exception as exc:  # pragma: no cover - summary path
                     summary["skipped"].append(f"{item}: PDF conversion failed ({exc})")
             elif suffix in PRESENTATION_SUFFIXES:
@@ -951,7 +1055,8 @@ class ProjectManager:
                     continue
                 if canonical_markdown_path.exists():
                     summary["markdown"].append(str(canonical_markdown_path))
-                    self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
                     summary["notes"].append(
                         f"{item}: skipped presentation auto-conversion because {canonical_markdown_path.name} already exists"
                     )
@@ -960,7 +1065,8 @@ class ProjectManager:
                 try:
                     self._import_presentation(archived_path, markdown_path)
                     summary["markdown"].append(str(markdown_path))
-                    self._propagate_companion_image_assets(markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(markdown_path, project_dir)
                 except Exception as exc:  # pragma: no cover - summary path
                     summary["skipped"].append(f"{item}: presentation conversion failed ({exc})")
             elif suffix in EXCEL_SUFFIXES:
@@ -972,7 +1078,8 @@ class ProjectManager:
                     continue
                 if canonical_markdown_path.exists():
                     summary["markdown"].append(str(canonical_markdown_path))
-                    self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
                     summary["notes"].append(
                         f"{item}: skipped Excel auto-conversion because {canonical_markdown_path.name} already exists"
                     )
@@ -981,7 +1088,8 @@ class ProjectManager:
                 try:
                     self._import_excel(archived_path, markdown_path)
                     summary["markdown"].append(str(markdown_path))
-                    self._propagate_companion_image_assets(markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(markdown_path, project_dir)
                 except Exception as exc:  # pragma: no cover - summary path
                     summary["skipped"].append(f"{item}: Excel conversion failed ({exc})")
             elif suffix in LEGACY_EXCEL_SUFFIXES:
@@ -1002,7 +1110,8 @@ class ProjectManager:
                     continue
                 if canonical_markdown_path.exists():
                     summary["markdown"].append(str(canonical_markdown_path))
-                    self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(canonical_markdown_path, project_dir)
                     summary["notes"].append(
                         f"{item}: skipped document auto-conversion because {canonical_markdown_path.name} already exists"
                     )
@@ -1011,7 +1120,8 @@ class ProjectManager:
                 try:
                     self._import_doc(archived_path, markdown_path)
                     summary["markdown"].append(str(markdown_path))
-                    self._propagate_companion_image_assets(markdown_path, project_dir)
+                    if propagate_images:
+                        self._propagate_companion_image_assets(markdown_path, project_dir)
                 except Exception as exc:  # pragma: no cover - summary path
                     summary["skipped"].append(f"{item}: document conversion failed ({exc})")
             elif suffix == ".txt":
@@ -1104,7 +1214,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init = subparsers.add_parser("init", help="Create a project directory")
-    init.add_argument("project_name", help="Project name")
+    init.add_argument(
+        "project_name",
+        help="Project name; the directory becomes <name>_<YYYYMMDD>, or "
+             "<name>_<format>_<YYYYMMDD> with --format. A name already ending "
+             "in _<YYYYMMDD> is used as-is.",
+    )
     init.add_argument(
         "--format",
         default=None,
@@ -1126,6 +1241,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     import_sources.add_argument("project_path", help="Project directory")
     import_sources.add_argument("sources", nargs="+", help="Source files, directories, or URLs")
+    import_sources.add_argument(
+        "--no-image-propagation", action="store_true",
+        help="Keep extracted companion images in sources/ without copying them into images/",
+    )
     mode = import_sources.add_mutually_exclusive_group()
     mode.add_argument(
         "--move",
@@ -1232,6 +1351,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.sources,
                 move=args.move,
                 copy=args.copy,
+                propagate_images=not args.no_image_propagation,
             )
             import_complete = _has_usable_import(summary)
             if import_complete:

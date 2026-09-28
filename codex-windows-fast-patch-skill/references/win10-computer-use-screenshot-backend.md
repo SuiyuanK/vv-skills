@@ -309,3 +309,95 @@ The later Store upgrade to Desktop `26.715.3651.0` (the same `codex-cli 0.145.0-
 These are upgrade-repair regression checks for the `0.4.20` profile. The deeper end-to-end helper validations were performed on Desktop `26.707.12708.0` for `0.4.20`, Desktop `26.721.4979.0` for `0.5.2`, Desktop `26.803.10989.0` for `0.6.6`, Desktop `26.810.6296.0` and `26.810.7004.0` for the two `0.6.11` hashes, and Desktop `26.814.5167.0` for `0.6.16`; each complete helper hash pair, not a Desktop version by itself, remains the compatibility boundary.
 
 Repeated static captures can appear as alternating complete/black composites in the conversation renderer. In the validated run, every underlying static image data URL had the same length and SHA-256, so that presentation artifact was not a corrupted helper frame.
+
+### `@oai/sky 0.6.32` helper `BAD605EF` / Desktop 26.908.4834.0 validation
+
+Desktop `26.908.4834.0` ships `@oai/sky 0.6.32` with a new `1,549,616`-byte helper, complete SHA-256 `BAD605EF7A800D2E2EBE2D9205DB6F9AB73EF193524392F5CAA1FA2E1A0DAE2C`. On Windows 10 build `19045`, this build reproduces the same screenshot failure signature (`SetIsBorderRequired failed: 不支持此接口 (0x80004002)`). The prior `0.6.26` profile was not reused by version number alone: the required `SkyVersion` match fails (`0.6.32` vs `0.6.26`), and the patcher correctly reported `State: unsupported` for the new hash. The `0.6.32` helper is the same `1,549,616`-byte image size as the validated `935D23E1` (`0.6.26`) helper.
+
+- The same five guarded regions that distinguish the `0.6.26` profile were re-read from the `0.6.32` binary and matched the profile's original bytes byte-for-byte at the same file offsets:
+  - `optional-border-interface` at `0x0003D7AC` (`4889c64189d6eb4c`),
+  - `frame-arrived-busy-return` at `0x000413D0` (`0f855b310000`),
+  - `frame-arrived-once-flag` at `0x000413E1` (`740d`),
+  - `mta-worker-wrapper` at `0x00126700` (169 zero bytes),
+  - `frame-arrived-vtable` at `0x0012C4B8` (`9b1f044001000000`).
+- The wrapper virtual address is `0x140127300` (raw offset `0x00126700` with the `+0xC00` image-base offset). Capstone disassembly resolved the same four IAT slots used by the validated profiles (`CreateThread`, `CloseHandle`, `RoInitialize`, `RoUninitialize`) and the single `call` back into the original `FrameArrived` callback at `0x140041F9B`; the vtable entry confirms the callback address. PE section geometry confirms the wrapper falls into executable `.text` tail padding, so no section-header rewrite is needed.
+- The guarded rewrite produces complete candidate SHA-256 `977D265B145232BA30B2916D8DED6D9B30037A084CF8A90EBBEDACEC91FCBEAC`; the patcher's `-ComputeCandidateHash` reproduced it exactly.
+- The contributor reported a local install on Windows 10 build `19045` that stored the original at `.codex\backups\computer-use-helper\26.908.4834.0-sky-0.6.32-BAD605EF\codex-computer-use.exe.original`, then verified the complete patched hash. `State: patched` establishes an install/hash result; it does not by itself establish screenshot acceptance.
+
+This profile is an exact input/output hash pair derived from the validated `0.6.26` guarded-code layout. In [PR #57](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/pull/57), the contributor reported the following Windows 10 build `19045` checks through the official `@oai/sky 0.6.32` runtime driven from short-lived external `node.exe` processes (separate processes per batch, stable non-minimized targets). These are partial, contributor-reported capture results, not results produced by the repository regression harness:
+
+| Test | Contributor-reported result |
+| --- | --- |
+| Runtime import | `list_windows` through the patched helper returned `19` windows, including Explorer-owned targets. |
+| Cold Notepad capture | First `activate_window` + `get_window_state` with screenshot in a fresh process completed in `740 ms`; returned `image/jpeg`, `1072x772`, `27363` bytes, SHA-256 `98bb2ae0...f731e435`. |
+| Repeated static capture | `10/10` identical frames in `105-140 ms` each after the cold first frame, all with the same SHA-256 as the cold frame. |
+| Input-driven image change | Frames before and after a `type_text` content change produced two distinct SHA-256 values (`356a6cb2...` -> `23265d49...`). This covers an input-driven update, not a continuously animating target. |
+| Resource stability | A `15`-capture batch in one process stayed flat at `27` threads / `734` handles / `122 MB` across repeated samples; all `15` frames identical (`1864BA60...` x15). |
+| Session cleanup | No `codex-computer-use.exe` helper process remained after the validation sessions ended. |
+| Error signature | No `SetIsBorderRequired`, `0x80004002`, or `E_NOINTERFACE` occurred in any capture on this build. |
+
+The contributor reports that frame bytes, image properties, and hashes were checked programmatically and that the operator visually inspected the written `.img` files. The maintainer's Windows 11 regression does not independently reproduce those Windows 10 observations.
+
+`EndToEndValidatedDesktopVersion` remains `null`: the report does not yet include the continuously animating native-window capture required by `SKILL.md`. To complete that missing check on Windows 10 build `19045`, activate a stable non-minimized, non-browser target such as Task Manager's Performance view, then capture at least three frames about two seconds apart through the same official helper process. Decode and visually inspect each image for the intended target and changing content, and record the runtime/helper identity, complete helper and frame hashes, dimensions, timings, and any capture errors in a sanitized result. Hash changes alone do not replace content inspection. Record the expected accessibility state when requested, and retain the cold/static/resource checks above as separately attributed evidence.
+
+Official external-process capture is a supported substitute for the helper acceptance path; it is not a substitute for all Desktop validation. As documented in the external-executor case in `references/restriction-debug-cases.md`, this route uses a local elicitation responder and does not exercise the real Desktop in-app approval UI or trusted in-Desktop `node_repl`/browser-service path. Report those boundaries explicitly. Completing the missing helper capture check can support a later profile promotion without claiming that these separate Desktop layers were exercised.
+
+The profile has an explicit regression entry:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$SkillRoot\scripts\test-computer-use-helper-win10-patch.ps1" -SkyVersion '0.6.32-BAD605EF'
+```
+
+The regression validates the exact original and candidate hashes, unknown-hash rejection, and the platform guard using a temporary helper copy. On Windows 11 it must reject installation and leave that copy unchanged; it does not perform or claim Windows 10 capture acceptance. It also asserts that the pending end-to-end validation field remains empty.
+
+### `@oai/sky 0.7.1` / Desktop 26.917 validation
+
+Desktop `26.917.6896.0` re-signs the `0.7.1` helper without changing its code. The new profile is selected by the complete `SkyVersion` and hash pair:
+
+- Original SHA-256: `B49B868226C9EB6AB0C1A00903F7B3C7188F5ECC8C59A23488F83DC6DDF1EBC4`.
+- Patched SHA-256: `53B9DC200AFA8A1227A93F43BB5BB52EA69734BCE831339A33531762FF0AD785`.
+- Compared with the existing `D09A2F3F` profile, all ten section headers and every raw section body are byte-identical; only two checksum bytes and 4,226 certificate-overlay bytes differ. All five guarded regions match before applying the existing 132-byte MTA wrapper; the result changes 134 bytes and preserves file size.
+- Windows 10 build 19045 reproduced `SetIsBorderRequired / 0x80004002` through the official `@oai/sky` runtime before repair. After repair, a cold Explorer screenshot returned `1125x719` pixels with matching accessibility text. A later independent call refreshed Explorer with `F5` and captured it successfully.
+- Twenty unchanged Explorer captures succeeded in 31-403 ms and produced one identical image hash. An indexed click selected Task Manager's Performance tab; four spaced captures returned four different `666x593` frames whose CPU charts were visually inspected.
+- The main helper changed from 53 threads / 823 handles to 54 / 831 after the capture batch; its cursor child remained at 1 / 182. This bounded sample does not establish long-duration resource stability.
+- The isolated profile harness passed installation, idempotent installation, rollback, idempotent rollback, output/backup hash checks and rejection of an unknown input hash. Run it with `-SkyVersion 0.7.1-B49B8682`.
+
+### `@oai/sky 0.7.1` helper `D09A2F3F` / Desktop 26.915.4065.0
+
+Windows 10 build `19045` reproduces `SetIsBorderRequired failed` and `0x80004002` with the complete original SHA-256 `D09A2F3F4C144BE9C180509F5CD67D60F4B0B6FBB62E0F5A1EE131F4B653C512`. The guarded patch produces `F406A337F4EA6D794DB2E804DFBE880CE06BF8FBAEC565212411474D02E9545D`.
+
+This is a new code layout. The five raw offsets are `0x3D82D`, `0x41451`, `0x41462`, `0x126778`, and `0x12C4C8`. The 132-byte MTA wrapper fits the available executable padding without overwriting the PE runtime trailer. The callback vtable points at the new wrapper. Earlier 169-byte wrappers must not be copied to this build.
+
+Acceptance on Desktop `26.915.4065.0` used the official sky runtime and the exact helper above. Twenty Explorer captures succeeded, with 517 ms for the cold frame and 32-52 ms for subsequent frames. The resource samples stayed stable after initialization. A separate six-frame Task Manager Performance batch returned six distinct complete images; the live runtime then returned four further Performance frames over six seconds, with visible CPU graph changes. Each of those four decoded images was inspected together with the captured accessibility state. No `SetIsBorderRequired` or `0x80004002` error occurred. The helper embedded in the signed MSIX and the extracted runtime have the same complete patched hash.
+
+The regression exercises original detection, candidate hash, install, idempotence, rollback, and unknown-hash rejection using an isolated copy. This native helper acceptance does not assert that a browser tab or the separate Swift control service was exercised.
+
+After reproducing the Windows 10 `SetIsBorderRequired / 0x80004002` failure, pass `-PatchWindows10ScreenshotHelper` to the full MSIX patcher or wrapper to patch the staged helper before packaging. Without that explicit switch, the staged helper is left unchanged, including unknown hashes. An explicit request retains the full input/output hash guards and rejects unknown helpers. Targeted Model Experience, marketplace, and CUA-surface repairs reject this separate binary operation.
+
+### `@oai/sky 0.7.1` helpers `9493AF2C` / Desktop 26.917.9434.0 and `2AA2A7A9` / Desktop 26.917.8451.0
+
+Desktop `26.917.9434.0` and `26.917.8451.0` re-sign the `D09A2F3F` code again. Each new profile is selected by the complete `SkyVersion` and hash pair:
+
+| Desktop | Original SHA-256 | Patched SHA-256 |
+| --- | --- | --- |
+| `26.917.9434.0` | `9493AF2CEBD3C11E2E38CE692F6CCD8E00F4320BDBBCF14F242D036A9736635F` | `AA7DA8D22911398790EED442A22F7D747339FF89E2DD4DB49931A611E6EEDB79` |
+| `26.917.8451.0` | `2AA2A7A93F5CF48399987CA0959DE5588293E6C7F04B68860812FA3D5412598C` | `D958F97F3B0D694A8472E17DE64113831A72E8F6B7D031D405A45F39949B3999` |
+
+- Both helpers are `1,550,128` bytes, like `D09A2F3F` and `B49B8682`. Compared with `D09A2F3F`, all ten section headers and every raw section body are byte-identical; only the two PE CheckSum bytes and 4,232 (`9493AF2C`) or 5,371 (`2AA2A7A9`) certificate-overlay bytes differ. The same comparison reproduces the 4,226 overlay bytes recorded for `B49B8682`.
+- All five guarded regions match the `D09A2F3F` original bytes at the same offsets, and the existing 132-byte MTA wrapper applies unchanged. The rewrite changes 134 bytes, all inside those regions, and preserves file size. Applying the regions to each original reproduces the recorded patched hash, and the result is byte-identical to the patched helper from a separate full-package build.
+- On Windows 10 build `19045`, the isolated profile harness passed for both labels (`-SkyVersion 0.7.1-9493AF2C` and `-SkyVersion 0.7.1-2AA2A7A9`): original detection, candidate hash, installation, idempotent installation, rollback, idempotent rollback, backup hash and rejection of an unknown input hash. It also asserts that the pending end-to-end validation field remains empty.
+- The patched `AA7DA8D2` helper, driven directly over its stdio protocol from one external process, returned a screenshot for 25 of 25 `get_window_state` calls against a Visual Studio Code window, with a 0.4-second pause between calls. Screenshot payload lengths varied (14 distinct values), and no `SetIsBorderRequired`, `0x80004002` or other stderr output occurred. The same driver on the original `9493AF2C` helper failed all 10 calls, each with `SetIsBorderRequired` / `0x80004002`.
+
+An independent local interactive smoke test was run on Windows 10 Pro 22H2 build `19045.6466` against the installed `@oai/sky 0.7.1` helper with original hash `9493AF2C` and patched hash `AA7DA8D2`:
+
+- Before repair, a screenshot-inclusive state request reproduced `SetIsBorderRequired failed: No such interface supported (0x80004002)`.
+- After repair, a fresh `@oai/sky` session captured a real Notepad window successfully, returning one screenshot (`1068x595`) together with its accessibility tree.
+- `type_text` inserted `Codex CUA local test`; a subsequent state request returned the updated accessibility value and a rendered screenshot.
+- A screenshot-backed coordinate click opened Notepad's `Format` menu, and `Escape` closed it successfully.
+- No helper process remained after the test session.
+
+This smoke test demonstrates screenshot capture, text input, and coordinate mouse input on this host. It does not promote `EndToEndValidatedDesktopVersion`: it did not include a continuously animating native target, a long-duration resource soak, or the separate `2AA2A7A9` helper.
+
+`EndToEndValidatedDesktopVersion` remains `null` for both profiles. The soak frames were not decoded and visually inspected, and a code editor is not the continuously animating native target that `SKILL.md` requires. No capture ran against the `2AA2A7A9` helper. In that session `list_windows` returned neither a console window nor the running Task Manager, so no animated native target was captured.
+
+When driving the helper outside Desktop, point `CODEX_HOME` at a disposable directory. Run against a real Codex home, the helper rewrote the `notify` hook in `config.toml` to its own executable path and re-serialized the whole file, so a test copy silently replaced the hook that Desktop had configured. Pointed at an empty directory, it created `config.toml`, the goals, logs, memories, queue and state SQLite databases, `installation_id` and `skills` there.

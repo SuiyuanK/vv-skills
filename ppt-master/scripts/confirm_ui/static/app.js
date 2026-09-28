@@ -22,7 +22,7 @@
             btn_confirm: "Confirm",
             btn_confirm_contract: "Confirm contract & continue →",
             btn_confirm_final_plan: "Confirm final plan →",
-            deriving: "Generating the downstream options from your choices…",
+            deriving: "Preparing the final plan and verifying your selected templates…",
             template_selection_required: "Choose free design or use templates. When using templates, select at least one workspace.",
             template_selection_conflict: "Choose at most one workspace per kind.",
             connection_lost: "Connection to the confirm server was interrupted; retrying. If this keeps failing, return to the chat for confirmation.",
@@ -38,7 +38,7 @@
             sec_template_library: "Template combination",
             template_library_hint: "Choose at most one workspace per kind. All four kinds can combine; Layout takes structural precedence over Deck.",
             sec_template_explicit: "Specified templates",
-            template_explicit_hint: "Choose at most one exact workspace supplied for this run; every kind it contains is applied. Its source path is shown for verification.",
+            template_explicit_hint: "Choose exact workspaces supplied for this run with non-overlapping kinds; every kind in each selected root is applied. Source paths are shown for verification.",
             template_kind_brand: "Brand",
             template_kind_style: "Style",
             template_kind_layout: "Layout",
@@ -195,7 +195,7 @@
             mode_continuous_desc: "Generate the whole deck in one pass.",
             mode_split_desc: "Stop after the spec; resume SVG generation in a fresh window.",
             refine_off_desc: "Write the Design Spec and execution lock in sequence, then auto-proceed.",
-            refine_on_desc: "Stop after the Design Spec. Revise any part in chat; approval then creates the execution lock and continues generation.",
+            refine_on_desc: "Stop after the Design Spec. A review page opens: edit any page directly or leave comments; approval in chat then creates the execution lock and continues generation.",
             off_default: "Off",
             on: "On",
             option_prefix: "Option",
@@ -211,7 +211,7 @@
             btn_confirm: "確定",
             btn_confirm_contract: "契約内容を確定して次へ →",
             btn_confirm_final_plan: "最終プランを確定 →",
-            deriving: "選択内容をもとに後続の選択肢を生成しています…",
+            deriving: "最終プランを準備し、選択したテンプレートを確認しています…",
             template_selection_required: "自由デザインまたはテンプレート利用を選んでください。テンプレート利用時は、1つ以上のワークスペースを選択してください。",
             template_selection_conflict: "種類ごとにワークスペースを1件まで選択してください。",
             connection_lost: "確認ページのサーバー接続が中断されました。再試行しています。失敗が続く場合はチャットで確認してください。",
@@ -227,7 +227,7 @@
             sec_template_library: "テンプレートの組み合わせ",
             template_library_hint: "種類ごとにワークスペースを1件まで選択できます。4種類はすべて組み合わせ可能で、構造は Layout が Deck より優先されます。",
             sec_template_explicit: "指定テンプレート",
-            template_explicit_hint: "この実行で指定された正確なワークスペースを1件まで選択でき、そこに含まれる種別はすべて適用されます。確認用に参照元パスを表示します。",
+            template_explicit_hint: "この実行で指定されたワークスペースを、種別が重複しない範囲で複数選択できます。各ルートに含まれる全種別が適用され、確認用に参照元パスを表示します。",
             template_kind_brand: "Brand",
             template_kind_style: "Style",
             template_kind_layout: "Layout",
@@ -384,7 +384,7 @@
             mode_continuous_desc: "デッキ全体を一気に生成します。",
             mode_split_desc: "設計仕様の作成後に停止し、別ウィンドウでSVG生成を再開します。",
             refine_off_desc: "設計仕様と実行ロックを順番に作成し、そのまま自動で進みます。",
-            refine_on_desc: "設計仕様の作成後に停止します。チャットで任意の箇所を修正し、承認後に実行ロックを作成して生成を続けます。",
+            refine_on_desc: "設計仕様の作成後に停止します。レビューページが開き、各ページを直接編集するかコメントを残せます。チャットで承認すると実行ロックを作成して生成を続けます。",
             off_default: "オフ",
             on: "オン",
             option_prefix: "案",
@@ -400,7 +400,7 @@
             btn_confirm: "确认",
             btn_confirm_contract: "确认沟通契约并继续 →",
             btn_confirm_final_plan: "确认最终方案 →",
-            deriving: "正在根据你的选择生成下游选项…",
+            deriving: "正在准备最终方案并核验所选模板…",
             template_selection_required: "请选择自由设计或使用模板；选择使用模板时，至少选择一个工作区。",
             template_selection_conflict: "每种模板最多选择一个工作区。",
             connection_lost: "确认页服务连接中断，正在重试；如果持续失败，请回到聊天窗口走聊天确认。",
@@ -416,7 +416,7 @@
             sec_template_library: "模板组合",
             template_library_hint: "每种模板最多选择一个工作区；四种模板均可组合，结构由 Layout 优先于 Deck。",
             sec_template_explicit: "指定模板",
-            template_explicit_hint: "本次运行明确提供的精确工作区最多选择一个，它包含的每一类都会被采用；显示来源路径供你核对。",
+            template_explicit_hint: "可选择本次运行提供的多个精确工作区，各根的模板类型不得重叠；选中的根会采用其全部类型，来源路径供你核对。",
             template_kind_brand: "Brand",
             template_kind_style: "Style",
             template_kind_layout: "Layout",
@@ -573,7 +573,7 @@
             mode_continuous_desc: "一次性连续生成整份演示文稿。",
             mode_split_desc: "写完设计规范后停止，另开窗口继续生成页面。",
             refine_off_desc: "依次生成设计规范和执行锁，然后自动继续。",
-            refine_on_desc: "生成设计规范后暂停；你可在聊天中修改任何部分，明确确认后再生成执行锁并继续制作。",
+            refine_on_desc: "生成设计规范后暂停，并打开评审页面：可逐页直接修改或留下修改意见；在聊天中明确确认后再生成执行锁并继续制作。",
             off_default: "关",
             on: "开",
             option_prefix: "方案",
@@ -589,7 +589,7 @@
             btn_confirm: "確認",
             btn_confirm_contract: "確認溝通契約並繼續 →",
             btn_confirm_final_plan: "確認最終方案 →",
-            deriving: "正在根據你的選擇生成下游選項…",
+            deriving: "正在準備最終方案並核驗所選範本…",
             template_selection_required: "請選擇自由設計或使用範本；選擇使用範本時，至少選擇一個工作區。",
             template_selection_conflict: "每種範本最多選擇一個工作區。",
             connection_lost: "確認頁服務連線中斷，正在重試；如果持續失敗，請回到聊天視窗走聊天確認。",
@@ -605,7 +605,7 @@
             sec_template_library: "範本組合",
             template_library_hint: "每種範本最多選擇一個工作區；四種範本均可組合，結構由 Layout 優先於 Deck。",
             sec_template_explicit: "指定範本",
-            template_explicit_hint: "本次執行明確提供的精確工作區最多選擇一個，它包含的每一類都會被採用；顯示來源路徑供你核對。",
+            template_explicit_hint: "可選擇本次執行提供的多個精確工作區，各根的範本類型不得重疊；選中的根會採用其全部類型，來源路徑供你核對。",
             template_kind_brand: "Brand",
             template_kind_style: "Style",
             template_kind_layout: "Layout",
@@ -762,7 +762,7 @@
             mode_continuous_desc: "一次性連續生成整份簡報。",
             mode_split_desc: "寫完設計規範後停止，另開視窗繼續生成頁面。",
             refine_off_desc: "依次生成設計規範和執行鎖，然後自動繼續。",
-            refine_on_desc: "生成設計規範後暫停；你可在聊天中修改任何部分，明確確認後再生成執行鎖並繼續製作。",
+            refine_on_desc: "生成設計規範後暫停，並開啟評審頁面：可逐頁直接修改或留下修改意見；在聊天中明確確認後再生成執行鎖並繼續製作。",
             off_default: "關",
             on: "開",
             option_prefix: "方案",
@@ -1112,6 +1112,7 @@
             throw new Error("template_options.default_mode must be free_design or templates");
         }
         var normalized = {
+            options_sha256: data && data.options_sha256,
             lang: data && data.lang,
             default_mode: defaultMode,
             library: {},
@@ -1143,11 +1144,16 @@
             if (!candidate || !slot) {
                 throw new Error("Invalid preselected template key: " + key);
             }
-            var value = slot === "explicit" ? (candidate.workspace_root || "") : key;
-            if (TEMPLATE_SELECTIONS[slot] && TEMPLATE_SELECTIONS[slot] !== value) {
+            if (slot === "explicit") {
+                if (TEMPLATE_SELECTIONS.explicit.indexOf(candidate.workspace_root) < 0) {
+                    TEMPLATE_SELECTIONS.explicit.push(candidate.workspace_root);
+                }
+                return;
+            }
+            if (TEMPLATE_SELECTIONS[slot] && TEMPLATE_SELECTIONS[slot] !== key) {
                 throw new Error("Multiple preselected templates for slot: " + slot);
             }
-            TEMPLATE_SELECTIONS[slot] = value;
+            TEMPLATE_SELECTIONS[slot] = key;
         });
         // Publish options before syncing: expanding an explicit root into its
         // kinds reads TEMPLATE_OPTIONS, so a preselected root would otherwise
@@ -1158,7 +1164,7 @@
     }
 
     function emptyTemplateSelections() {
-        return { brand: "", style: "", layout: "", deck: "", explicit: "" };
+        return { brand: "", style: "", layout: "", deck: "", explicit: [] };
     }
 
     function templateSelectionSlot(candidate) {
@@ -1211,8 +1217,10 @@
         TEMPLATE_SELECTED_KEYS = TEMPLATE_KINDS.map(function (kind) {
             return TEMPLATE_SELECTIONS[kind];
         });
-        explicitCandidatesForRoot(TEMPLATE_SELECTIONS.explicit).forEach(function (candidate) {
-            TEMPLATE_SELECTED_KEYS.push(candidate.key);
+        TEMPLATE_SELECTIONS.explicit.forEach(function (root) {
+            explicitCandidatesForRoot(root).forEach(function (candidate) {
+                TEMPLATE_SELECTED_KEYS.push(candidate.key);
+            });
         });
         TEMPLATE_SELECTED_KEYS = TEMPLATE_SELECTED_KEYS.filter(Boolean);
     }
@@ -1243,6 +1251,16 @@
 
     function chooseTemplateForSlot(slot, key) {
         TEMPLATE_SELECTIONS[slot] = String(key || "");
+        syncTemplateSelectionState();
+        TEMPLATE_MODE = "templates";
+        updateTemplateSelectionControls();
+    }
+
+    function chooseExplicitTemplateRoot(root, selected) {
+        TEMPLATE_SELECTIONS.explicit = TEMPLATE_SELECTIONS.explicit.filter(function (value) {
+            return value !== root;
+        });
+        if (selected) TEMPLATE_SELECTIONS.explicit.push(root);
         syncTemplateSelectionState();
         TEMPLATE_MODE = "templates";
         updateTemplateSelectionControls();
@@ -1283,20 +1301,29 @@
         });
         field.appendChild(select);
 
-        if (slot === "explicit") {
-            field.appendChild(el(
-                "div",
-                "template-select-help",
-                candidates.length ? t("template_explicit_hint") : t("template_none_explicit")
-            ));
-            var path = el("div", "template-selected-path");
-            path.id = "template-explicit-path";
-            path.appendChild(el("span", "template-selected-path-label", t("template_source_path") + ":"));
-            var code = el("code", "template-selected-path-value");
-            code.id = "template-explicit-path-value";
-            path.appendChild(code);
-            field.appendChild(path);
-        }
+        return field;
+    }
+
+    function renderExplicitTemplateChoices() {
+        var field = el("div", "template-select-field template-select-field-explicit");
+        field.appendChild(el("div", "template-select-label", t("template_source_explicit")));
+        var roots = explicitRootOptions();
+        field.appendChild(el("div", "template-select-help",
+            roots.length ? t("template_explicit_hint") : t("template_none_explicit")));
+        roots.forEach(function (candidate) {
+            var label = el("label", "template-select-help");
+            var checkbox = el("input", "template-explicit-choice");
+            checkbox.type = "checkbox";
+            checkbox.value = candidate.workspace_root;
+            checkbox.checked = TEMPLATE_SELECTIONS.explicit.indexOf(checkbox.value) >= 0;
+            checkbox.addEventListener("change", function () {
+                chooseExplicitTemplateRoot(checkbox.value, checkbox.checked);
+            });
+            label.appendChild(checkbox);
+            label.appendChild(el("span", "", templateCandidateTitle(candidate) + " · " + candidate.summary));
+            label.appendChild(el("code", "template-selected-path-value", candidate.workspace_root));
+            field.appendChild(label);
+        });
         return field;
     }
 
@@ -1339,25 +1366,11 @@
             var candidates = TEMPLATE_OPTIONS.library[kind] || [];
             grid.appendChild(renderTemplateSelectField(kind, templateKindLabel(kind), candidates));
         });
-        grid.appendChild(renderTemplateSelectField(
-            "explicit",
-            t("template_source_explicit"),
-            explicitRootOptions()
-        ));
+        grid.appendChild(renderExplicitTemplateChoices());
         panel.appendChild(grid);
         sec.appendChild(panel);
         host.appendChild(sec);
         updateTemplateSelectionControls();
-    }
-
-    function updateTemplateExplicitPath() {
-        var path = document.getElementById("template-explicit-path");
-        var value = document.getElementById("template-explicit-path-value");
-        if (!path || !value) return;
-        var workspaceRoot = TEMPLATE_SELECTIONS.explicit || "";
-        path.hidden = !workspaceRoot;
-        value.textContent = workspaceRoot;
-        value.title = workspaceRoot;
     }
 
     function updateTemplateSelectionControls() {
@@ -1376,11 +1389,13 @@
             useChoice.setAttribute("aria-expanded", templatesSelected ? "true" : "false");
         }
         if (selectorPanel) selectorPanel.hidden = !templatesSelected;
-        TEMPLATE_KINDS.concat(["explicit"]).forEach(function (slot) {
+        TEMPLATE_KINDS.forEach(function (slot) {
             var select = document.getElementById("template-select-" + slot);
             if (select) select.value = TEMPLATE_SELECTIONS[slot] || "";
         });
-        updateTemplateExplicitPath();
+        document.querySelectorAll(".template-explicit-choice").forEach(function (checkbox) {
+            checkbox.checked = TEMPLATE_SELECTIONS.explicit.indexOf(checkbox.value) >= 0;
+        });
         var status = document.getElementById("confirm-status");
         if (status) status.textContent = "";
     }
@@ -4237,6 +4252,7 @@
     function stage1Payload() {
         var payload = communicationPayload();
         payload.stage = "stage1";
+        payload.options_sha256 = TEMPLATE_OPTIONS.options_sha256;
         payload.template_selection = {
             mode: TEMPLATE_MODE,
             selection_keys: TEMPLATE_MODE === "templates"

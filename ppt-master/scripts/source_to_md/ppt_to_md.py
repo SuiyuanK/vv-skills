@@ -50,12 +50,23 @@ from pptx_ooxml.diagram_read import (  # noqa: E402
     smartart_to_markdown,
 )
 
-from pptx import Presentation
-from pptx.enum.action import PP_ACTION
-from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.oxml.ns import qn
-
 configure_utf8_stdio()
+
+# Help must not depend on the optional conversion packages: a stdlib-only
+# interpreter still gets the argparse usage (docs/rules/code-style.md §4).
+_HELP_REQUESTED = __name__ == "__main__" and any(
+    arg in {"-h", "--help"} for arg in sys.argv[1:]
+)
+if not _HELP_REQUESTED:
+    try:
+        from pptx import Presentation
+        from pptx.enum.action import PP_ACTION
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
+        from pptx.oxml.ns import qn
+        from pptx.text.text import _Run
+    except ImportError:
+        print("[ERROR] python-pptx not installed. Run: pip install python-pptx", file=sys.stderr)
+        sys.exit(1)
 
 
 EMU_PER_INCH = 914400
@@ -292,7 +303,15 @@ def _paragraph_to_markdown(
         parts.append(f"{lead}[{display}]({current_url}){trail}")
 
     has_run_hyperlink = False
-    for run in paragraph.runs:
+    for child in paragraph._p:
+        tag = child.tag.rsplit("}", 1)[-1] if isinstance(child.tag, str) else ""
+        if tag == "br":
+            # A soft line break inside the paragraph; python-pptx's runs skip it.
+            current_text += "\n"
+            continue
+        if tag != "r":
+            continue
+        run = _Run(child, paragraph)
         url = _run_url(run, shape)
         if url:
             has_run_hyperlink = True
@@ -1294,7 +1313,7 @@ def convert_presentation_to_markdown(
     return markdown_content
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Run the CLI entry point."""
     parser = argparse.ArgumentParser(
         description="Convert PowerPoint files to Markdown",
@@ -1320,7 +1339,7 @@ Legacy .ppt is not parsed directly. Resave it as .pptx or export it to PDF first
         help="Output Markdown file for one input, or output directory for multiple inputs/directories",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     return run_path_batch(
         args.inputs,

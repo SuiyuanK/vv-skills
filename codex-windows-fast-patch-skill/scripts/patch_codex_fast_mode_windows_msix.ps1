@@ -12,15 +12,19 @@ param(
   [switch]$AddLocalPluginMarketplace,
   [string]$LocalPluginMarketplaceSource = (Join-Path $env:USERPROFILE '.codex\.tmp\plugins'),
   [string]$LocalPluginMarketplaceName = 'openai-curated-local',
-  [string[]]$CustomModels = @('gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'),
+  [string[]]$CustomModels = @('gpt-6-astra', 'gpt-6-sol', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'),
   [switch]$VerifyFastModeRequest,
   [switch]$OnlyBundledMarketplaceCopy,
+  [switch]$OnlyComputerUseSurface,
+  [switch]$PatchWindows10ScreenshotHelper,
   [Alias('OnlyCustomModels')]
   [switch]$OnlyModelExperience,
   [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\windows-cua-runtime.ps1')
+. (Join-Path $PSScriptRoot 'lib\msix-safe-install.ps1')
 $LogPrefix = '[codex-msix-patch-win]'
 $OutputRootWasExplicit = $PSBoundParameters.ContainsKey('OutputRoot')
 $WindowsSdkBuildToolsPackageId = 'microsoft.windows.sdk.buildtools'
@@ -37,6 +41,17 @@ function Write-Log {
 function Fail {
   param([string]$Message)
   throw "$LogPrefix error: $Message"
+}
+
+function Assert-ComputerUseSurfaceOptions {
+  if ($OnlyComputerUseSurface -and
+      ($OnlyBundledMarketplaceCopy -or $OnlyModelExperience -or
+       $AddLocalPluginMarketplace -or $VerifyFastModeRequest -or $PatchWindows10ScreenshotHelper)) {
+    Fail '-OnlyComputerUseSurface cannot be combined with other targeted modes, marketplace registration, or Fast Mode verification'
+  }
+  if ($PatchWindows10ScreenshotHelper -and ($OnlyBundledMarketplaceCopy -or $OnlyModelExperience)) {
+    Fail '-PatchWindows10ScreenshotHelper requires the full repair mode'
+  }
 }
 
 function Test-IsAdministrator {
@@ -78,9 +93,13 @@ function Test-CodexAppPath {
     return $false
   }
   $app = Normalize-AppPath $Candidate
+  # The Electron launcher name is build-dependent: Codex.exe before 26.9xx, ChatGPT.exe after.
+  # Accept either so a renamed launcher does not make a valid package undiscoverable.
+  $hasLauncher = (Test-Path -LiteralPath (Join-Path $app 'ChatGPT.exe') -PathType Leaf) -or
+    (Test-Path -LiteralPath (Join-Path $app 'Codex.exe') -PathType Leaf)
   return (
     (Test-Path -LiteralPath $app -PathType Container) -and
-    (Test-Path -LiteralPath (Join-Path $app 'Codex.exe') -PathType Leaf) -and
+    $hasLauncher -and
     (Test-Path -LiteralPath (Join-Path $app 'resources\app.asar') -PathType Leaf) -and
     (Test-Path -LiteralPath (Join-Path $app 'resources\rg.exe') -PathType Leaf)
   )
@@ -598,10 +617,18 @@ function Invoke-NpxAsar {
     [string]$Source,
     [string]$Target
   )
-  $npx = (Get-RequiredCommand 'npx').Source
-  & $npx --yes asar $Action $Source $Target
+  $npx = Get-Command npx -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($npx) {
+    & $npx.Source --yes asar $Action $Source $Target
+  } else {
+    # Codex's bundled Windows runtime can include pnpm and node without the
+    # npm/npx shims. Keep npx as the preferred path, but make ASAR extraction
+    # usable from that supported runtime layout as well.
+    $pnpm = (Get-RequiredCommand 'pnpm').Source
+    & $pnpm dlx asar $Action $Source $Target
+  }
   if ($LASTEXITCODE -ne 0) {
-    Fail "npx asar $Action failed with exit code $LASTEXITCODE"
+    Fail "ASAR $Action failed with exit code $LASTEXITCODE"
   }
 }
 
@@ -649,6 +676,7 @@ function Write-PatcherFiles {
   $browserUsePatcherPath = Join-Path $WorkDir 'PatchBrowserUseGates.cjs'
   $bundledMarketplaceCopyPatcherPath = Join-Path $WorkDir 'PatchBundledMarketplaceCopy.cjs'
   $nodeReplTrustedPathsPatcherPath = Join-Path $WorkDir 'PatchNodeReplTrustedPaths.cjs'
+  $computerUseSurfacePatcherPath = Join-Path $WorkDir 'PatchComputerUseSurface.cjs'
 
   Set-Content -LiteralPath $fastPatcherPath -Encoding UTF8 -Value @'
 const fs = require('node:fs');
@@ -664,7 +692,7 @@ const legacyOriginalRe = /function L\(e\)\{let (\w+)=v\(x\),(\w+)=e\?\.hostId\?\
 const currentDirectOriginalRe = /function (\w+)\(e\)\{let (\w+)=([^,;]+),(\w+)=e\?\.hostId\?\?\2,(\w+)=(\w+\(\4\)),\{data:(\w+)\}=(\w+\(\w+,\4\)),(\w+)=\7\?\.requirements\?\.featureRequirements\?\.fast_mode===!1;return!\(\5\?\.authMethod!==`chatgpt`\|\|\9\)\}/;
 const currentAsyncOriginalRe = /async function (\w+)\((\w+),(\w+)\)\{let (\w+)=await ([A-Za-z_$][\w$]*)\(\2,\3\);return \4===`chatgpt`\?\(await \2\.query\.fetch\(([A-Za-z_$][\w$]*),\{authMethod:\4,hostId:\3\}\)\)\.requirements\?\.featureRequirements\?\.fast_mode!==!1:!1\}/;
 const currentCachedAsyncOriginalRe = /async function ([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\2,\3\);if\(\4!==`chatgpt`\)return!1;let ([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\3,\{priority:`critical`\}\);return \2\.query\.setData\(([A-Za-z_$][\w$]*),\{authMethod:\4,hostId:\3\},\6\),\6\.requirements\?\.featureRequirements\?\.fast_mode!==!1\}/;
-const currentManagerCachedAsyncOriginalRe = /async function ([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\2,\3\);if\(\4!==`chatgpt`\)return!1;let ([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\2,\3,\{priority:`critical`\}\);return \2\.query\.setData\(([A-Za-z_$][\w$]*),\{authMethod:\4,hostId:\3\},\6\),\6\.requirements\?\.featureRequirements\?\.fast_mode!==!1\}/;
+const currentManagerCachedAsyncOriginalRe = /async function ([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\2,\3\);if\(\4!==`chatgpt`(?:&&\4!==`personalAccessToken`)?\)return!1;let ([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\2,\3,\{priority:`critical`\}\);return \2\.query\.setData\(([A-Za-z_$][\w$]*),\{authMethod:\4,hostId:\3\},\6\),\6\.requirements\?\.featureRequirements\?\.fast_mode!==!1\}/;
 const currentSplitConditionRe = /if\((\w+)\?\.authMethod!==`chatgpt`\|\|(\w+)\)\{/;
 
 if (legacyPatchedRe.test(text) || currentAsyncPatchedRe.test(text) || currentCachedAsyncPatchedRe.test(text) || currentManagerCachedAsyncPatchedRe.test(text) || (currentDirectPatchedRe.test(text) && !legacyOriginalRe.test(text) && !currentDirectOriginalRe.test(text) && !currentSplitConditionRe.test(text))) {
@@ -762,7 +790,7 @@ process.stdout.write('patched');
   Set-Content -LiteralPath $customModelsPatcherPath -Encoding UTF8 -Value @'
 const fs = require('node:fs');
 const file = process.argv[2];
-const models = [...new Set(process.argv.slice(3).filter(Boolean))];
+const models = [...new Set(process.argv.slice(3).flatMap(value => value.split(',')).map(value => value.trim()).filter(Boolean))];
 if (models.length === 0) {
   process.stderr.write('custom-model-list-empty\n');
   process.exit(2);
@@ -770,8 +798,25 @@ if (models.length === 0) {
 
 const marker = 'CODEX_CUSTOM_MODELS_V1';
 const text = fs.readFileSync(file, 'utf8');
-if (text.includes(marker) && models.every((model) => text.includes(model))) {
-  process.stdout.write('already-patched');
+if (text.includes(marker)) {
+  const lists = [...text.matchAll(/\/\*CODEX_CUSTOM_MODELS_V1\*\/(\[[^\]\r\n]*\])\.includes\(([$A-Za-z_][$\w]*)\.model\)\|\|/g)];
+  if (text.split(marker).length !== 2 || lists.length !== 1) {
+    process.stderr.write('custom-model-existing-patch-ambiguous\n');
+    process.exit(2);
+  }
+  let previous;
+  try { previous = JSON.parse(lists[0][1]); } catch { previous = null; }
+  if (!Array.isArray(previous) || !previous.every(value => typeof value === 'string')) {
+    process.stderr.write('custom-model-existing-list-invalid\n');
+    process.exit(2);
+  }
+  if (JSON.stringify(previous) === JSON.stringify(models)) {
+    process.stdout.write('already-patched');
+  } else {
+    const start = lists[0].index + `/*${marker}*/`.length;
+    fs.writeFileSync(file, text.slice(0, start) + JSON.stringify(models) + text.slice(start + lists[0][1].length));
+    process.stdout.write('patched');
+  }
   process.exit(0);
 }
 
@@ -907,6 +952,45 @@ let next = text.replace(mutationRe, mutationReplacement);
 // arbitrary prologue and any number of extra keys. The whole success body is
 // captured verbatim and re-emitted inside the try, which keeps every returned
 // field intact instead of rebuilding the object from named groups.
+// 26.831+ adds settings keys both before lockdownModeEnabled and after
+// ultraEffortEnabled, so locate the userSettings queryFn by anchor, capture its
+// whole body with brace matching, and re-emit it verbatim inside the try. The
+// enumerated-key regex stays below as a fallback for older build shapes.
+let queryPatched = false;
+{
+  const anchor = '.userSettings());';
+  let probe = 0;
+  for (;;) {
+    const anchorIdx = next.indexOf(anchor, probe);
+    if (anchorIdx < 0) break;
+    const windowStart = next.lastIndexOf('queryFn:async()=>{', anchorIdx);
+    if (windowStart < 0) break;
+    if (anchorIdx - windowStart >= 4000) {
+      probe = anchorIdx + anchor.length;
+      continue;
+    }
+    const bodyStart = windowStart + 'queryFn:async()=>{'.length;
+    let depth = 1;
+    let i = bodyStart;
+    while (i < next.length && depth > 0) {
+      const ch = next[i];
+      if (ch === '{') depth++;
+      else if (ch === '}') depth--;
+      i++;
+    }
+    if (depth === 0) {
+      const bodyEnd = i - 1;
+      const successBody = next.slice(bodyStart, bodyEnd);
+      if (successBody.includes('model_picker_persists_ultra_effort')) {
+        const queryReplacement = `queryFn:async()=>{try{${successBody}}catch{return{lockdownModeEnabled:!1,ultraEffortEnabled:await ${readConfig}(${settings}.showUltraInModelPickerSlider).catch(()=>!1)===!0,ultraEffortLocalFallback:!0/*${marker}*/}}}`;
+        next = next.slice(0, windowStart) + queryReplacement + next.slice(bodyEnd + 1);
+        queryPatched = true;
+      }
+    }
+    break;
+  }
+}
+if (!queryPatched) {
 const queryRe = /queryFn:async\(\)=>\{(let(?:\{[\s\S]{0,800}?import\.meta\.url\),|\s)([$A-Za-z_][$\w]*)=([$A-Za-z_][$\w]*)\.parse\(await ([$A-Za-z_][$\w]*)\.get\(([$A-Za-z_][$\w]*)\)\.userSettings\(\)\);return\{(?:[$A-Za-z_][$\w]*:[^,]+,)*?lockdownModeEnabled:\2\.settings\?\.lockdown_mode_enabled===!0,ultraEffortEnabled:\2\.settings\?\.model_picker_persists_ultra_effort===!0\})\}/;
 const queryMatch = next.match(queryRe);
 if (!queryMatch) {
@@ -916,6 +1000,7 @@ if (!queryMatch) {
 const querySuccessBody = queryMatch[1];
 const queryReplacement = `queryFn:async()=>{try{${querySuccessBody}}catch{return{lockdownModeEnabled:!1,ultraEffortEnabled:await ${readConfig}(${settings}.showUltraInModelPickerSlider).catch(()=>!1)===!0,ultraEffortLocalFallback:!0/*${marker}*/}}}`;
 next = next.replace(queryRe, queryReplacement);
+}
 
 const migrationKey = 'queryKey:[`chatgpt-ultra-effort-migration`]';
 const migrationKeyIndex = next.indexOf(migrationKey);
@@ -1099,6 +1184,11 @@ if (!nextSlash.includes(slashPatched) && !slashPatchedRe.test(nextSlash)) {
     changedSlash = true;
   } else if (cmdkSlashRe.test(nextSlash) && (cmdkKeywordSearchRe.test(nextSlash) || nextSlash.includes('keywords:r'))) {
     // Codex 26.519+ moved slash filtering to cmdk keywords; command id matching is already handled there.
+  } else if (nextSlash.includes('requiresEmptyComposer') &&
+             /\w\.getSearchQuery\?\.\(/.test(nextSlash) &&
+             /Math\.max\([A-Za-z_$][\w$]*\(e\.title,[A-Za-z_$][\w$]*\),[A-Za-z_$][\w$]*\(e\.id,[A-Za-z_$][\w$]*\),\.\.\.\(e\.searchAliases\?\?\[\]\)\.map/.test(nextSlash)) {
+    // Codex 26.831+ splits the command registry (app-primary) from the unified scorer (app-initial);
+    // the scorer already matches command ids and search aliases, so /goal is searchable by id.
   } else if (nextSlash.includes('id:`goal`') &&
              nextSlash.includes('getSearchQuery') &&
              /Math\.max\([A-Za-z_$][\w$]*\(e\.title,[A-Za-z_$][\w$]*\),[A-Za-z_$][\w$]*\(e\.id,[A-Za-z_$][\w$]*\),\.\.\.\(e\.searchAliases\?\?\[\]\)\.map/.test(nextSlash)) {
@@ -1169,7 +1259,13 @@ function patchComputerUseAvailability(file) {
     '$1$2={enabled:!0,isLoading:!1},'
   );
 
-  if (after === before && !/featureName:`computer_use`[^;]+;let [A-Za-z_$][\w$]*=\{enabled:!0,isLoading:!1\},/.test(before)) {
+  // The browser-use patch runs first and its inAppConfigV3 replacement already rewrites this
+  // same declaration, appending a /*CODEX_BROWSER_IN_APP_CONFIG_V3*/ marker between the object
+  // literal and the following comma. So on a re-patch of an already-patched package the second
+  // replace above has nothing left to do and the witness must tolerate that marker, otherwise
+  // a correctly patched build is reported as target-not-found.
+  const availabilityPatchedRe = /featureName:`computer_use`[^;]+;let [A-Za-z_$][\w$]*=\{enabled:!0,isLoading:!1\}(?:\/\*[^*]*\*\/)?,/;
+  if (after === before && !availabilityPatchedRe.test(before)) {
     process.stderr.write('computer-use-availability-patch-target-not-found\n');
     process.exit(2);
   }
@@ -1268,11 +1364,23 @@ function patchFeatureHook(file) {
     'CODEX_BROWSER_EXTERNAL_GATE_V2',
     'CODEX_BROWSER_EXTERNAL_CONFIG_V2'
   ];
+  // 26.831+ splits each browser_use feature hook across several let statements
+  // with React-compiler memo-cache blocks in between, so the hook result, the
+  // WSL read, and the derived availability vars no longer sit in one let chain.
+  // Match the two split declarations by their stable neighbor expressions and
+  // force the WSL availability result separately.
+  const inAppConfigV3OriginalRe = /let ([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\)(,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,([A-Za-z_$][\w$]*);)/;
+  const externalConfigV3OriginalRe = /let ([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\)(,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\|\|[A-Za-z_$][\w$]*===`chrome-extension`,)/;
+  const wslResultV3Re = /([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*===!0\|\|[A-Za-z_$][\w$]*\.kind===`wsl`/g;
+  const v3ConfigPatched = before.includes('/*CODEX_BROWSER_IN_APP_CONFIG_V3*/') &&
+                          before.includes('/*CODEX_BROWSER_EXTERNAL_CONFIG_V3*/');
+  const v3ConfigOriginal = inAppConfigV3OriginalRe.test(before) &&
+                           externalConfigV3OriginalRe.test(before);
   if (hasCurrentCompiledShape && (
       !(currentInAppPairOriginalRe.test(before) || currentInAppPairPatchedRe.test(before)) ||
-      !(currentInAppConfigOriginalRe.test(before) || currentInAppConfigPatchedRe.test(before)) ||
+      !((currentInAppConfigOriginalRe.test(before) || currentInAppConfigPatchedRe.test(before)) || v3ConfigOriginal || v3ConfigPatched) ||
       !(currentExternalGateOriginalRe.test(before) || currentExternalGatePatchedRe.test(before)) ||
-      !(currentExternalConfigOriginalRe.test(before) || currentExternalConfigPatchedRe.test(before)))) {
+      !((currentExternalConfigOriginalRe.test(before) || currentExternalConfigPatchedRe.test(before)) || v3ConfigOriginal || v3ConfigPatched))) {
     process.stderr.write('browser-use-current-feature-hook-incomplete\n');
     process.exit(2);
   }
@@ -1294,6 +1402,18 @@ function patchFeatureHook(file) {
     after = after.replace(
       currentExternalConfigOriginalRe,
       'let $1={enabled:!0,isLoading:!1},$2=!1,$3=$4($5),$6=!1,$7;/*CODEX_BROWSER_EXTERNAL_CONFIG_V2*/'
+    );
+    after = after.replace(
+      inAppConfigV3OriginalRe,
+      'let $1={enabled:!0,isLoading:!1}/*CODEX_BROWSER_IN_APP_CONFIG_V3*/$2'
+    );
+    after = after.replace(
+      externalConfigV3OriginalRe,
+      'let $1={enabled:!0,isLoading:!1}/*CODEX_BROWSER_EXTERNAL_CONFIG_V3*/$2'
+    );
+    after = after.replace(
+      wslResultV3Re,
+      '$1=!1/*CODEX_BROWSER_WSL_RESULT_V3*/'
     );
   }
 
@@ -1355,7 +1475,8 @@ function patchFeatureHook(file) {
       !before.includes('let u={enabled:!0,isLoading:!1},d=!1,f=!0,p=!1,_=!1,v;') &&
       !/\{enabled:!0,isLoading:!1\},[A-Za-z_$][\w$]*=!0,[A-Za-z_$][\w$]*=!1/.test(before) &&
       !/[A-Za-z_$][\w$]*=!0,[A-Za-z_$][\w$]*=!0,[A-Za-z_$][\w$]*;/.test(before) &&
-      !currentCompiledMarkers.every(marker => before.includes(marker))) {
+      !currentCompiledMarkers.every(marker => before.includes(marker)) &&
+      !v3ConfigPatched) {
     process.stderr.write('browser-use-feature-hook-patch-target-not-found\n');
     process.exit(2);
   }
@@ -1452,8 +1573,12 @@ function patchDesktopFeatureSender(file) {
 function patchDesktopFeatureMain(file) {
   const before = read(file);
   const patchedMainFragment = 'browserPane:!0,inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0';
+  // Desktop 26.917 dropped `computerUseNodeRepl` from the env gate, so only the slot-shaped
+  // feature object is rewritten and the legacy fragment above never appears on a re-run.
+  const patchedMainPattern = /inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:/;
   const envGatePattern = /([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)===`win32`&&([A-Za-z_$][\w$]*)\.CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE===`1`\?\{\.\.\.([A-Za-z_$][\w$]*),computerUse:!0,computerUseNodeRepl:!0\}:\4/;
   if (!before.includes(patchedMainFragment) &&
+      !patchedMainPattern.test(before) &&
       (!before.includes('CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE') ||
        (!envGatePattern.test(before) &&
         !/inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?browserPane:[A-Za-z_$][\w$]*\.browserPane,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed/.test(before)))) {
@@ -1471,7 +1596,8 @@ function patchDesktopFeatureMain(file) {
   );
 
   if (after === before &&
-      !before.includes(patchedMainFragment)) {
+      !before.includes(patchedMainFragment) &&
+      !patchedMainPattern.test(before)) {
     process.stderr.write('browser-use-desktop-feature-main-patch-target-not-found\n');
     process.exit(2);
   }
@@ -1530,12 +1656,16 @@ if (!after.includes(copyPatchedMarker) && !hasNativeWindowsCopyFallback) {
 
 if (!after.includes(sitesPatchedMarker)) {
   const sitesAvailabilityRe = /isAvailable:\(\{features:([A-Za-z_$][\w$]*)\}\)=>\1\.sites/;
-  if (!sitesAvailabilityRe.test(after)) {
+  const sitesRetirementRe = /async function [A-Za-z_$][\w$]*\(([A-Za-z_$][\w$]*)\)\{let\{plugins:([A-Za-z_$][\w$]*)\}=await \1\.getUserSavedConfiguration\(\);typeof \2==`object`&&\2&&!Array\.isArray\(\2\)&&Object\.hasOwn\(\2,`sites@openai-bundled`\)&&await \1\.uninstallPlugin\(\{pluginId:`sites@openai-bundled`\}\)\}/g;
+  const sitesRetired = [...after.matchAll(sitesRetirementRe)].length === 1 &&
+    !/\.\.\.[A-Za-z_$][\w$]*\.[A-Za-z_$][\w$]*\.sites\b/.test(after);
+  if (sitesAvailabilityRe.test(after)) {
+    after = after.replace(sitesAvailabilityRe, `isAvailable:()=>!0/*${sitesPatchedMarker}*/`);
+    changed = true;
+  } else if (!sitesRetired) {
     process.stderr.write('bundled-marketplace-sites-availability-target-not-found\n');
     process.exit(2);
   }
-  after = after.replace(sitesAvailabilityRe, `isAvailable:()=>!0/*${sitesPatchedMarker}*/`);
-  changed = true;
 }
 
 if (!after.includes(deepResearchPatchedMarker)) {
@@ -1596,6 +1726,122 @@ fs.writeFileSync(file, next);
 process.stdout.write('patched');
 '@
 
+  Set-Content -LiteralPath $computerUseSurfacePatcherPath -Encoding UTF8 -Value @'
+const fs = require('node:fs');
+const file = process.argv[2];
+const text = fs.readFileSync(file, 'utf8');
+const marker = 'CODEX_CUA_WINDOWS_SURFACE_V1';
+
+// Current Desktop bundles carry two independent Darwin-only checks: one for
+// exposing the computer-use plugin and one for generating the CUA surface list.
+// The Windows helper is supplied by the local CUA runtime, so both checks must
+// admit win32 before the plugin can expose the window-based cua.computer API.
+// Desktop 26.924 renamed every minified local in both gates without changing
+// their shape, so the anchors match the gate STRUCTURE with capture groups and
+// rewrite the patched forms with the bundle's own identifiers. Backreferences
+// pin repeated locals (the platform object, the feature flags object and the
+// browser-use state object) so lookalike code cannot satisfy a pattern.
+const id = '[A-Za-z_$][\\w$]*';
+const originalPluginGateRe = new RegExp(`if\\(!(${id})\\.installed\\|\\|(${id})==null\\|\\|(${id})&&(${id})\\.platform!==\`darwin\`\\)return null;`, 'g');
+const patchedPluginGateRe = new RegExp(`if\\(!(${id})\\.installed\\|\\|(${id})==null\\|\\|(${id})&&\\((${id})\\.platform!==\`darwin\`&&\\4\\.platform!==\`win32\`\\)\\)return null;`, 'g');
+const originalSurfaceGateRe = new RegExp(`(${id})=(${id})&&(${id})\\.platform===\`darwin\`&&(${id})\\.computerUse&&(${id})\\.enabled&&\\5\\.paths\\.serviceAppPath!=null`, 'g');
+const modernPatchedSurfaceGateRe = new RegExp(`(${id})=(${id})&&(${id})\\.computerUse&&\\((${id})\\.platform===\`darwin\`&&(${id})\\.enabled&&\\5\\.paths\\.serviceAppPath!=null\\|\\|\\4\\.platform===\`win32\`\\)`, 'g');
+const legacyPatchedSurfaceGateRe = new RegExp(`(${id})=(${id})&&\\((${id})\\.platform===\`darwin\`&&(${id})\\.computerUse&&(${id})\\.enabled&&\\5\\.paths\\.serviceAppPath!=null\\|\\|\\3\\.platform===\`win32\`&&\\4\\.computerUse&&\\4\\.computerUseNodeRepl\\)`, 'g');
+const unversionedPatchedSurfaceGateRe = new RegExp(`(${id})=(${id})&&\\((${id})\\.platform===\`darwin\`&&(${id})\\.computerUse&&(${id})\\.enabled&&\\5\\.paths\\.serviceAppPath!=null\\|\\|\\3\\.platform===\`win32\`&&\\4\\.computerUse\\)`, 'g');
+// Desktop 26.917 removes computerUseNodeRepl. Its shared readiness result f
+// already requires the enabled CUA plugin, both Node paths and mcpToolExposure.
+const modernReadinessRe = /return t\.browserUseTinysky&&!o&&a\.nodePath!=null&&a\.nodeReplPath!=null&&[A-Za-z_$][\w$]*\.[A-Za-z_$][\w$]*\(e,`mcpToolExposure`\)&&s\?\.plugin\.installed===!0&&s\.plugin\.enabled&&s\.plugin\.availability===`AVAILABLE`/g;
+const patchedSurfaceGateRes = [modernPatchedSurfaceGateRe, legacyPatchedSurfaceGateRe, unversionedPatchedSurfaceGateRe];
+// Do not infer the host layout from a dependency inserted by a previous patch.
+const layoutText = patchedSurfaceGateRes.reduce((source, re) => source.replace(re, ''), text);
+const legacyLayout = layoutText.includes('computerUseNodeRepl');
+const modernLayout = !legacyLayout && [...layoutText.matchAll(modernReadinessRe)].length === 1;
+
+function buildPluginGate(p, i, a, e) {
+  return `if(!${p}.installed||${i}==null||${a}&&(${e}.platform!==\`darwin\`&&${e}.platform!==\`win32\`))return null;/*${marker}*/`;
+}
+
+function buildSurfaceGate(layout, result, flag, platform, features, state) {
+  const darwinTail = `${state}.enabled&&${state}.paths.serviceAppPath!=null`;
+  if (layout === 'modern') {
+    return `${result}=${flag}&&${features}.computerUse&&(${platform}.platform===\`darwin\`&&${darwinTail}||${platform}.platform===\`win32\`)`;
+  }
+  return `${result}=${flag}&&(${platform}.platform===\`darwin\`&&${features}.computerUse&&${darwinTail}||${platform}.platform===\`win32\`&&${features}.computerUse&&${features}.computerUseNodeRepl)`;
+}
+
+function count(value, source = text) {
+  let total = 0;
+  let cursor = 0;
+  while ((cursor = source.indexOf(value, cursor)) !== -1) {
+    total += 1;
+    cursor += value.length;
+  }
+  return total;
+}
+
+function countRe(re, source = text) {
+  return (source.match(re) || []).length;
+}
+
+const pluginCount = countRe(originalPluginGateRe);
+const surfaceCount = countRe(originalSurfaceGateRe);
+const markerCount = count(marker);
+const patchedPluginCount = countRe(patchedPluginGateRe);
+const patchedSurfaceCounts = patchedSurfaceGateRes.map(re => countRe(re));
+const patchedSurfaceCount = patchedSurfaceCounts.reduce((total, value) => total + value, 0);
+if (markerCount || patchedPluginCount || patchedSurfaceCount) {
+  if (markerCount === 1 && patchedPluginCount === 1 &&
+      patchedSurfaceCount === 1 && pluginCount === 0 && surfaceCount === 0 &&
+      (legacyLayout || modernLayout)) {
+    const expectedLayout = modernLayout ? 'modern' : 'legacy';
+    const currentGateIndex = patchedSurfaceCounts.findIndex(value => value === 1);
+    const expectedGateIndex = modernLayout ? 0 : 1;
+    if (currentGateIndex === expectedGateIndex) {
+      process.stdout.write('already-patched');
+    } else {
+      // modern captures (result, flag, features, platform, state); the legacy
+      // and unversioned forms capture (result, flag, platform, features, state).
+      const next = text.replace(patchedSurfaceGateRes[currentGateIndex],
+        (match, result, flag, first, second, state) => {
+          const platform = currentGateIndex === 0 ? second : first;
+          const features = currentGateIndex === 0 ? first : second;
+          return buildSurfaceGate(expectedLayout, result, flag, platform, features, state);
+        });
+      fs.writeFileSync(file, next);
+      process.stdout.write('patched');
+    }
+    process.exit(0);
+  }
+  process.stderr.write('incomplete or ambiguous CUA surface patch; refusing to modify the asset\n');
+  process.exit(2);
+}
+if (pluginCount !== 1 || surfaceCount !== 1) {
+  process.stderr.write(`current CUA surface anchors not found exactly once: plugin=${pluginCount} surface=${surfaceCount}\n`);
+  process.exit(2);
+}
+if (!legacyLayout && !modernLayout) {
+  process.stderr.write('unsupported or ambiguous CUA readiness predicate; refusing to modify the asset\n');
+  process.exit(2);
+}
+
+const layout = modernLayout ? 'modern' : 'legacy';
+const expectedSurfaceGateRe = modernLayout ? modernPatchedSurfaceGateRe : legacyPatchedSurfaceGateRe;
+const next = text
+  .replace(originalPluginGateRe, (match, p, i, a, e) => buildPluginGate(p, i, a, e))
+  .replace(originalSurfaceGateRe, (match, result, flag, platform, features, state) =>
+    buildSurfaceGate(layout, result, flag, platform, features, state));
+
+if (count(marker, next) !== 1 || countRe(patchedPluginGateRe, next) !== 1 ||
+    countRe(expectedSurfaceGateRe, next) !== 1 || countRe(originalPluginGateRe, next) !== 0 ||
+    countRe(originalSurfaceGateRe, next) !== 0) {
+  process.stderr.write('current CUA surface patch verification failed\n');
+  process.exit(3);
+}
+
+fs.writeFileSync(file, next);
+process.stdout.write('patched');
+'@
+
   return [pscustomobject]@{
     Fast = $fastPatcherPath
     FastUi = $fastUiPatcherPath
@@ -1609,6 +1855,7 @@ process.stdout.write('patched');
     BrowserUse = $browserUsePatcherPath
     BundledMarketplaceCopy = $bundledMarketplaceCopyPatcherPath
     NodeReplTrustedPaths = $nodeReplTrustedPathsPatcherPath
+    ComputerUseSurface = $computerUseSurfacePatcherPath
   }
 }
 
@@ -1779,7 +2026,7 @@ function Find-PatchTargets {
     }
   }
   if ([string]::IsNullOrWhiteSpace($browserSidebarAvailabilityTarget)) {
-    foreach ($candidate in (Get-ChildItem -LiteralPath $assetsDir -Filter 'app-initial-*.js' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)) {
+    foreach ($candidate in (Get-ChildItem -LiteralPath $assetsDir -Filter 'app-*.js' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'app-initial-*.js' -or $_.Name -like 'app-shared-*.js' } | Select-Object -ExpandProperty FullName)) {
       $text = Get-Content -Raw -LiteralPath $candidate
       if ($text.Contains('in_app_browser') -and
            $text.Contains('experimental-features') -and
@@ -1821,7 +2068,8 @@ function Find-PatchTargets {
       if ($text.Contains('CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE') -and
           (($text -match '([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)===`win32`&&([A-Za-z_$][\w$]*)\.CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE===`1`\?\{\.\.\.([A-Za-z_$][\w$]*),computerUse:!0,computerUseNodeRepl:!0\}:\4') -or
            ($text -match 'inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:[A-Za-z_$][\w$]*\.browserPane,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed') -or
-           $text.Contains('browserPane:!0,inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0'))) {
+           $text.Contains('browserPane:!0,inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0') -or
+           ($text -match 'inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:'))) {
         $desktopFeatureMainTarget = $candidate
         break
       }
@@ -1940,6 +2188,17 @@ function Find-PatchTargets {
       $text = Get-Content -Raw -LiteralPath $candidate
       if ($text.Contains('id:`goal`') -and
           $text.Contains('getSearchQuery') -and
+          $text -match 'Math\.max\([A-Za-z_$][\w$]*\(e\.title,[A-Za-z_$][\w$]*\),[A-Za-z_$][\w$]*\(e\.id,[A-Za-z_$][\w$]*\),\.\.\.\(e\.searchAliases\?\?\[\]\)\.map') {
+        $goalSlashTarget = $candidate
+        break
+      }
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($goalSlashTarget)) {
+    foreach ($candidate in (Invoke-RgList $RgPath 'getSearchQuery\?\.' $assetsDir)) {
+      $text = Get-Content -Raw -LiteralPath $candidate
+      if ($text.Contains('requiresEmptyComposer') -and
+          $text.Contains('searchAliases') -and
           $text -match 'Math\.max\([A-Za-z_$][\w$]*\(e\.title,[A-Za-z_$][\w$]*\),[A-Za-z_$][\w$]*\(e\.id,[A-Za-z_$][\w$]*\),\.\.\.\(e\.searchAliases\?\?\[\]\)\.map') {
         $goalSlashTarget = $candidate
         break
@@ -2087,6 +2346,31 @@ function Invoke-NodePatcher {
   return ($output -join "`n").Trim()
 }
 
+function Find-ComputerUseSurfaceTarget {
+  param([string]$ExtractDir)
+  $viteBuildDir = Join-Path $ExtractDir '.vite\build'
+  if (-not (Test-Path -LiteralPath $viteBuildDir -PathType Container)) {
+    Fail "vite build directory not found in extracted asar: $viteBuildDir"
+  }
+  $candidates = @(foreach ($candidate in (Get-ChildItem -LiteralPath $viteBuildDir -Filter '*.js' -File)) {
+    $text = [IO.File]::ReadAllText($candidate.FullName)
+    $modernReadinessPattern = 'return t\.browserUseTinysky&&!o&&a\.nodePath!=null&&a\.nodeReplPath!=null&&[A-Za-z_$][\w$]*\.[A-Za-z_$][\w$]*\(e,`mcpToolExposure`\)&&s\?\.plugin\.installed===!0&&s\.plugin\.enabled&&s\.plugin\.availability===`AVAILABLE`'
+    if ($text.Contains('CODEX_CUA_WINDOWS_SURFACE_V1') -or
+        ($text.Contains('CUA_REPL_ENABLED_SURFACES') -and
+         $text.Contains('cuaReplSurfaces') -and
+         ($text.Contains('computerUseNodeRepl') -or
+          [regex]::Matches($text, $modernReadinessPattern).Count -eq 1) -and
+         $text.Contains('serviceAppPath!=null') -and
+         $text.Contains('platform===`darwin`'))) {
+      $candidate.FullName
+    }
+  })
+  if ($candidates.Count -ne 1) {
+    Fail "expected exactly one Windows CUA surface-gating target; found $($candidates.Count)"
+  }
+  return $candidates[0]
+}
+
 function Invoke-PatchAppAsar {
   param(
     [string]$WorkAppPath,
@@ -2111,6 +2395,32 @@ function Invoke-PatchAppAsar {
   Write-Log 'extracting app.asar'
   Invoke-NpxAsar 'extract' $asarPath $extractDir
   $patchers = Write-PatcherFiles $WorkDir
+
+  if ($OnlyComputerUseSurface) {
+    $computerUseSurfaceTarget = Find-ComputerUseSurfaceTarget $extractDir
+
+    Write-Log "Windows CUA surface patch target: $computerUseSurfaceTarget"
+    $computerUseSurface = Invoke-NodePatcher $nodePath $patchers.ComputerUseSurface @($computerUseSurfaceTarget)
+    Write-Log "Windows CUA surface patch result: $computerUseSurface"
+    & $nodePath --check $computerUseSurfaceTarget
+    if ($LASTEXITCODE -ne 0) {
+      Fail "Windows CUA surface patched asset failed node --check: $computerUseSurfaceTarget"
+    }
+    Write-Log 'Windows CUA surface patched asset syntax check passed'
+
+    if ($DryRun) {
+      Write-Log 'dry run: Windows CUA surface target validation completed; no package was changed'
+      return $false
+    }
+    if ($computerUseSurface -eq 'already-patched') {
+      Write-Log 'asar Windows CUA surface patch already present'
+      return $false
+    }
+    Write-Log 'repacking app.asar'
+    Invoke-NpxAsar 'pack' $extractDir $newAsarPath
+    Copy-Item -LiteralPath $newAsarPath -Destination $asarPath -Force
+    return $true
+  }
 
   if ($OnlyModelExperience) {
     $assetsDir = Join-Path $extractDir 'webview\assets'
@@ -2295,14 +2605,29 @@ function Invoke-PatchAppAsar {
     return $true
   }
 
+  # Current runtime-backed CUA plugins need the Windows surface gate in addition
+  # to the shared Computer Use feature gate. Older bundles have no surface list.
+  $computerUseSurface = 'not-applicable'
+  $surfaceCandidates = @(Invoke-RgList $rgPath 'cuaReplSurfaces|CODEX_CUA_WINDOWS_SURFACE_V1' (Join-Path $extractDir '.vite\build'))
+  if ($surfaceCandidates.Count -gt 0) {
+    $computerUseSurfaceTarget = Find-ComputerUseSurfaceTarget $extractDir
+    Write-Log "Windows CUA surface patch target: $computerUseSurfaceTarget"
+    $computerUseSurface = Invoke-NodePatcher $nodePath $patchers.ComputerUseSurface @($computerUseSurfaceTarget)
+    & $nodePath --check $computerUseSurfaceTarget
+    if ($LASTEXITCODE -ne 0) {
+      Fail "Windows CUA surface patched asset failed node --check: $computerUseSurfaceTarget"
+    }
+  }
+  Write-Log "Windows CUA surface patch result: $computerUseSurface"
+
   $targets = Find-PatchTargets $rgPath $extractDir
 
   $fast = Invoke-NodePatcher $nodePath $patchers.Fast @($targets.FastMode)
   Write-Log "fast-mode patch result: $fast"
   $fastUi = Invoke-NodePatcher $nodePath $patchers.FastUi @($targets.FastModeUi)
   Write-Log "fast-mode UI patch result: $fastUi"
-  $customModels = Invoke-NodePatcher $nodePath $patchers.CustomModels (@($targets.CustomModels) + @($CustomModels))
-  Write-Log "custom models patch result: $customModels ($($CustomModels -join ', '))"
+  $customModelsResult = Invoke-NodePatcher $nodePath $patchers.CustomModels (@($targets.CustomModels) + @($CustomModels))
+  Write-Log "custom models patch result: $customModelsResult ($($CustomModels -join ', '))"
   $powerSlider = Invoke-NodePatcher $nodePath $patchers.PowerSlider @($targets.PowerSlider)
   Write-Log "Power slider patch result: $powerSlider"
   $ultraSlider = Invoke-NodePatcher $nodePath $patchers.UltraSlider @($(if ([string]::IsNullOrWhiteSpace($targets.UltraSlider)) { '__none__' } else { [string]$targets.UltraSlider }))
@@ -2335,6 +2660,8 @@ function Invoke-PatchAppAsar {
   Write-Log "computer-use gate patch result: $computerUse"
   $nodeReplTrustedPaths = Invoke-NodePatcher $nodePath $patchers.NodeReplTrustedPaths @($targets.NodeReplTrustedPaths)
   Write-Log "Node REPL trusted-paths patch result: $nodeReplTrustedPaths"
+  $nodeReplProxyEnv = Invoke-NodePatcher $nodePath (Join-Path $PSScriptRoot 'patch-node-repl-proxy-env.cjs') @($targets.NodeReplTrustedPaths)
+  Write-Log "Node REPL proxy environment patch result: $nodeReplProxyEnv"
   $bundledMarketplaceCopy = Invoke-NodePatcher $nodePath $patchers.BundledMarketplaceCopy @($targets.BundledMarketplaceCopy)
   Write-Log "bundled marketplace copy patch result: $bundledMarketplaceCopy"
 
@@ -2351,7 +2678,7 @@ function Invoke-PatchAppAsar {
 
   if ($fast -eq 'already-patched' -and
       $fastUi -eq 'already-patched' -and
-      $customModels -eq 'already-patched' -and
+      $customModelsResult -eq 'already-patched' -and
       $powerSlider -eq 'already-patched' -and
       $ultraSlider -in @('already-patched', 'not-applicable') -and
       $localeI18n -eq 'already-patched' -and
@@ -2360,7 +2687,9 @@ function Invoke-PatchAppAsar {
       $browserUse -eq 'already-patched' -and
       $computerUse -eq 'already-patched' -and
       $nodeReplTrustedPaths -eq 'already-patched' -and
-      $bundledMarketplaceCopy -eq 'already-patched') {
+      $nodeReplProxyEnv -in @('already-patched', 'not-applicable') -and
+      $bundledMarketplaceCopy -eq 'already-patched' -and
+      $computerUseSurface -in @('already-patched', 'not-applicable')) {
     Write-Log 'asar patch already present'
     return $false
   }
@@ -2371,83 +2700,8 @@ function Invoke-PatchAppAsar {
   return $true
 }
 
-function Convert-BytesToHex {
-  param([byte[]]$Bytes)
-  return (($Bytes | ForEach-Object { $_.ToString('x2') }) -join '')
-}
-
-function Get-AsarHeaderSha256 {
-  param([string]$AsarPath)
-  $fs = [System.IO.File]::Open($AsarPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
-  try {
-    $pickleHeader = New-Object byte[] 16
-    if ($fs.Read($pickleHeader, 0, 16) -ne 16) {
-      Fail 'could not read asar pickle header'
-    }
-    # Electron hashes the ASAR JSON header, not the outer pickle-size fields.
-    $headerSize = [BitConverter]::ToUInt32($pickleHeader, 12)
-    if ($headerSize -le 0 -or $headerSize -gt ($fs.Length - 16)) {
-      Fail "invalid asar JSON header size: $headerSize"
-    }
-    $headerBytes = New-Object byte[] $headerSize
-    if ($fs.Read($headerBytes, 0, [int]$headerSize) -ne [int]$headerSize) {
-      Fail 'could not read asar header bytes'
-    }
-    $sha = [System.Security.Cryptography.SHA256]::Create()
-    try {
-      return (Convert-BytesToHex $sha.ComputeHash($headerBytes))
-    } finally {
-      $sha.Dispose()
-    }
-  } finally {
-    $fs.Dispose()
-  }
-}
-
-function Update-CodexExeAsarIntegrity {
-  param(
-    [string]$ExePath,
-    [string]$AsarHash
-  )
-  $bytes = [System.IO.File]::ReadAllBytes($ExePath)
-  $text = [System.Text.Encoding]::ASCII.GetString($bytes)
-  $pattern = '\[\{"file":"resources\\\\app\.asar","alg":"SHA256","value":"([0-9a-fA-F]{64})"\}\]'
-  $match = [regex]::Match($text, $pattern)
-  if (-not $match.Success) {
-    if ($text.Contains('app.asar')) {
-      Fail 'could not find Electron ASAR integrity JSON inside Codex.exe'
-    }
-    Write-Log 'Codex.exe ASAR integrity JSON not present; skipping executable integrity update'
-    return
-  }
-  $oldHash = $match.Groups[1].Value
-  if ($oldHash -eq $AsarHash) {
-    Write-Log "Codex.exe asar integrity already current: $AsarHash"
-    return
-  }
-  $oldBytes = [System.Text.Encoding]::ASCII.GetBytes($oldHash)
-  $newBytes = [System.Text.Encoding]::ASCII.GetBytes($AsarHash)
-  $pos = -1
-  for ($i = 0; $i -le $bytes.Length - $oldBytes.Length; $i++) {
-    $ok = $true
-    for ($j = 0; $j -lt $oldBytes.Length; $j++) {
-      if ($bytes[$i + $j] -ne $oldBytes[$j]) {
-        $ok = $false
-        break
-      }
-    }
-    if ($ok) {
-      $pos = $i
-      break
-    }
-  }
-  if ($pos -lt 0) {
-    Fail 'could not locate ASAR integrity hash bytes in Codex.exe'
-  }
-  [Array]::Copy($newBytes, 0, $bytes, $pos, $newBytes.Length)
-  [System.IO.File]::WriteAllBytes($ExePath, $bytes)
-  Write-Log "updated Codex.exe asar integrity: $oldHash -> $AsarHash"
-}
+. (Join-Path $PSScriptRoot 'lib\asar-integrity.ps1')
+. (Join-Path $PSScriptRoot 'lib\msix-payload.ps1')
 
 function Get-ManifestPublisher {
   param([string]$WorkPackageRoot)
@@ -2473,15 +2727,23 @@ function Test-CodeSigningCertificate {
 
 function Get-OrCreateSigningCertificate {
   param([string]$Publisher)
-  $cert = Get-ChildItem Cert:\CurrentUser\My -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.Subject -eq $Publisher -and
-      $_.HasPrivateKey -and
-      $_.NotAfter -gt (Get-Date) -and
-      (Test-CodeSigningCertificate $_)
-    } |
-    Sort-Object NotAfter -Descending |
-    Select-Object -First 1
+  # The SDK's Certificate provider can be absent in a clean Windows PowerShell
+  # session. Reading the store directly still finds an existing signing key.
+  $store = [Security.Cryptography.X509Certificates.X509Store]::new('My', 'CurrentUser')
+  try {
+    $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+    $cert = $store.Certificates |
+      Where-Object {
+        $_.Subject -eq $Publisher -and
+        $_.HasPrivateKey -and
+        $_.NotAfter -gt (Get-Date) -and
+        (Test-CodeSigningCertificate $_)
+      } |
+      Sort-Object NotAfter -Descending |
+      Select-Object -First 1
+  } finally {
+    $store.Close()
+  }
   if ($cert) {
     Write-Log "using existing signing certificate: $($cert.Thumbprint)"
     return $cert
@@ -2567,20 +2829,11 @@ function Install-PatchedPackage {
     [string]$MsixPath,
     [string]$PackageFamilyName
   )
-  $existing = Get-AppxPackage -Name 'OpenAI.Codex' -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($existing) {
-    Stop-CodexDesktopProcesses $existing.InstallLocation
-    Write-Log "removing existing package: $($existing.PackageFullName)"
-    try {
-      Remove-AppxPackage -Package $existing.PackageFullName -PreserveApplicationData -ErrorAction Stop
-    } catch {
-      Write-Log 'PreserveApplicationData is not supported here; retrying normal Remove-AppxPackage'
-      Remove-AppxPackage -Package $existing.PackageFullName -ErrorAction Stop
-    }
-  }
-  Write-Log "installing patched MSIX: $MsixPath"
-  Add-AppxPackage -Path $MsixPath -ErrorAction Stop
-  $installed = Get-AppxPackage -Name 'OpenAI.Codex' -ErrorAction Stop | Select-Object -First 1
+  # Authenticode validates the signed block map; it does not prove the ZIP payload
+  # matches that map. Reject a damaged package before interrupting a working app.
+  $payload = Test-MsixPayload -Path $MsixPath
+  Write-Log "MSIX payload verified: files=$($payload.Files) blocks=$($payload.Blocks)"
+  $installed = Invoke-TransactionalMsixInstall -MsixPath $MsixPath -PackageName $PackageFamilyName
   Write-Log "installed package: $($installed.PackageFullName)"
   if ($Launch -and -not $NoLaunch) {
     $application = @(Get-AppxPackageManifest -Package $installed).Package.Applications.Application | Select-Object -First 1
@@ -2673,6 +2926,10 @@ function Add-LocalMarketplace {
 
 function Patch-ChromePluginWindowsRegistryParsing {
   param([string]$WorkApp)
+
+  if ($OnlyComputerUseSurface) {
+    return 'skipped-targeted-computer-use-surface'
+  }
 
   $chromePluginRoot = Join-Path $WorkApp 'resources\plugins\openai-bundled\plugins\chrome'
   if (-not (Test-Path -LiteralPath $chromePluginRoot -PathType Container)) {
@@ -3079,6 +3336,7 @@ function Cleanup-WindowsSdk {
   }
 }
 
+Assert-ComputerUseSurfaceOptions
 $OutputRoot = Resolve-OutputRoot -Candidate $OutputRoot -WasExplicit $OutputRootWasExplicit
 $sourceApp = Find-CodexAppPath
 $sourcePackageRoot = Get-PackageRoot $sourceApp
@@ -3108,19 +3366,38 @@ try {
   $chromeRegistryParsing = Patch-ChromePluginWindowsRegistryParsing $workApp
   Write-Log "Chrome localized registry parsing patch result: $chromeRegistryParsing"
 
+  # Validate the runtime inside the package copy before it can enter an MSIX.
+  if (-not ($OnlyBundledMarketplaceCopy -or $OnlyComputerUseSurface -or $OnlyModelExperience)) {
+    $stagedNodeModules = Join-Path $workApp 'resources\cua_node\bin\node_modules'
+    $entryInstructions = Repair-WindowsCuaEntryInstructions -NodeModulesRoot $stagedNodeModules
+    Write-Log "Windows CUA entry instructions patch result: $entryInstructions"
+    $stagedHelper = Join-Path $stagedNodeModules '@oai\sky\bin\windows\codex-computer-use.exe'
+    $helperPatch = Repair-StagedWindowsComputerUseHelper `
+      -HelperPath $stagedHelper `
+      -PatcherPath (Join-Path $PSScriptRoot 'patch-computer-use-helper-win10.ps1') `
+      -BackupRoot (Join-Path $tempWork 'helper-backup') `
+      -PatchRequested:$PatchWindows10ScreenshotHelper
+    Write-Log "staged Windows 10 helper patch result: $helperPatch"
+  }
+
   $patched = Invoke-PatchAppAsar $workApp $sourceApp $tempWork
   $asar = Join-Path $workApp 'resources\app.asar'
-  $exe = Join-Path $workApp 'Codex.exe'
+  if ($DryRun) {
+    # Surface integrity-host detection during a dry run so an unrecognized table format is
+    # reported before anyone repacks a package that cannot start.
+    Test-AsarIntegrityTargets $workApp | Out-Null
+  }
   if (-not $DryRun) {
-    $asarHash = Get-AsarHeaderSha256 $asar
-    Write-Log "app.asar header sha256: $asarHash"
-    Update-CodexExeAsarIntegrity $exe $asarHash
+    Write-Log "app.asar header sha256: $(Get-AsarHeaderSha256 $asar)"
+    Update-ElectronAsarIntegrity $workApp
 
     $makeappx = Require-WindowsSdkTool 'makeappx.exe'
     $signtool = Require-WindowsSdkTool 'signtool.exe'
     $publisher = Get-ManifestPublisher $workPackageRoot
     $cert = Get-OrCreateSigningCertificate $publisher
     Trust-SigningCertificate $cert
+    $updateVersion = Set-MsixUpdateVersion -ManifestPath (Join-Path $workPackageRoot 'AppxManifest.xml')
+    Write-Log "transactional update package version: $updateVersion"
     Invoke-MakeAppxPack $makeappx $workPackageRoot $msixPath
     Invoke-SignPackage $signtool $msixPath $cert
     Write-Log "patched MSIX: $msixPath"

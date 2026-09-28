@@ -12,7 +12,7 @@ Main entry point for project setup and validation.
 
 ```bash
 python3 scripts/project_manager.py init <project_name> [--format <registered_format>]
-python3 scripts/project_manager.py import-sources <project_path> <source1_or_dir> [<source2_or_dir> ...]
+python3 scripts/project_manager.py import-sources <project_path> <source1_or_dir> [<source2_or_dir> ...] [--no-image-propagation]
 python3 scripts/project_manager.py scaffold-spec <project_path>  # optional manual helper
 python3 scripts/project_manager.py scaffold-lock <project_path>  # optional manual helper
 python3 scripts/project_manager.py validate <project_path>
@@ -22,9 +22,23 @@ python3 scripts/project_manager.py page-context-report <project_path>
 ```
 
 Notes:
+
+- `import-sources --no-image-propagation` keeps extracted companion assets and
+  their Markdown references in `sources/`, skipping their copy/manifest merge
+  into the runtime `images/` pool. Create Template project-scope reference
+  intake requires this switch; see [Create Template §1A](../../workflows/create-template.md#1a-pptx-reference).
+  Generate keeps the default propagation. It covers
+  new conversions and existing companion Markdown. Explicit bitmap inputs
+  still enter `images/`; the switch does not clean up images imported earlier.
+- A moved topic-research pair `projects/<slug>.md` takes its sibling
+  `projects/<slug>_web_sources/` along to `analysis/research_web_sources/`.
+- Local sources under `projects/` are moved into the target project unless
+  `--copy` is passed; a file inside another project's tree is copied unless
+  `--move` is explicit, so borrowing a finished project's slices never empties it.
 - `--format` is optional and accepts registered canvas keys only. Pass it only
   when the actual canvas exactly matches a registered format.
-- Without `--format`, `init` creates `<name>_<YYYYMMDD>`; authoring records the
+- Without `--format`, `init` creates `<name>_<YYYYMMDD>`; a name that already
+  ends in `_<YYYYMMDD>` is used as-is (no second date). Authoring records the
   canvas in `spec_lock.md` for Default Generate or the first SVG for Quick
   Generate.
 - With `--format`, `init` preserves the registered form
@@ -35,6 +49,11 @@ Notes:
 - `--move` applies only to sources under the repository's `projects/` tree
 - A directly supplied supported bitmap is also copied into `images/` with a
   collision-safe basename while its original remains archived in `sources/`
+- SVG/EMF/WMF inputs stay source assets unless a converter manifest supplies
+  display metadata. Embedded Office vectors extracted from DOCX/PPTX land in
+  `images/` with `image_manifest.json` as first-class image assets and are
+  never converted to PNG; a blank browser preview of an EMF/WMF is expected.
+  Export behavior for them: [`svg-pipeline.md`](svg-pipeline.md)
 - Directory inputs are expanded non-recursively. After Step 1 conversion,
   pass the source file/directory once when generated Markdown lives beside the
   original source. If Step 1 used `-o` to write Markdown elsewhere, pass both

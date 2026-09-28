@@ -8,6 +8,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\msix-safe-install.ps1')
 $LogPrefix = '[codex-dynamic-tools-msix]'
 $WindowsSdkBuildToolsPackageId = 'microsoft.windows.sdk.buildtools'
 $WindowsSdkBuildToolsVersion = '10.0.26100.7705'
@@ -126,80 +127,8 @@ function Require-WindowsSdkTool([string]$ToolName) {
   return $tool
 }
 
-function Convert-BytesToHex([byte[]]$Bytes) {
-  return (($Bytes | ForEach-Object { $_.ToString('x2') }) -join '')
-}
-
-function Get-AsarHeaderSha256([string]$AsarPath) {
-  $fs = [System.IO.File]::Open($AsarPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
-  try {
-    $pickleHeader = New-Object byte[] 16
-    if ($fs.Read($pickleHeader, 0, 16) -ne 16) {
-      Fail 'could not read asar pickle header'
-    }
-    $headerSize = [BitConverter]::ToUInt32($pickleHeader, 12)
-    if ($headerSize -le 0 -or $headerSize -gt ($fs.Length - 16)) {
-      Fail "invalid asar JSON header size: $headerSize"
-    }
-    $headerBytes = New-Object byte[] $headerSize
-    if ($fs.Read($headerBytes, 0, [int]$headerSize) -ne [int]$headerSize) {
-      Fail 'could not read asar header bytes'
-    }
-    $sha = [System.Security.Cryptography.SHA256]::Create()
-    try {
-      return (Convert-BytesToHex $sha.ComputeHash($headerBytes))
-    } finally {
-      $sha.Dispose()
-    }
-  } finally {
-    $fs.Dispose()
-  }
-}
-
-function Update-CodexExeAsarIntegrity {
-  param(
-    [Parameter(Mandatory = $true)][string]$ExePath,
-    [Parameter(Mandatory = $true)][string]$AsarHash
-  )
-  $bytes = [System.IO.File]::ReadAllBytes($ExePath)
-  $text = [System.Text.Encoding]::ASCII.GetString($bytes)
-  $pattern = '\[\{"file":"resources\\\\app\.asar","alg":"SHA256","value":"([0-9a-fA-F]{64})"\}\]'
-  $match = [regex]::Match($text, $pattern)
-  if (-not $match.Success) {
-    if ($text.Contains('app.asar')) {
-      Fail 'could not find Electron ASAR integrity JSON inside Codex.exe'
-    }
-    Write-Log 'Codex.exe ASAR integrity JSON not present; skipping executable integrity update'
-    return
-  }
-  $oldHash = $match.Groups[1].Value
-  if ($oldHash -eq $AsarHash) {
-    Write-Log "Codex.exe ASAR integrity already current: $AsarHash"
-    return
-  }
-  $oldBytes = [System.Text.Encoding]::ASCII.GetBytes($oldHash)
-  $newBytes = [System.Text.Encoding]::ASCII.GetBytes($AsarHash)
-  $pos = -1
-  for ($i = 0; $i -le $bytes.Length - $oldBytes.Length; $i++) {
-    $ok = $true
-    for ($j = 0; $j -lt $oldBytes.Length; $j++) {
-      if ($bytes[$i + $j] -ne $oldBytes[$j]) {
-        $ok = $false
-        break
-      }
-    }
-    if ($ok) {
-      $pos = $i
-      break
-    }
-  }
-  if ($pos -lt 0) {
-    Fail 'could not locate ASAR integrity hash bytes in Codex.exe'
-  }
-  [Array]::Copy($newBytes, 0, $bytes, $pos, $newBytes.Length)
-  [System.IO.File]::WriteAllBytes($ExePath, $bytes)
-  Write-Log "updated Codex.exe ASAR integrity: $oldHash -> $AsarHash"
-}
+. (Join-Path $PSScriptRoot 'lib\asar-integrity.ps1')
+. (Join-Path $PSScriptRoot 'lib\appx-launch.ps1')
 
 function Get-OrCreateSigningCertificate([string]$Publisher) {
   $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
@@ -281,6 +210,7 @@ try {
   }
 
   $npx = Get-RequiredCommand 'npx'
+  $workAppRoot = Join-Path $workPackageRoot 'app'
   $workAsar = Join-Path $workPackageRoot 'app\resources\app.asar'
   Write-Log 'extracting app.asar'
   & $npx --yes --cache $npxCache asar extract $workAsar $asarDir
@@ -304,6 +234,9 @@ try {
   }
 
   if ($DryRun) {
+    # Surface integrity-host detection during a dry run so an unrecognized table format is
+    # reported before anyone repacks a package that cannot start.
+    Test-AsarIntegrityTargets $workAppRoot | Out-Null
     Write-Log 'dry run passed; package was not repacked or installed'
     return
   }
@@ -314,9 +247,8 @@ try {
     Fail "npx asar pack failed with exit code $LASTEXITCODE"
   }
 
-  $asarHash = Get-AsarHeaderSha256 $workAsar
-  Write-Log "app.asar header sha256: $asarHash"
-  Update-CodexExeAsarIntegrity -ExePath (Join-Path $workPackageRoot 'app\Codex.exe') -AsarHash $asarHash
+  Write-Log "app.asar header sha256: $(Get-AsarHeaderSha256 $workAsar)"
+  Update-ElectronAsarIntegrity $workAppRoot
 
   $makeappx = Require-WindowsSdkTool 'makeappx.exe'
   $signtool = Require-WindowsSdkTool 'signtool.exe'
@@ -324,6 +256,8 @@ try {
   $publisher = [string]$manifest.Package.Identity.Publisher
   $cert = Get-OrCreateSigningCertificate $publisher
   Trust-SigningCertificate $cert
+  $updateVersion = Set-MsixUpdateVersion -ManifestPath (Join-Path $workPackageRoot 'AppxManifest.xml')
+  Write-Log "transactional update package version: $updateVersion"
   if (Test-Path -LiteralPath $msixPath) {
     Remove-Item -LiteralPath $msixPath -Force
   }
@@ -339,23 +273,11 @@ try {
   }
 
   if ($Install) {
-    Stop-CodexDesktopProcesses $sourcePackageRoot
-    Write-Log "removing existing package: $($pkg.PackageFullName)"
-    try {
-      Remove-AppxPackage -Package $pkg.PackageFullName -PreserveApplicationData -ErrorAction Stop
-    } catch {
-      Write-Log 'PreserveApplicationData unsupported; retrying normal Remove-AppxPackage'
-      Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction Stop
-    }
-    Write-Log "installing patched MSIX: $msixPath"
-    Add-AppxPackage -Path $msixPath -ErrorAction Stop
-    $installed = Get-AppxPackage -Name OpenAI.Codex -ErrorAction Stop | Select-Object -First 1
+    $installed = Invoke-TransactionalMsixInstall -MsixPath $msixPath -PackageName 'OpenAI.Codex'
     Write-Log "installed package: $($installed.PackageFullName)"
     $installedSuccessfully = $true
     if ($Launch) {
-      $exe = Join-Path $installed.InstallLocation 'app\Codex.exe'
-      Write-Log "launching Codex: $exe"
-      Start-Process -FilePath $exe -WorkingDirectory (Split-Path -Parent $exe) -WindowStyle Hidden
+      Start-InstalledAppxPackage -Package $installed | Out-Null
     }
   }
 
