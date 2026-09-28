@@ -29,13 +29,31 @@
   ],
   "skills": [
     {
+      "name": "chatgpt-linux-sigchld-fix",
+      "path": "chatgpt-linux-sigchld-fix",
+      "kind": "self",
+      "category": "ai-dev-tools",
+      "platforms": [
+        "linux-x86_64",
+        "arch-linux"
+      ],
+      "summary": "修复 Linux ChatGPT/Codex 会话一直转圈及 SIGCHLD 子进程回收异常；精确哈希门控、升级停用和回滚。",
+      "dependencies": [
+        "Python 3.11+",
+        "GCC/libc headers",
+        "binutils/procps",
+        "可选 bubblewrap/desktop-file-utils"
+      ],
+      "status": "active"
+    },
+    {
       "name": "chatgpt-arch-deb-updater",
       "path": "chatgpt-arch-deb-updater",
       "kind": "self",
       "category": "ai-dev-tools",
       "platforms": ["arch-linux", "linux-x86_64"],
-      "summary": "把 OpenAI 官方 ChatGPT/Codex Desktop amd64 deb 构建为可验证的 Arch/CachyOS 软件包。",
-      "dependencies": ["bash", "curl", "libarchive/bsdtar", "pacman/makepkg"],
+      "summary": "把官方 amd64 deb 按 HTTPS 软件源索引校验版本/大小/SHA-256 后构建为 Arch 包；保留构建溯源记录，支持参数文件与 AppArmor 检查。入口见 skill；仅构建，不自动安装。",
+      "dependencies": ["bash", "curl", "libarchive/bsdtar", "pacman/makepkg/vercmp", "GNU 工具；行为验证需 Python 3；不验证源签名"],
       "status": "active"
     },
     {
