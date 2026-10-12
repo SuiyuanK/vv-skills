@@ -173,6 +173,25 @@
       "supersedes": ["gnome-default-terminal-ghostty", "nemo-cinnamon-ghostty"]
     },
     {
+      "name": "gnome51-bibata-cursor-fix",
+      "path": "gnome51-bibata-cursor-fix",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": [
+        "gnome",
+        "wayland",
+        "linux"
+      ],
+      "summary": "修复 GNOME 51 桌面/顶部栏回退默认而应用仍显示 Bibata 的问题；从官方图稿构建用户级 SVG 与旧 Xcursor 双格式主题。",
+      "dependencies": [
+        "Python 3.11+",
+        "librsvg/rsvg-convert",
+        "gsettings",
+        "获取官方图稿需 HTTPS；Bibata 基线 v2.0.7"
+      ],
+      "status": "active"
+    },
+    {
       "name": "gnome-xwayland-dock-icon-fix",
       "path": "gnome-xwayland-dock-icon-fix",
       "kind": "self",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GNOME 51 Bibata Cursor Fix"
+  short_description: "Repair Bibata cursor fallback on GNOME 51"
+  default_prompt: "Use $gnome51-bibata-cursor-fix to diagnose and repair my cursor theme reverting to default on the GNOME desktop."

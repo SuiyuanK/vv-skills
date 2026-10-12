@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **18 个 active skills**：**15 个个人**、**3 个第三方**。
+当前收录 **19 个 active skills**：**16 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -40,6 +40,7 @@
 | --- | --- | --- | --- | --- |
 | [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
 | [`gnome-xwayland-dock-icon-fix`](./gnome-xwayland-dock-icon-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 按实测 WM_CLASS 修复 GNOME XWayland 运行图标、重复菜单项和分组，并处理自动生成启动项覆盖修复的问题。 | xorg-xprop、desktop-file-utils |
+| [`gnome51-bibata-cursor-fix`](./gnome51-bibata-cursor-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 修复 GNOME 51 桌面/顶部栏回退默认而应用仍显示 Bibata 的问题；从官方图稿构建用户级 SVG 与旧 Xcursor 双格式主题。 | Python 3.11+、librsvg/rsvg-convert、gsettings、获取官方图稿需 HTTPS；Bibata 基线 v2.0.7 |
 | [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
 
 ### 系统恢复
