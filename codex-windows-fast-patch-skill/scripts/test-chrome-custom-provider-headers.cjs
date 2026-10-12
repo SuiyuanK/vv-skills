@@ -18,6 +18,21 @@ const equal = (actual, expected, label) => { assert.deepEqual(actual, expected, 
 const throws = (action, pattern) => { assert.throws(action, pattern); checks++; };
 equal(plan.state, 'original', 'fixture is the unmodified supported package');
 equal(plan.originalSha256, profile.originalSha256, 'profile is selected by the complete source hash');
+if (profile.id === '26.1002.52244') {
+  equal(plan.patchedSha256, '20a28cd3e53bb6a67f91d52630055aa4b39928872aa383bbc21f05944da1b659', 'Desktop 26.1002 plugin produces the reviewed overlay bytes');
+}
+if (profile.id === 'browser-desktop-0.1.1-9c7fb0d8') {
+  equal(plan.patchedSha256, '8612c2dbbfc995dadcc138e62c8c3b9f17930e6fd9fe6a89d4cbe587ee3d987b', 'Desktop 26.1002 standalone runtime produces the reviewed overlay bytes');
+}
+if (profile.id === '26.930.21537') {
+  equal(plan.patchedSha256, 'b4a6fd7e3eece5bef3f255a43064c52910bdaeb995f084e52c522fe08b5ce529', 'Desktop 26.930 plugin produces the reviewed overlay bytes');
+}
+if (profile.id === '26.930.31730') {
+  equal(plan.patchedSha256, '17dba7729c8d48bf3fbad01ba0d7ab883a7d6ee99636210c243b6f2a732bd573', 'Desktop 26.930.31730 plugin produces the reviewed overlay bytes');
+}
+if (profile.id === '26.930.41038') {
+  equal(plan.patchedSha256, '531a4a8cdf81bdbd9c424393154dba6e01ca878d87dc2815b2ecd06102ab695d', 'Desktop 26.930.41038 plugin produces the reviewed overlay bytes');
+}
 if (profile.id === '26.917.71314') {
   equal(plan.patchedSha256, '8886deea23c8ececd5156c2ee4300431307bda9b5e8910f8d82b5241cf4f38da', 'accepted live patch bytes remain unchanged');
 }
@@ -26,6 +41,21 @@ if (profile.id === '26.924.20706') {
 }
 if (profile.id === '26.924.22138') {
   equal(plan.patchedSha256, '06f3b80f6baef0e061e920bde3d5905205fded2205ed7b6f64424658219a6c8a', 'Desktop 26.924.2738 service produces the reviewed overlay bytes');
+}
+if (profile.id === '26.924.51851') {
+  equal(plan.patchedSha256, '126ebfa5ae3711db69228639c5107d5c8547e5076dceb5f73bbce028fc97e074', 'Desktop 26.924.6891 service produces the reviewed overlay bytes');
+}
+if (profile.id === 'browser-desktop-0.1.1-fc0660ba') {
+  equal(plan.patchedSha256, 'f3464d8411bcbb445286cfaab704091dde577d5198528eb2cb09a5067591829e', 'issue 78 standalone runtime produces the reviewed overlay bytes');
+}
+if (profile.id === 'browser-desktop-0.1.1-64b3e675') {
+  equal(plan.patchedSha256, '83af4f1d8e6eb65f4112bea5a70524e28942e5cde5fbeeae1dd8525805efd16a', 'Desktop 26.928 standalone runtime produces the reviewed overlay bytes');
+}
+if (profile.id === '26.928.20755') {
+  equal(plan.patchedSha256, 'c3d24d3245316565655d8354873865aaa952510bc496a2cf74f78d14cdefde4e', 'Desktop 26.928 plugin produces the reviewed overlay bytes');
+}
+if (profile.id === '26.928.21956') {
+  equal(plan.patchedSha256, 'fce2fa3e2e2690b5376584c0c84d367eea809c0c0bca55a104d387c5f64c84d2', 'Desktop 26.928.2636 plugin produces the reviewed overlay bytes');
 }
 
 equal(patcher.inspect(Buffer.from(plan.patched)).state, 'patched', 'complete patch recognized');
@@ -67,7 +97,7 @@ async function run(name, options = {}) {
   const clientInfo = {type: options.type || 'extension', family: options.family === undefined ? 'chrome' : options.family};
   if (!options.missingCapability) clientInfo.agentRequestHeaderEnabled = options.capability === undefined ? false : options.capability;
   const client = {
-    clientInfo, requestHeaderEnabled: false,
+    clientInfo, requestHeaderEnabled: options.headerPreviouslyEnabled === true,
     getSessionParams: () => ({session_id: 'test-session', turn_id: 'test-turn'}),
     readRequestHeaderEnabled: options.unpatched ? context[profile.policy] : info => compat(runtime, info),
     sendRequest: async (operation, params) => { events.push({event: 'browser-send', operation, params}); return true; },
@@ -119,6 +149,12 @@ async function run(name, options = {}) {
   equal([discovery.sent, discovery.configReads], [true, 0]);
   const enabled = await run('headers_already_on', {capability: true});
   equal([enabled.sent, enabled.header, enabled.configReads], [true, true, 0]);
+  if (originalMethod.includes('this.requestHeaderEnabled||this.clientInfo.agentRequestHeaderEnabled===!0')) {
+    const cached = await run('cached_header_enabled_preserved', {headerPreviouslyEnabled: true});
+    equal([cached.sent, cached.header, cached.configReads, cached.markers], [true, true, 0, 0]);
+    const cachedOriginal = await run('original_cached_header_enabled_preserved', {unpatched: true, headerPreviouslyEnabled: true});
+    equal([cachedOriginal.sent, cachedOriginal.header, cachedOriginal.configReads], [true, true, 0]);
+  }
   const legacy = await run('legacy_extension_unmodified', {missingCapability: true});
   equal([legacy.sent, legacy.configReads], [true, 0]);
   const fallbackFamily = await run('official_default_chrome_family', {family: null});

@@ -16,7 +16,10 @@ param(
   [switch]$VerifyFastModeRequest,
   [switch]$OnlyBundledMarketplaceCopy,
   [switch]$OnlyComputerUseSurface,
+  [switch]$OnlyNodeReplProxyEnv,
+  [switch]$OnlyComputerUseSurfaceAndProxyEnv,
   [switch]$PatchWindows10ScreenshotHelper,
+  [switch]$PatchWindowsStoreUpdateFallback,
   [Alias('OnlyCustomModels')]
   [switch]$OnlyModelExperience,
   [switch]$DryRun
@@ -44,13 +47,26 @@ function Fail {
 }
 
 function Assert-ComputerUseSurfaceOptions {
+  if ($OnlyComputerUseSurfaceAndProxyEnv -and
+      ($OnlyComputerUseSurface -or $OnlyNodeReplProxyEnv -or $OnlyBundledMarketplaceCopy -or $OnlyModelExperience -or
+       $AddLocalPluginMarketplace -or $VerifyFastModeRequest -or $PatchWindows10ScreenshotHelper -or $PatchWindowsStoreUpdateFallback)) {
+    Fail '-OnlyComputerUseSurfaceAndProxyEnv cannot be combined with other targeted modes, marketplace registration, or unrelated verification/patches'
+  }
+  if ($OnlyNodeReplProxyEnv -and
+      ($OnlyComputerUseSurface -or $OnlyBundledMarketplaceCopy -or $OnlyModelExperience -or
+       $AddLocalPluginMarketplace -or $VerifyFastModeRequest -or $PatchWindows10ScreenshotHelper -or $PatchWindowsStoreUpdateFallback)) {
+    Fail '-OnlyNodeReplProxyEnv cannot be combined with other targeted modes, marketplace registration, or unrelated verification/patches'
+  }
   if ($OnlyComputerUseSurface -and
       ($OnlyBundledMarketplaceCopy -or $OnlyModelExperience -or
        $AddLocalPluginMarketplace -or $VerifyFastModeRequest -or $PatchWindows10ScreenshotHelper)) {
     Fail '-OnlyComputerUseSurface cannot be combined with other targeted modes, marketplace registration, or Fast Mode verification'
   }
-  if ($PatchWindows10ScreenshotHelper -and ($OnlyBundledMarketplaceCopy -or $OnlyModelExperience)) {
+  if ($PatchWindows10ScreenshotHelper -and ($OnlyBundledMarketplaceCopy -or $OnlyModelExperience -or $OnlyNodeReplProxyEnv)) {
     Fail '-PatchWindows10ScreenshotHelper requires the full repair mode'
+  }
+  if ($PatchWindowsStoreUpdateFallback -and ($OnlyBundledMarketplaceCopy -or $OnlyModelExperience -or $OnlyComputerUseSurface -or $OnlyNodeReplProxyEnv)) {
+    Fail '-PatchWindowsStoreUpdateFallback requires the full repair mode'
   }
 }
 
@@ -822,6 +838,14 @@ if (text.includes(marker)) {
 
 const visibilityPatterns = [
   {
+    // Desktop 26.1002 adds API-key access-program checks. Keep the denial
+    // branch outside the local visibility override.
+    re: /return (([$A-Za-z_][$\w]*)===`apikey`&&!([$A-Za-z_][$\w]*)&&([$A-Za-z_][$\w]*)!=null&&\4\.length>0&&!\4\.includes\(`standard`\)\?!1:)([$A-Za-z_][$\w]*)\?\.has\(([$A-Za-z_][$\w]*)\.model\)===!0\|\|\6\.model!==`codex-auto-review`&&\(([$A-Za-z_][$\w]*)&&!\6\.hidden\|\|\(([$A-Za-z_][$\w]*)&&!([$A-Za-z_][$\w]*)&&\2!==`amazonBedrock`\?([$A-Za-z_][$\w]*)\.has\(\6\.model\)\|\|\2===`apikey`&&\3&&!\6\.hidden&&\4\?\.some\(([$A-Za-z_][$\w]*)=>\11!==`standard`\)===!0:!\6\.hidden\)\)\}/,
+    modelGroup: 6,
+    accessGuardGroup: 1,
+    isReturn: true,
+  },
+  {
     re: /return ([$A-Za-z_][$\w]*)\?\.has\(([$A-Za-z_][$\w]*)\.model\)===!0\|\|\2\.model!==`codex-auto-review`&&\(([$A-Za-z_][$\w]*)&&!([$A-Za-z_][$\w]*)&&([$A-Za-z_][$\w]*)!==`amazonBedrock`\?([$A-Za-z_][$\w]*)\.has\(\2\.model\):!\2\.hidden\)\}/,
     modelGroup: 2,
     isReturn: true,
@@ -849,7 +873,7 @@ const visibilityPatterns = [
   },
 ];
 const target = visibilityPatterns
-  .map(({ re, modelGroup, isReturn }) => ({ match: text.match(re), modelGroup, isReturn }))
+  .map(({ re, modelGroup, isReturn, accessGuardGroup }) => ({ match: text.match(re), modelGroup, isReturn, accessGuardGroup }))
   .find(({ match }) => match != null);
 const match = target?.match;
 if (!match) {
@@ -861,8 +885,9 @@ const forced = JSON.stringify(models);
 const modelVar = match[target.modelGroup];
 let replacement;
 if (target.isReturn) {
-  const originalCondition = match[0].slice('return '.length, -1);
-  replacement = `return/*${marker}*/${forced}.includes(${modelVar}.model)||(${originalCondition})}`;
+  const accessGuard = target.accessGuardGroup ? match[target.accessGuardGroup] : '';
+  const originalCondition = match[0].slice('return '.length + accessGuard.length, -1);
+  replacement = `return ${accessGuard}/*${marker}*/${forced}.includes(${modelVar}.model)||(${originalCondition})}`;
 } else {
   const originalCondition = match[0].slice(3, -2);
   replacement = `if(/*${marker}*/${forced}.includes(${modelVar}.model)||(${originalCondition})){`;
@@ -1546,15 +1571,15 @@ function patchSidebarAvailability(file) {
 function patchDesktopFeatureSender(file) {
   const before = read(file);
   const patchedSenderFragment = 'inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,browserPane:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:';
-  const patchedSenderPattern = /inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?)browserPane:!0,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?)externalBrowserUse:!0,externalBrowserUseAllowed:!0,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,6}?)computerUse:/;
+  const patchedSenderPattern = /inAppBrowserUse:!0,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:!0,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?)browserPane:!0,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?)externalBrowserUse:!0,externalBrowserUseAllowed:!0,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,6}?)computerUse:/;
   if (!before.includes('browser_use_availability_resolved') || !before.includes('electron-desktop-features-changed')) {
     process.stderr.write('browser-use-desktop-feature-sender-target-not-found\n');
     process.exit(2);
   }
 
   let after = before.replace(
-    /inAppBrowserUse:[^,}]+,inAppBrowserUseAllowed:[^,}]+,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?)browserPane:[^,}]+,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?)externalBrowserUse:[^,}]+,externalBrowserUseAllowed:[^,}]+,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,6}?)computerUse:/,
-    'inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,$1browserPane:!0,$2externalBrowserUse:!0,externalBrowserUseAllowed:!0,$3computerUse:'
+    /inAppBrowserUse:[^,}]+,(mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:[^,}]+,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?)browserPane:[^,}]+,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?)externalBrowserUse:[^,}]+,externalBrowserUseAllowed:[^,}]+,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,6}?)computerUse:/,
+    'inAppBrowserUse:!0,$1inAppBrowserUseAllowed:!0,$2browserPane:!0,$3externalBrowserUse:!0,externalBrowserUseAllowed:!0,$4computerUse:'
   );
   after = after.replace(
     /browser_use_availability_resolved`,\{safe:\{available:[^,]+,platform:([^,]+),reason:[^,]+,release:([^}]+)\},sensitive:\{browserPane:[^}]+\}\}\)/,
@@ -1575,13 +1600,13 @@ function patchDesktopFeatureMain(file) {
   const patchedMainFragment = 'browserPane:!0,inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0';
   // Desktop 26.917 dropped `computerUseNodeRepl` from the env gate, so only the slot-shaped
   // feature object is rewritten and the legacy fragment above never appears on a re-run.
-  const patchedMainPattern = /inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:/;
+  const patchedMainPattern = /inAppBrowserUse:!0,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:/;
   const envGatePattern = /([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)===`win32`&&([A-Za-z_$][\w$]*)\.CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE===`1`\?\{\.\.\.([A-Za-z_$][\w$]*),computerUse:!0,computerUseNodeRepl:!0\}:\4/;
   if (!before.includes(patchedMainFragment) &&
       !patchedMainPattern.test(before) &&
       (!before.includes('CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE') ||
        (!envGatePattern.test(before) &&
-        !/inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?browserPane:[A-Za-z_$][\w$]*\.browserPane,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed/.test(before)))) {
+        !/inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?browserPane:[A-Za-z_$][\w$]*\.browserPane,(?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed/.test(before)))) {
     process.stderr.write('browser-use-desktop-feature-main-target-not-found\n');
     process.exit(2);
   }
@@ -1591,8 +1616,8 @@ function patchDesktopFeatureMain(file) {
     '$1=$2===`win32`?{...$4,browserPane:!0,inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0,...$3.CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE===`1`?{computerUse:!0,computerUseNodeRepl:!0}:{}}:$4'
   );
   after = after.replace(
-    /inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?)browserPane:[A-Za-z_$][\w$]*\.browserPane,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?)externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed,computerUse:/,
-    'inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,$1browserPane:!0,$2externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:'
+    /inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,(mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,10}?)browserPane:[A-Za-z_$][\w$]*\.browserPane,((?:[A-Za-z_$][\w$]*:[^,}]+,){0,8}?)externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed,computerUse:/,
+    'inAppBrowserUse:!0,$1inAppBrowserUseAllowed:!0,$2browserPane:!0,$3externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:'
   );
 
   if (after === before &&
@@ -1874,6 +1899,7 @@ function Test-CustomModelVisibilityExpression {
 
   # Keep target discovery aligned with the embedded Node patcher's supported predicate shapes.
   $patterns = @(
+    'return (([$A-Za-z_][$\w]*)===`apikey`&&!([$A-Za-z_][$\w]*)&&([$A-Za-z_][$\w]*)!=null&&\4\.length>0&&!\4\.includes\(`standard`\)\?!1:)([$A-Za-z_][$\w]*)\?\.has\(([$A-Za-z_][$\w]*)\.model\)===!0\|\|\6\.model!==`codex-auto-review`&&\(([$A-Za-z_][$\w]*)&&!\6\.hidden\|\|\(([$A-Za-z_][$\w]*)&&!([$A-Za-z_][$\w]*)&&\2!==`amazonBedrock`\?([$A-Za-z_][$\w]*)\.has\(\6\.model\)\|\|\2===`apikey`&&\3&&!\6\.hidden&&\4\?\.some\(([$A-Za-z_][$\w]*)=>\11!==`standard`\)===!0:!\6\.hidden\)\)\}',
     'if\([$A-Za-z_][$\w]*\?[$A-Za-z_][$\w]*\.has\((?<model>[$A-Za-z_][$\w]*)\.model\):!\k<model>\.hidden\)\{',
     'if\([$A-Za-z_][$\w]*\?\.has\((?<model>[$A-Za-z_][$\w]*)\.model\)===!0\|\|\([$A-Za-z_][$\w]*\?[$A-Za-z_][$\w]*\.has\(\k<model>\.model\):!\k<model>\.hidden\)\)\{',
     '\?\.has\(\w+\.model\)===!0\|\|\(\w+(?:&&\w+!==`amazonBedrock`)?\?\w+\.has\(\w+\.model\):!\w+\.hidden\)',
@@ -2050,8 +2076,8 @@ function Find-PatchTargets {
   foreach ($candidate in $desktopFeatureSenderCandidates) {
     $text = Get-Content -Raw -LiteralPath $candidate
     if ($text.Contains('electron-desktop-features-changed') -and
-        (($text -match 'inAppBrowserUse:[^,}]+,inAppBrowserUseAllowed:[^,}]+,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:[^,}]+,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:[^,}]+,externalBrowserUseAllowed:[^,}]+,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?computerUse:[^,}]+') -or
-         ($text -match 'inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:!0,externalBrowserUseAllowed:!0'))) {
+        (($text -match 'inAppBrowserUse:[^,}]+,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:[^,}]+,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:[^,}]+,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:[^,}]+,externalBrowserUseAllowed:[^,}]+,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?computerUse:[^,}]+') -or
+         ($text -match 'inAppBrowserUse:!0,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:!0,externalBrowserUseAllowed:!0'))) {
       $desktopFeatureSenderTarget = $candidate
       break
     }
@@ -2067,9 +2093,9 @@ function Find-PatchTargets {
       $text = Get-Content -Raw -LiteralPath $candidate
       if ($text.Contains('CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE') -and
           (($text -match '([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)===`win32`&&([A-Za-z_$][\w$]*)\.CODEX_ELECTRON_ENABLE_WINDOWS_COMPUTER_USE===`1`\?\{\.\.\.([A-Za-z_$][\w$]*),computerUse:!0,computerUseNodeRepl:!0\}:\4') -or
-           ($text -match 'inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:[A-Za-z_$][\w$]*\.browserPane,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed') -or
+           ($text -match 'inAppBrowserUse:[A-Za-z_$][\w$]*\.inAppBrowserUse,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:[A-Za-z_$][\w$]*\.inAppBrowserUseAllowed,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:[A-Za-z_$][\w$]*\.browserPane,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:[A-Za-z_$][\w$]*\.externalBrowserUse,externalBrowserUseAllowed:[A-Za-z_$][\w$]*\.externalBrowserUseAllowed') -or
            $text.Contains('browserPane:!0,inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,externalBrowserUse:!0,externalBrowserUseAllowed:!0') -or
-           ($text -match 'inAppBrowserUse:!0,inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:'))) {
+           ($text -match 'inAppBrowserUse:!0,(?:mcpAppsBrowserUse:[^,}]+,)?inAppBrowserUseAllowed:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?browserPane:!0,(?:[A-Za-z_$][\w$]*:[^,}]+,)*?externalBrowserUse:!0,externalBrowserUseAllowed:!0,computerUse:'))) {
         $desktopFeatureMainTarget = $candidate
         break
       }
@@ -2396,7 +2422,42 @@ function Invoke-PatchAppAsar {
   Invoke-NpxAsar 'extract' $asarPath $extractDir
   $patchers = Write-PatcherFiles $WorkDir
 
-  if ($OnlyComputerUseSurface) {
+  $proxyResult = $null
+  if ($OnlyNodeReplProxyEnv -or $OnlyComputerUseSurfaceAndProxyEnv) {
+    $viteBuildDir = Join-Path $extractDir '.vite\build'
+    $proxyTargets = @(Get-ChildItem -LiteralPath $viteBuildDir -Filter '*.js' -File | Where-Object {
+      $content = [IO.File]::ReadAllText($_.FullName)
+      $content.Contains('NODE_REPL_NODE_MODULE_DIRS') -and
+        $content.Contains('NODE_REPL_TRUSTED_CODE_PATHS') -and
+        $content.Contains('CODEX_WINDOWS_REGISTERED_CORE') -and
+        ($content.Contains('CODEX_NODE_REPL_PROXY_ENV_V1') -or
+         $content -match 'let ([A-Za-z_$][\w$]*)=`CODEX_WINDOWS_REGISTERED_CORE`;([A-Za-z_$][\w$]*)=\[\.\.\.new Set\(\[\.\.\.([A-Za-z_$][\w$]*),\1\]\)\];')
+    })
+    if ($proxyTargets.Count -ne 1) {
+      Fail "expected exactly one Node REPL proxy environment target; found $($proxyTargets.Count)"
+    }
+    $proxyTarget = $proxyTargets[0].FullName
+    Write-Log "Node REPL proxy environment patch target: $proxyTarget"
+    $proxyResult = Invoke-NodePatcher $nodePath (Join-Path $PSScriptRoot 'patch-node-repl-proxy-env.cjs') @($proxyTarget)
+    if ($proxyResult -notin @('patched', 'already-patched')) { Fail "unexpected proxy environment patch result: $proxyResult" }
+    Write-Log "Node REPL proxy environment patch result: $proxyResult"
+    & $nodePath --check $proxyTarget
+    if ($LASTEXITCODE -ne 0) { Fail 'Node REPL proxy environment asset failed node --check' }
+    Write-Log 'Node REPL proxy environment asset syntax check passed'
+    if ($DryRun -and -not $OnlyComputerUseSurfaceAndProxyEnv) {
+      Write-Log 'dry run: proxy environment target validation completed; no package was changed'
+      return $false
+    }
+    if (-not $OnlyComputerUseSurfaceAndProxyEnv) {
+      if ($proxyResult -eq 'already-patched') { return $false }
+      Write-Log 'repacking app.asar'
+      Invoke-NpxAsar 'pack' $extractDir $newAsarPath
+      Copy-Item -LiteralPath $newAsarPath -Destination $asarPath -Force
+      return $true
+    }
+  }
+
+  if ($OnlyComputerUseSurface -or $OnlyComputerUseSurfaceAndProxyEnv) {
     $computerUseSurfaceTarget = Find-ComputerUseSurfaceTarget $extractDir
 
     Write-Log "Windows CUA surface patch target: $computerUseSurfaceTarget"
@@ -2412,7 +2473,7 @@ function Invoke-PatchAppAsar {
       Write-Log 'dry run: Windows CUA surface target validation completed; no package was changed'
       return $false
     }
-    if ($computerUseSurface -eq 'already-patched') {
+    if ($computerUseSurface -eq 'already-patched' -and $proxyResult -ne 'patched') {
       Write-Log 'asar Windows CUA surface patch already present'
       return $false
     }
@@ -2671,6 +2732,12 @@ function Invoke-PatchAppAsar {
   }
   Write-Log 'Node REPL trusted-paths syntax check passed'
 
+  $windowsStoreFallback = 'not-requested'
+  if ($PatchWindowsStoreUpdateFallback) {
+    $windowsStoreFallback = Invoke-NodePatcher $nodePath (Join-Path $PSScriptRoot 'patch-windows-store-update-fallback.cjs') @((Join-Path $extractDir '.vite\build'))
+    Write-Log "Windows Store update fallback patch result: $windowsStoreFallback"
+  }
+
   if ($DryRun) {
     Write-Log 'dry run: patch target validation completed; no package was changed'
     return $false
@@ -2688,6 +2755,7 @@ function Invoke-PatchAppAsar {
       $computerUse -eq 'already-patched' -and
       $nodeReplTrustedPaths -eq 'already-patched' -and
       $nodeReplProxyEnv -in @('already-patched', 'not-applicable') -and
+      $windowsStoreFallback -in @('already-patched', 'not-requested') -and
       $bundledMarketplaceCopy -eq 'already-patched' -and
       $computerUseSurface -in @('already-patched', 'not-applicable')) {
     Write-Log 'asar patch already present'
@@ -2927,6 +2995,8 @@ function Add-LocalMarketplace {
 function Patch-ChromePluginWindowsRegistryParsing {
   param([string]$WorkApp)
 
+  if ($OnlyComputerUseSurfaceAndProxyEnv) { return 'skipped-targeted-computer-use-surface-and-proxy-env' }
+  if ($OnlyNodeReplProxyEnv) { return 'skipped-targeted-node-repl-proxy-env' }
   if ($OnlyComputerUseSurface) {
     return 'skipped-targeted-computer-use-surface'
   }
@@ -3367,7 +3437,7 @@ try {
   Write-Log "Chrome localized registry parsing patch result: $chromeRegistryParsing"
 
   # Validate the runtime inside the package copy before it can enter an MSIX.
-  if (-not ($OnlyBundledMarketplaceCopy -or $OnlyComputerUseSurface -or $OnlyModelExperience)) {
+  if (-not ($OnlyBundledMarketplaceCopy -or $OnlyComputerUseSurface -or $OnlyNodeReplProxyEnv -or $OnlyComputerUseSurfaceAndProxyEnv -or $OnlyModelExperience)) {
     $stagedNodeModules = Join-Path $workApp 'resources\cua_node\bin\node_modules'
     $entryInstructions = Repair-WindowsCuaEntryInstructions -NodeModulesRoot $stagedNodeModules
     Write-Log "Windows CUA entry instructions patch result: $entryInstructions"

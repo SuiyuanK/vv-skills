@@ -401,3 +401,60 @@ This smoke test demonstrates screenshot capture, text input, and coordinate mous
 `EndToEndValidatedDesktopVersion` remains `null` for both profiles. The soak frames were not decoded and visually inspected, and a code editor is not the continuously animating native target that `SKILL.md` requires. No capture ran against the `2AA2A7A9` helper. In that session `list_windows` returned neither a console window nor the running Task Manager, so no animated native target was captured.
 
 When driving the helper outside Desktop, point `CODEX_HOME` at a disposable directory. Run against a real Codex home, the helper rewrote the `notify` hook in `config.toml` to its own executable path and re-serialized the whole file, so a test copy silently replaced the hook that Desktop had configured. Pointed at an empty directory, it created `config.toml`, the goals, logs, memories, queue and state SQLite databases, `installation_id` and `skills` there.
+
+### `@oai/sky 0.7.4` and `0.7.5` callback timeout
+
+These builds already check whether the border property is available. On Windows 10, screenshot requests timed out in the synchronous `FrameArrived` copy path after enumeration and activation succeeded.
+
+| Sky profile | Original SHA-256 | Patched SHA-256 |
+| --- | --- | --- |
+| `0.7.4-219BFB75` | `219BFB756D96BCE3EA6C0FFBEFB690C7FE3682E12117D330F46BC21BD1E2C576` | `FFA903091DA4FA9A8ABC13C632ECBA6529D9908ABA6D3F28A4E369E61F8DA814` |
+| `0.7.4-8010E5ED` | `8010E5ED48DFD9C06B73B564E020ED1CCE5914071A46725C8702360E4C71DD9C` | `057170CDC8F87B005B66BF90AC9E14BB9CA644FAC7621110B1147138DB7C0D19` |
+| `0.7.5-ABDD75DF` | `ABDD75DF576B3CBCC7ED170DE1B4F27A65C81E25768A9B0B46D682FB586FB483` | `13C46D415AC4E69AA0E27F0B9DE3A18057ED16FFBC791E4D3B1DF65935DFFA65` |
+| `0.7.5-25D792D0` | `25D792D0661D0E10D04D2CA3AABAE491FAE69F045CF27CF3AB9E906D7AD82910` | `28A3B973239DA2BAAAB220BC083FBBFFE960E5EC8BECF4B49F7B3E3DF625CA48` |
+
+The originals have identical ten section headers and raw section bodies. Differences are confined to signing metadata, timestamps and checksums. Each profile independently guards its entire input and output hashes.
+
+The patch redirects the callback to an MTA worker and changes the busy/once branches. A 512-byte RX `.cuw10` section maps certificate-overlay bytes at raw `0x176e00`, RVA `0x17e000`. The invalidated certificate directory is cleared; the outer MSIX must be signed after repacking.
+
+The callback and worker have separate prologs and epilogs. Static `RUNTIME_FUNCTION` entries cover `[0x17e000,0x17e072)` and `[0x17e080,0x17e0b2)`, referencing `UNWIND_INFO` at `0x17e0c0` and `0x17e0c8`. The exception directory and `.pdata` virtual size include both sorted entries. Thirteen guarded regions cover code and PE metadata.
+
+The previous wrapper omitted x64 unwind metadata. Its hashes are intentionally unsupported by this revision. For migration, restore the exact original from a verified backup with the previous patcher, then apply this revision; never relabel the old output as current or bypass the hash guard. A package rebuild can instead start from the verified official package.
+
+The original three isolated profile harnesses passed candidate hashes, installation, idempotence, rollback, backup preservation and unknown-input rejection. `test-computer-use-helper-win10-unwind.py` additionally maps each candidate without resolving imports or running its entry point. Windows `RtlLookupFunctionEntry` and `RtlVirtualUnwind` restore RIP, RSP and RBX at 47 instruction boundaries. Real callback success, CreateThread failure, busy and worker executions supply ten live caller frames, checking stack alignment and stack arguments. API/COM stubs exist only in the private test mapping; input files are unchanged. This checks native stack walking, not language-level exception dispatch or a long-duration resource soak.
+
+The revised `0.7.5-ABDD75DF` helper was installed in Desktop package `26.928.1915.3`. The packaged and user-runtime helpers match the complete patched hash. Fresh Desktop CUA calls returned two visually inspected `1104x719` Explorer screenshots in independent calls and accepted F5 input. A coordinate click opened Task Manager's Performance tab; three independent, visually inspected `666x593` frames showed changing CPU charts and advancing uptime. Native unwind validation also passed against the actual user-runtime helper. The two `0.7.4` profiles remain unset.
+
+Desktop `26.928.2636.0` ships the `0.7.5` helper `25D792D0`. The preserved original independently passes complete candidate-hash and native unwind checks using the same thirteen guarded regions as `ABDD75DF`. PR #83 reports Windows 10 captures and input on `26.928.2636.1`; that is contributor-reported acceptance, not an independent maintainer run. Both installed-validation fields remain null until independently confirmed. Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion 0.7.5-25D792D0 -HelperPath <exact-original-helper>`; Windows 11 checks do not establish Windows 10 installation, rollback or screenshot acceptance.
+
+A package revision can retain the same runtime extraction directory and leave its old helper cached. Strict local plugin verification alone did not detect this difference. Compare the complete packaged and runtime helper hashes after deployment; if the runtime is the previous patch, use the verified original-backup rollback and reinstall procedure above before acceptance.
+
+### `@oai/sky 0.7.5` helper `6EEAF314` / Desktop 26.930.3930.0
+
+Issue #88 reports `FrameArrived timed out` on Windows 10 after window enumeration succeeds. Comparing preserved official-content helpers confirms that `6EEAF314A15936E549E47532E8DC62A01920BD38D65E7797E1C812E62199A741` and `ABDD75DF` have identical ten section headers and raw section bodies. Both files are 1,551,152 bytes; differences are limited to checksum bytes at `0xD8` and `0xD9` and 4,286 certificate-overlay bytes. The new checksum guard is `9f801800`; the other twelve original guards and all replacement regions are unchanged.
+
+The separate full-hash profile produces `2683A00FAFA247DCD1EDBD0DFF994360D09D2269DC7E8904AB83DE1F34051598`. Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion 0.7.5-6EEAF314 -HelperPath <exact-original-helper>` against a preserved original. On Windows 11 the regression checks the candidate, unknown-input rejection and live platform guard; it does not run the Windows 10 install/rollback branch. The isolated candidate passes native lookup/unwind at 47 instruction boundaries and ten live caller frames without executing the EXE entry point.
+
+`ValidatedDesktopVersion` and `EndToEndValidatedDesktopVersion` remain null. Real Windows 10 screenshot/input and animated-target acceptance, installation/rollback and longer resource testing remain pending. Do not install this Windows 10 patch on a Windows 11 host or treat a different helper hash as supported.
+
+### `@oai/sky 0.7.6` helper `F78948E6` / Desktop 26.1002.6548.0
+
+Issue #93 reports `FrameArrived timed out` on Windows 10 build `19045` while enumeration, accessibility, activation and keyboard input work. Coordinate mouse input then reports `coordinate input geometry is unavailable`; capture must succeed before coordinate geometry and mouse behavior can be validated.
+
+The exact helper was independently extracted from Microsoft's public package distribution for `OpenAI.Codex_26.1002.6548.0_x64__2p2nqsd0c76g0`. Its OpenAI Authenticode signature is valid, its size is 1,551,152 bytes, and its complete original SHA-256 is `F78948E680EB005AEC483269AC19B7139C30685E07A2C18CB2AC5EF651B0F0FD`. Comparing it with the verified `25D792D0` original confirms identical ten PE section headers and every raw section body. Differences are limited to three COFF timestamp bytes, two checksum bytes and 5,587 certificate-overlay bytes; the capture code, imports and frame vtable are unchanged.
+
+The independent thirteen-region profile keeps the MTA worker, busy/once changes and native unwind records described above. Its checksum guard is `41561800`, and the certificate-overlay guard uses this exact sample's bytes. The complete candidate SHA-256 is `202FC10AF903D0CB8277EFB6EA36733F78BB5CB698F0C164A4536042629E8291`. Unknown hashes and Windows 11 installation remain rejected.
+
+Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion 0.7.6-F78948E6 -HelperPath <exact-original-helper>`. The Windows PowerShell 5.1 and PowerShell 7 regressions pass candidate-hash verification, unknown-input refusal and the live Windows 11 installation guard without changing the source helper. The isolated candidate also passes `test-computer-use-helper-win10-unwind.py`: 47 instruction boundaries and ten live caller frames across callback success, thread-creation failure, busy and worker cases, without running the EXE entry point.
+
+`ValidatedDesktopVersion` and `EndToEndValidatedDesktopVersion` remain null. This resolves the missing exact-hash profile; real Windows 10 screenshot/input acceptance, installation/rollback and resource testing remain pending. Keep issue #93 open until runtime evidence confirms the reported failures are resolved. Do not count the Windows 11 candidate/unwind checks as Windows 10 capture proof.
+
+### `@oai/sky 0.7.6` helper `63C98C4D` / issue #93 follow-up
+
+The follow-up reports Windows 10 Home 22H2 build `19045.6466`, a Codex build label of `26.1002.52244` / `13536`, and the same screenshot timeout, including Notepad. Its exact helper also exists in a Windows 11 user-level CUA runtime: original SHA-256 `63C98C4DD5D707DF3240A04DA1FBF7FE47FF0622CF757EE886EEE96434D4E17A`, size 1,550,288 bytes, and a valid OpenAI OpCo, LLC Authenticode signature. That runtime observation does not independently establish the reported Desktop package version.
+
+All ten PE section headers and every raw section body match the independently acquired `F78948E6` original. The COFF timestamp is identical; differences comprise three checksum bytes, two certificate-directory bytes and 9,196 certificate-overlay bytes, including the different overlay lengths. Capture code, imports, frame vtable and existing exception records are unchanged. The checksum guard is `4cba1700`, the certificate directory guard is `006e1700d0390000`, and this profile guards its own first 512 certificate-overlay bytes before replacing them with the MTA wrapper and unwind metadata.
+
+The independent thirteen-region rewrite changes 552 bytes without changing file size and produces complete SHA-256 `5BAE07883BA804D9EB23BFBFFBC99FD83247896F6CFE66109A8F6C4C5EE13B94`. Windows PowerShell 5.1 and PowerShell 7 regressions pass candidate-hash checks, unknown-input rejection and the Windows 11 installation guard. The candidate passes native unwind at 47 instruction boundaries and ten live caller frames without running the EXE entry point. Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion 0.7.6-63C98C4D -HelperPath <exact-original-helper>`.
+
+`ValidatedDesktopVersion` and `EndToEndValidatedDesktopVersion` remain null for this profile. The missing hash support is fixed; Windows 10 screenshot/input acceptance and install/rollback remain pending. The [Windows 11 host validation workflow](win10-validation-on-win11.md) provides a guest/reporter diagnostic with a dedicated native test window, isolated helper copies, before/after capture and optional input. Keep issue #93 open until real Windows 10 evidence resolves its reported failures.

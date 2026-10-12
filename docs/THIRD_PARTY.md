@@ -6,8 +6,8 @@
 
 | Skill | 上游 | 分支 | 当前基线 | 版本 |
 | --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`76cc497`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/76cc497b37a35d03435b67cd3e2c70220f5057ea) | 上游未单独标记 |
-| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`680de11`](https://github.com/hugohe3/ppt-master/commit/680de11f1bef4628b68d5daad9dffec569fbd51f) | `6.6.0` |
+| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`a524256`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/a524256c4d67e07f4969a0ef0174766fe6092761) | 上游未单独标记 |
+| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`ca04346`](https://github.com/hugohe3/ppt-master/commit/ca04346de145ed6462ddf34682848e71df5e20a2) | `6.7.0` |
 | `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` |
 
 这些目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
