@@ -101,7 +101,7 @@
         "gnome",
         "wayland"
       ],
-      "summary": "修复 Codex 在 XWayland 下拖入图片无响应；验证原生 Wayland 启动并持久化参数，区分 Loupe 关闭后剪贴板只剩路径的问题。",
+      "summary": "诊断 Codex 图片拖拽与 Loupe 复制问题；验证 Wayland/XWayland 取舍、宠物悬浮窗回归并可回滚配置。",
       "dependencies": [
         "Python 3/procps",
         "systemd 用户会话",

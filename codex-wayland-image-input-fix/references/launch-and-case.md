@@ -97,9 +97,17 @@ Validated on CachyOS, GNOME Wayland:
 - Corrected normal launch: the real client ran with `--ozone-platform=wayland`, and the user confirmed dragging worked.
 - Persistence: the already installed user wrapper read `~/.config/chatgpt-flags.conf`; the Wayland flag was saved there and the launcher chain checked. A subsequent menu launch was not tested in this session.
 
+Follow-up on the same date:
+- After a normal launch using the saved Wayland flag, the user reported the pet was partly offscreen at the bottom. The GPU process still used Wayland.
+- Pet drag logs reported global x/y as zero and an oversized 1132 by 2849 window. The overlay uses global display anchors and programmatic window bounds. This is consistent with Electron's documented native Wayland positioning limitations.
+- The user selected XWayland to prioritize the pet. The flags file was backed up and changed to --ozone-platform=x11. Pet recovery still requires runtime and user confirmation after restart.
+- The earlier drag-only success did not establish a complete desktop repair. Image dragging and pet behavior must both be considered before persisting a backend choice.
+
 These are observed compatibility results for this setup, not a claim that every XWayland client has broken dragging or that native Wayland fixes viewer-close clipboard retention.
 
 ## Supporting references
 
 - [OpenAI image inputs](https://learn.chatgpt.com/docs/image-inputs): general image attachment guidance; Shift dragging did not resolve this local case.
 - [Loupe copy implementation](https://gnome.pages.gitlab.gnome.org/loupe/doc/src/loupe/widgets/image_view.rs.html): copy sets the current page content provider on the clipboard.
+
+- [Electron BrowserWindow](https://www.electronjs.org/docs/latest/api/browser-window): native Wayland limits window positioning and always-on-top; global bounds report zero coordinates.

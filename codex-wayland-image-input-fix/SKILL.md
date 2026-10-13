@@ -1,11 +1,11 @@
 ---
 name: codex-wayland-image-input-fix
-description: Diagnose and repair Codex or ChatGPT Desktop on Linux Wayland when dragging image files into the composer does nothing while file-manager copy and paste works. Includes native Wayland startup validation, user-level launch persistence, and the separate GNOME Loupe clipboard lifetime issue. Use for these image-input symptoms, not general attachment, authentication, or network failures.
+description: Diagnose and repair Codex or ChatGPT Desktop on Linux Wayland when dragging image files into the composer does nothing while file-manager copy and paste works. Includes native Wayland startup validation, desktop pet regression checks, reversible backend selection, and the separate GNOME Loupe clipboard lifetime issue. Use for these image-input symptoms, not general attachment, authentication, or network failures.
 ---
 
 # Codex Wayland image input repair
 
-Separate file drag-and-drop from clipboard copying. On the validated GNOME case, switching Codex from XWayland to native Wayland restored dragging; keeping Loupe open until pasting resolved copying. Do not assume either observation applies to every Linux desktop or client version.
+Separate file drag-and-drop from clipboard copying. On the validated GNOME case, switching Codex from XWayland to native Wayland restored dragging; keeping Loupe open until pasting resolved copying. Native Wayland subsequently caused a desktop pet placement/clipping regression on this same setup, so the user chose XWayland and copy/paste. Treat native Wayland as a conditional tradeoff, not an unconditional repair.
 
 ## Diagnose without changing the session
 
@@ -53,13 +53,23 @@ Read [references/launch-and-case.md](references/launch-and-case.md) before launc
 - Use a separate temporary profile for the initial startup test; do not close the original client to discover whether Wayland can start.
 - Obtain desktop variables from the logged-in session or verified user service environment. In the recorded client, `/proc/MAIN_PID/environ` omitted even HOME and the display variables.
 - Keep every temporary profile, log, helper, and runtime temporary directory under the task's original workspace `tmp/`. Check the Chromium singleton socket path length before launch.
-- A successful launch is only a startup test. Require actual dragging in the user's normal client before declaring the workaround effective.
+- A successful launch is only a startup test. Verify actual image dragging and, when enabled, the desktop pet's complete display, positioning, dragging, and behavior above other windows. Do not declare success or persist Wayland after checking image input alone.
 - Explain that restarting closes the current window, and honor authorization already given. Signal only the verified main PID, gracefully.
 - If an automatic restart fails, inspect the log before retrying. Correct the failed prerequisite and preflight it separately; do not loop over unverified restarts or promise fallback recovery before checking its environment.
 
+## Desktop pet regression gate
+
+Native Wayland is unsuitable as the default workaround when it breaks a pet or another floating window the user uses. In the recorded follow-up, the pet was clipped at the screen bottom; drag logs reported bounds with x=0, y=0, width=1132 and height=2849. The installed overlay implementation uses display-relative anchors, getBounds/getContentBounds, and window layout updates.
+
+Electron documents that global positioning and always-on-top APIs are unsupported on native Wayland, while window bounds report zero global coordinates. This supports a backend compatibility diagnosis; it is not proof of a broken pet asset. See the [Electron BrowserWindow documentation](https://www.electronjs.org/docs/latest/api/browser-window).
+
+Offer the concrete tradeoff: XWayland for the pet with file-manager Ctrl+C/Ctrl+V for images, or native Wayland for dragging with the acknowledged overlay limitation. Do not automatically hide/delete the pet, reset its data, install desktop extensions, or patch app.asar to preserve the earlier workaround. If the user wants both, explain that no combined fix has been validated and investigate XWayland drag interoperability separately.
+
+When the user chooses XWayland, back up the flags file, change only the backend flag to --ozone-platform=x11 (or remove the repair's flag if the verified default is X11), and perform an authorized restart. Confirm the runtime backend and ask the user to verify the pet. Do not call the pet restored merely because the X11 process started.
+
 ## Persist only the verified workaround
 
-After native Wayland and user drag-and-drop both succeed, inspect which configuration the normal menu launcher actually reads.
+Only if image dragging and the relevant floating-window checks succeed, inspect which configuration the normal menu launcher actually reads.
 
 In the validated user wrapper, `~/.local/bin/chatgpt` reads `~/.config/chatgpt-flags.conf`, one argument per non-comment line. Add:
 
