@@ -92,6 +92,25 @@
       }
     },
     {
+      "name": "codex-wayland-image-input-fix",
+      "path": "codex-wayland-image-input-fix",
+      "kind": "self",
+      "category": "ai-dev-tools",
+      "platforms": [
+        "arch-linux",
+        "gnome",
+        "wayland"
+      ],
+      "summary": "修复 Codex 在 XWayland 下拖入图片无响应；验证原生 Wayland 启动并持久化参数，区分 Loupe 关闭后剪贴板只剩路径的问题。",
+      "dependencies": [
+        "Python 3/procps",
+        "systemd 用户会话",
+        "wl-clipboard",
+        "可选 xclip"
+      ],
+      "status": "active"
+    },
+    {
       "name": "opencode-wl-clipboard-copy-fix",
       "path": "opencode-wl-clipboard-copy-fix",
       "kind": "self",
