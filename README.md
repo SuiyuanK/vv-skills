@@ -59,6 +59,16 @@
 
 <!-- catalog:end -->
 
+## 第三方上游基线
+
+| Skill | 上游 | 分支 | 当前基线 | 版本 |
+| --- | --- | --- | --- | --- |
+| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`43ac02c`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/43ac02c0dd056b98b0426575b12006661e881b6f) | 上游未单独标记 |
+| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`8070d3d`](https://github.com/hugohe3/ppt-master/commit/8070d3df1f6f54b5fb60a9ae66e79c664f050212) | `6.7.0` |
+| `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` |
+
+完整同步边界和必须保留的本地调整见 [第三方 Skills](./docs/THIRD_PARTY.md)。
+
 ## 使用方式
 
 - 通过 Agent 的 skill 发现机制按名称或任务语义调用。
