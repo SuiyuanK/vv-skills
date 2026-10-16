@@ -29,6 +29,16 @@
   ],
   "skills": [
     {
+      "name": "windows-store-service-registration-fix",
+      "path": "windows-store-service-registration-fix",
+      "kind": "self",
+      "category": "system-recovery",
+      "platforms": ["windows"],
+      "summary": "诊断商城/MSIX 的 0x80073CF6、windows.service 注册拒绝访问与旧版服务残留；按证据备份、条件式清理并验证，案例最终修复待验证。",
+      "dependencies": ["Windows PowerShell 5.1 / Appx", "sc.exe、reg.exe", "系统范围查询和修复需管理员权限"],
+      "status": "active"
+    },
+    {
       "name": "chatgpt-linux-sigchld-fix",
       "path": "chatgpt-linux-sigchld-fix",
       "kind": "self",

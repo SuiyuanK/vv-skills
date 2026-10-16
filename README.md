@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **20 个 active skills**：**17 个个人**、**3 个第三方**。
+当前收录 **21 个 active skills**：**18 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -49,6 +49,7 @@
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
 | [`linux-ext4-superblock-recovery`](./linux-ext4-superblock-recovery/SKILL.md) | 个人 | Linux | 安全诊断和恢复 EXT4 超级块校验、备用超级块和无法启动问题。 | e2fsprogs、util-linux |
+| [`windows-store-service-registration-fix`](./windows-store-service-registration-fix/SKILL.md) | 个人 | Windows | 诊断商城/MSIX 的 0x80073CF6、windows.service 注册拒绝访问与旧版服务残留；按证据备份、条件式清理并验证，案例最终修复待验证。 | Windows PowerShell 5.1 / Appx、sc.exe、reg.exe、系统范围查询和修复需管理员权限 |
 
 ### 研究与内容创作
 
