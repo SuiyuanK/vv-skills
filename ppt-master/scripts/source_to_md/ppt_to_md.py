@@ -45,10 +45,13 @@ if str(_SCRIPTS_DIR) not in sys.path:
 from console_encoding import configure_utf8_stdio  # noqa: E402
 from _batch import run_path_batch  # noqa: E402
 from _conversion_profile import write_conversion_profile_best_effort  # noqa: E402
+from _markdown_text import escape_markdown_text  # noqa: E402
+from _omml_latex import _local_name, _omml_to_latex  # noqa: E402
 from pptx_ooxml.diagram_read import (  # noqa: E402
     read_smartart_diagrams,
     smartart_to_markdown,
 )
+from pptx_ooxml.ooxml import _remove_author_hidden_shapes, _shape_identity  # noqa: E402
 
 configure_utf8_stdio()
 
@@ -73,6 +76,8 @@ EMU_PER_INCH = 914400
 DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 PRESENTATIONML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 RELATIONSHIP_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+MARKUP_COMPATIBILITY_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+OFFICE_MATH_TAG = "{http://schemas.microsoft.com/office/drawing/2010/main}m"
 CHARTEX_URI = "http://schemas.microsoft.com/office/drawing/2014/chartex"
 OFFICE_VECTOR_EXTENSIONS = {"emf", "wmf"}
 IMAGE_EXT_BY_CONTENT_TYPE = {
@@ -186,6 +191,65 @@ def _safe_position(shape: object, attr: str) -> int:
         return 0
 
 
+def _expose_math_choice_shapes(slide: object) -> None:
+    """Unwrap a14 Office Math Choice shapes so ``slide.shapes`` sees them.
+
+    python-pptx skips every ``mc:AlternateContent`` in the shape tree, which
+    hides formula text boxes and the ordinary text around their math. Only the
+    in-memory read view changes; the source file is never written.
+    """
+    alternate_tag = f"{{{MARKUP_COMPATIBILITY_NS}}}AlternateContent"
+    choice_tag = f"{{{MARKUP_COMPATIBILITY_NS}}}Choice"
+    shape_tags = {f"{{{PRESENTATIONML_NS}}}sp", f"{{{PRESENTATIONML_NS}}}grpSp"}
+    for wrapper in list(slide.element.iter(alternate_tag)):
+        choice = wrapper.find(choice_tag)
+        parent = wrapper.getparent()
+        if (
+            choice is None
+            or parent is None
+            or "a14" not in (choice.get("Requires") or "").split()
+        ):
+            continue
+        shapes = list(choice)
+        if not shapes or any(shape.tag not in shape_tags for shape in shapes):
+            continue
+        index = parent.index(wrapper)
+        parent.remove(wrapper)
+        for offset, shape in enumerate(shapes):
+            parent.insert(index + offset, shape)
+
+
+def _expose_alternate_fallback_shapes(slide: object) -> None:
+    """Read the Fallback of shape-tree ``mc:AlternateContent`` this reader cannot use.
+
+    Office Math Choices are exposed by ``_expose_math_choice_shapes`` and ChartEx
+    is reported by ``_unexposed_chartex_markdown``. Any other Choice (3D models,
+    ink, zoom) is unreadable here, so its Fallback, which is what PowerPoint
+    without that feature shows, keeps pictures and text from vanishing.
+    """
+    alternate_tag = f"{{{MARKUP_COMPATIBILITY_NS}}}AlternateContent"
+    fallback_tag = f"{{{MARKUP_COMPATIBILITY_NS}}}Fallback"
+    shape_tags = {
+        f"{{{PRESENTATIONML_NS}}}{name}"
+        for name in ("sp", "grpSp", "pic", "graphicFrame", "cxnSp")
+    }
+    for wrapper in list(slide.element.iter(alternate_tag)):
+        fallback = wrapper.find(fallback_tag)
+        parent = wrapper.getparent()
+        if fallback is None or parent is None or any(
+            data.get("uri") == CHARTEX_URI
+            for data in wrapper.iter(f"{{{DRAWINGML_NS}}}graphicData")
+        ):
+            continue
+        shapes = list(fallback)
+        if not shapes or any(shape.tag not in shape_tags for shape in shapes):
+            continue
+        index = parent.index(wrapper)
+        parent.remove(wrapper)
+        for offset, shape in enumerate(shapes):
+            parent.insert(index + offset, shape)
+
+
 def iter_leaf_shapes(shapes: object) -> list[LeafShape]:
     """Return a flattened, reading-order list of shapes."""
     items: list[LeafShape] = []
@@ -272,6 +336,16 @@ def _run_url(run: object, shape: object) -> str | None:
     return None
 
 
+def _office_math_markdown(math: object) -> str:
+    """Render one a14:m zone as ``$...$``, or ``$$...$$`` for display math."""
+    zone = next((item for item in math if _local_name(item) in {"oMathPara", "oMath"}), None)
+    latex = _omml_to_latex(zone).strip() if zone is not None else ""
+    if not latex:
+        return ""
+    delimiter = "$$" if _local_name(zone) == "oMathPara" else "$"
+    return f"{delimiter}{latex}{delimiter}"
+
+
 def _paragraph_to_markdown(
     paragraph: object,
     shape: object,
@@ -294,12 +368,12 @@ def _paragraph_to_markdown(
         if not current_text:
             return
         if current_url is None:
-            parts.append(current_text)
+            parts.append(escape_markdown_text(current_text))
             return
         lead = current_text[: len(current_text) - len(current_text.lstrip())]
         trail = current_text[len(current_text.rstrip()):]
         core = current_text.strip()
-        display = _escape_md_link_text(core) if core else current_url
+        display = escape_markdown_text(core or current_url)
         parts.append(f"{lead}[{display}]({current_url}){trail}")
 
     has_run_hyperlink = False
@@ -308,6 +382,13 @@ def _paragraph_to_markdown(
         if tag == "br":
             # A soft line break inside the paragraph; python-pptx's runs skip it.
             current_text += "\n"
+            continue
+        if child.tag == OFFICE_MATH_TAG:
+            # python-pptx's runs also skip Office Math; keep it as LaTeX.
+            flush()
+            current_text = ""
+            current_url = None
+            parts.append(_office_math_markdown(child))
             continue
         if tag not in {"r", "fld"}:
             continue
@@ -339,7 +420,7 @@ def _apply_shape_click_action(text: str, shape: object) -> str:
     target = _shape_click_target(shape)
     if target is None:
         return text
-    return f"[{_escape_md_link_text(text)}]({target})"
+    return f"[{text}]({target})"
 
 
 def _shape_click_target(shape: object) -> str | None:
@@ -486,7 +567,9 @@ def text_frame_to_markdown(
     """
     visible_paragraphs = [
         paragraph for paragraph in text_frame.paragraphs
-        if normalize_text(paragraph.text) or _paragraph_has_hyperlink(paragraph)
+        if normalize_text(paragraph.text)
+        or _paragraph_has_hyperlink(paragraph)
+        or paragraph._p.find(OFFICE_MATH_TAG) is not None
     ]
     if not visible_paragraphs:
         return ""
@@ -592,6 +675,24 @@ def _format_chart_value(value: object) -> str:
     return str(value)
 
 
+def _chart_title_text(chart: object) -> str:
+    """Return the chart's own visible title text, if it has one."""
+    try:
+        if chart.has_title and chart.chart_title.has_text_frame:
+            return chart.chart_title.text_frame.text
+    except (ValueError, AttributeError, KeyError):
+        pass
+    return ""
+
+
+def _picture_alt_text(shape: object) -> str:
+    """Return the author's alt text (cNvPr/@descr) as a Markdown-safe label."""
+    element = getattr(shape, "_element", None)
+    names = element.xpath("./*/p:cNvPr") if element is not None else []
+    description = normalize_text(names[0].get("descr") or "") if names else ""
+    return _escape_md_link_text(description.replace("\n", " "))
+
+
 def _chart_header(chart: object, name: str) -> tuple[str, str]:
     """Return the Markdown chart header and its best-effort type label."""
     try:
@@ -599,7 +700,10 @@ def _chart_header(chart: object, name: str) -> tuple[str, str]:
     except (ValueError, AttributeError, KeyError):
         chart_type = ""
     raw_name = "" if name is None else str(name)
-    chart_name = normalize_text(raw_name).replace("\n", " ") or "Chart"
+    chart_name = (
+        normalize_text(_chart_title_text(chart) or raw_name).replace("\n", " ")
+        or "Chart"
+    )
     header = f"> [Chart] {chart_name}" + (f" — {chart_type}" if chart_type else "")
     return header, chart_type
 
@@ -786,6 +890,30 @@ def _xy_chart_to_markdown(
     return "\n".join(lines)
 
 
+def _chart_date_category_note(chart: object, series: list[object]) -> str:
+    """Describe numeric date categories without changing their cached values."""
+    chart_space = getattr(chart, "_chartSpace", None)
+    if chart_space is None:
+        return ""
+    date_axes = chart_space.findall(".//" + qn("c:dateAx"))
+    if not date_axes:
+        return ""
+    date1904 = chart_space.find(qn("c:date1904"))
+    system = "1904" if date1904 is not None and date1904.get("val", "1") in {"1", "true"} else "1900"
+    formats = []
+    for item in series:
+        element = _chart_series_element(item)
+        category = element.find(qn("c:cat")) if element is not None else None
+        if category is not None:
+            formats.extend(node.text for node in category.findall(".//" + qn("c:formatCode")) if node.text)
+    for axis in date_axes:
+        number_format = axis.find(qn("c:numFmt"))
+        if number_format is not None and number_format.get("formatCode"):
+            formats.append(number_format.get("formatCode"))
+    format_text = escape_markdown_text(" / ".join(dict.fromkeys(formats)) or "unspecified")
+    return f"> [Chart categories: Excel date serials; date system: {system}; format: {format_text}]"
+
+
 def _category_chart_to_markdown(chart: object, series: list[object], header: str) -> str:
     """Render a conventional category chart through python-pptx's public API."""
     categories: list[str] = []
@@ -798,9 +926,17 @@ def _category_chart_to_markdown(chart: object, series: list[object], header: str
     try:
         plots = list(chart.plots)
         if plots:
+            plot_categories = plots[0].categories
+            if getattr(plot_categories, "depth", 1) > 1:
+                labels = [("",)] * len(plot_categories)
+                for leaf, path in zip(plot_categories.levels[0], plot_categories.flattened_labels):
+                    if 0 <= leaf.idx < len(labels):
+                        labels[leaf.idx] = path
+            else:
+                labels = ((category,) for category in plot_categories)
             categories = [
-                escape_table_cell(str(category)) if category is not None else ""
-                for category in plots[0].categories
+                escape_table_cell(" / ".join(str(label) if label is not None else "" for label in path))
+                for path in labels
             ]
     except (ValueError, TypeError, IndexError, AttributeError, KeyError):
         if has_category_xml:
@@ -840,6 +976,9 @@ def _category_chart_to_markdown(chart: object, series: list[object], header: str
         series_name for series_name, _ in series_data
     ]
     lines = [header]
+    date_note = _chart_date_category_note(chart, series)
+    if date_note:
+        lines.append(date_note)
     lines.extend(_chart_warning_lines(warnings))
     lines.extend([
         "",
@@ -1224,8 +1363,24 @@ def convert_presentation_to_markdown(
         with zipfile.ZipFile(input_file) as package:
             for slide_index, slide in enumerate(presentation.slides, 1):
                 slide_part = str(slide.part.partname).lstrip("/")
+                hidden_shapes = _remove_author_hidden_shapes(slide._element)
+                hidden_ids = {
+                    node.get("id") for shape in hidden_shapes
+                    for node in shape.iter(f"{{{PRESENTATIONML_NS}}}cNvPr")
+                }
+                for shape in hidden_shapes:
+                    shape_id, shape_name = _shape_identity(shape, 0)
+                    warning = (
+                        f"Slide {slide_index}: excluded author-hidden shape "
+                        f"{shape_name!r} (id={shape_id}) and its children"
+                    )
+                    conversion_warnings.append(warning)
+                    print(f"[WARN] ppt_to_md: {warning}", file=sys.stderr)
                 try:
-                    diagrams = read_smartart_diagrams(package, slide_part, slide_index)
+                    diagrams = [
+                        item for item in read_smartart_diagrams(package, slide_part, slide_index)
+                        if str(item.get("shape_id")) not in hidden_ids
+                    ]
                 except (OSError, RuntimeError, zipfile.BadZipFile, ET.ParseError) as exc:
                     diagrams_by_slide[slide_index] = []
                     diagram_scan_failures[slide_index] = str(exc)
@@ -1278,6 +1433,8 @@ def convert_presentation_to_markdown(
         }
         emitted_diagram_ids: set[str] = set()
         emitted_chart_relationship_ids: set[str] = set()
+        _expose_math_choice_shapes(slide)
+        _expose_alternate_fallback_shapes(slide)
         for item in iter_leaf_shapes(slide.shapes):
             shape = item.shape
 
@@ -1324,16 +1481,21 @@ def convert_presentation_to_markdown(
                 )
                 if saved_picture is None:
                     if is_picture_shape:
-                        blocks.append(f"> [Image] {getattr(shape, 'name', 'Picture')}")
+                        blocks.append(
+                            f"> [Image] {_picture_alt_text(shape) or getattr(shape, 'name', 'Picture')}"
+                        )
                         continue
                 else:
                     if saved_picture.is_new_asset:
                         image_count = next_image_index
                         image_manifest.append(saved_picture.manifest_entry)
                     asset_dir_used = True
+                    alt_text = (
+                        _picture_alt_text(shape)
+                        or f"Slide {slide_index} Image {image_ref_count}"
+                    )
                     image_markdown = (
-                        f"![Slide {slide_index} Image {image_ref_count}]"
-                        f"({asset_dir.name}/{saved_picture.filename})"
+                        f"![{alt_text}]({asset_dir.name}/{saved_picture.filename})"
                     )
                     image_link = _shape_click_target(shape)
                     if image_link is not None:

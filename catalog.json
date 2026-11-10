@@ -93,13 +93,13 @@
       "kind": "third-party",
       "category": "ai-dev-tools",
       "platforms": ["windows"],
-      "summary": "修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。",
+      "summary": "修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use、模型功能漂移及 Provider 历史/项目归档状态异常。",
       "dependencies": ["PowerShell", "Windows Store/MSIX Codex", "Node.js", "可选 Python/Rust/MSVC/Windows SDK"],
       "status": "active",
       "upstream": {
         "repository": "https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill",
         "branch": "main",
-        "baseline": "43ac02c0dd056b98b0426575b12006661e881b6f",
+        "baseline": "83d564dd9e9d429ca1a415cd9791fab9922e31c8",
         "license": "上游未提供 LICENSE（本地自用；再分发前需核实授权）"
       }
     },
@@ -258,14 +258,14 @@
       "kind": "third-party",
       "category": "research-content",
       "platforms": ["cross-platform"],
-      "summary": "生成、重建、编辑和验证可编辑 PowerPoint，支持模板、原生对象、动画与旁白。",
-      "dependencies": ["Python 3.10+", "requirements.txt", "可选 Playwright/FFmpeg/Pandoc"],
+      "summary": "生成、重建、编辑和验证可编辑 PowerPoint，支持模板、原生对象、动画、旁白，以及图片生成/OCR 与图片转 PPT 工作流。",
+      "dependencies": ["Python 3.10+", "requirements.txt", "可选 Playwright/FFmpeg/Pandoc", "可选 OCR: rapidocr/onnxruntime"],
       "status": "active",
       "upstream": {
         "repository": "https://github.com/hugohe3/ppt-master",
         "branch": "main",
-        "baseline": "8070d3df1f6f54b5fb60a9ae66e79c664f050212",
-        "version": "6.7.0",
+        "baseline": "3c6ffd0ee6d6e31aa9ca316bd157173802e3526f",
+        "version": "6.9.0",
         "license": "MIT"
       }
     },

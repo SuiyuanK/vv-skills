@@ -90,6 +90,8 @@ from _dispatcher import (  # noqa: E402
     PRESENTATION_SUFFIXES,
     build_conversion_command,
 )
+from _markdown_links import rewrite_local_asset_links  # noqa: E402
+from _text_encoding import decode_text_source  # noqa: E402
 
 SOURCE_DIRNAME = "sources"
 TEXT_SOURCE_SUFFIXES = {".md", ".markdown", ".txt"}
@@ -258,13 +260,26 @@ def _has_usable_import(summary: dict[str, list[str]]) -> bool:
     )
 
 
+def default_projects_root() -> Path:
+    """Return where `init` creates projects when `--dir` is omitted.
+
+    Inside the repository checkout this is the repository's `projects/`, so a
+    command run from within `projects/` never nests `projects/projects/`. A
+    skill-only installation (npx skills, plugin cache) has no repository, so
+    projects go under the caller's working folder instead of the install tree.
+    """
+    if is_within_path(Path.cwd(), REPO_ROOT):
+        return PROJECTS_ROOT
+    return Path.cwd() / "projects"
+
+
 class ProjectManager:
     """Create, inspect, validate, and populate project folders."""
 
     CANVAS_FORMATS = CANVAS_FORMATS
 
     def __init__(self, base_dir: str | Path | None = None) -> None:
-        self.base_dir = Path(base_dir) if base_dir is not None else PROJECTS_ROOT
+        self.base_dir = Path(base_dir) if base_dir is not None else default_projects_root()
 
     def scaffold_artifact(self, project_path: str, artifact: str) -> str:
         """Delegate deterministic Markdown scaffold rendering."""
@@ -541,7 +556,13 @@ class ProjectManager:
 
     def _normalize_text_source(self, source_path: Path, sources_dir: Path) -> Path:
         target = self._ensure_unique_path(sources_dir / f"{source_path.stem}.md")
-        content = source_path.read_text(encoding="utf-8", errors="replace")
+        content, encoding = decode_text_source(source_path.read_bytes(), source_path)
+        if encoding != "utf-8":
+            print(
+                f"note: {source_path.name} decoded as {encoding}; "
+                "check the converted text",
+                file=sys.stderr,
+            )
         target.write_text(content, encoding="utf-8")
         return target
 
@@ -566,10 +587,31 @@ class ProjectManager:
                 pass
 
             existing_content = existing.read_text(encoding="utf-8", errors="replace")
-            if self._canonicalize_markdown_content(existing_content) == canonical_source:
+            if (
+                self._canonicalize_markdown_content(existing_content) == canonical_source
+                and self._companion_assets_match(source_path, existing)
+            ):
                 return existing
 
         return None
+
+    def _companion_assets_match(self, first: Path, second: Path) -> bool:
+        """Same-text Markdown is a duplicate only if its <stem>_files/ bytes match too.
+
+        Canonical text ignores the asset folder name, so two exports with
+        different charts behind the same references used to collapse into one.
+        """
+        def snapshot(markdown: Path) -> dict[str, bytes] | None:
+            assets = self._companion_asset_dir(markdown)
+            if assets is None:
+                return None
+            return {
+                path.relative_to(assets).as_posix(): path.read_bytes()
+                for path in assets.rglob("*")
+                if path.is_file()
+            }
+
+        return snapshot(first) == snapshot(second)
 
     def _companion_asset_dir(self, source_path: Path) -> Path | None:
         candidate = source_path.with_name(f"{source_path.stem}_files")
@@ -587,7 +629,7 @@ class ProjectManager:
             return
 
         content = markdown_path.read_text(encoding="utf-8", errors="replace")
-        updated = content.replace(f"{original_asset_dirname}/", f"{imported_asset_dirname}/")
+        updated = rewrite_local_asset_links(content, original_asset_dirname, imported_asset_dirname)
         if updated != content:
             markdown_path.write_text(updated, encoding="utf-8")
 

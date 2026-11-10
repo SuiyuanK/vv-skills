@@ -4,6 +4,49 @@ Use this reference only when the main `SKILL.md` workflow does not explain the c
 
 Commands below refer to the skill directory as `$SkillRoot`. Resolve it with the probe in the `Skill Root` section of `SKILL.md` before running any of them.
 
+## Explicit Recurring Follow-Up Is Refused
+
+This is an optional Desktop instruction customization, not a scheduler repair
+or a Windows 10 capture fix. Use it only when the user explicitly requests this
+behavior change. Asking for a scheduled task alone does not authorize patching
+or reinstalling the client. First inspect the actual automation tool and any
+account, workspace or scheduling errors; changing an instruction cannot grant
+missing tool access or prove that a schedule will execute.
+
+The inspected Desktop `26.1103.4239.0` instruction asset prohibits automations
+that track a specific job. This opt-in customization instead permits a native
+heartbeat for explicitly requested scheduled follow-ups in the current chat.
+It is pinned to that asset's complete hash, rather than Windows version or an
+assumed offset. Ordinary full repairs keep the shipped instruction unchanged.
+
+`patch_codex_fast_mode_windows_msix.ps1 -OnlyThreadAutomations -DryRun` checks
+the one pinned instruction asset in a disposable package copy. After validation
+and explicit deployment authorization, the same mode can prepare
+the signed package for the independent installer workflow. Use
+`-PatchThreadAutomations` to include it in an explicitly requested full patch;
+other targeted modes cannot be combined. Unknown files or partial edits stop
+before writing. Repeated application preserves bytes, and the targeted mode
+leaves model, project, plugin, authentication and scheduler code unchanged.
+
+The replacement routes explicit scheduled requests through a heartbeat in the
+current chat, includes the requested cadence and stop condition, and pauses or
+deletes it when done. Ordinary completion watching stays in the active task;
+standalone cron runs still require an explicit request. The tool lookup,
+notification preferences and archive API guidance remain intact. Applying this
+patch does not itself create a scheduled task.
+
+Run `node scripts/test-thread-automations.cjs <extracted-asar>` and the public
+targeted DryRun. For full-mode composition, also run a full DryRun with
+`-PatchThreadAutomations`, then rerun it on the prepared package. Deploy with
+state backup, a higher-revision recovery package and an independent installer.
+After an authorized installation and restart, verify the generated instruction
+text. Only with authorization for a test schedule, check saving a disposable
+heartbeat, actual timed execution and stopping at its requested condition, then
+remove it. A paused heartbeat checks saving only, not timed execution. Report
+instruction/package tests, saved-schedule checks and timed delivery separately;
+the latter remain unverified until measured. An old turn can still carry the
+previously injected instructions. No automation is created by these scripts.
+
 ## Browser AX Reports Decompression Failed
 
 If both Chrome and the in-app browser fail on `tab.ax.get('state')`, reproduce on a blank tab and inspect the service selected by `NODE_REPL_TRUSTED_SERVICES`. The Chrome client can dispatch to the separate **browser** plugin service; validating only Chrome's assets misses that path. Inspect `BROWSER_USE_ACCESSIBILITY_CORE_WASM_PATH` if an override is present.
@@ -17,6 +60,14 @@ The repair backs up changed assets, leaves package sources and trusted clients u
 Reset the Node REPL kernel after repair because failed WASM initialization is cached. Require actual Chrome **and** in-app-browser AX state reads, text entry, button clicks and visible results, then repeat in a fresh kernel. DOM/Playwright success does not satisfy AX acceptance. Contributor-reported browser acceptance is separate from the maintainer's isolated regression checks.
 
 Regression command: `node scripts/test-browser-accessibility-assets.cjs`. Optional arguments `<healthy-wasm.br> <corrupt-wasm.br>` replay an asset pair without adding vendor binaries. The suite covers source recovery, version/service mismatch, preflight, backups, idempotence and Chinese-path success/failure in PowerShell 5.1/7. The wrapper restores the caller's encoding; a missing package or plugin descriptor fails rather than reporting zero assets as verified. A known layout without either AX loader reports not applicable.
+
+## Browser Smoke Target Changes or Fails Independently
+
+A single public test page can change its DOM or fail on one network route while browser control remains healthy. On Desktop `26.1013.3656.1`, Chrome read `https://example.com/` with title `Example Domain` and multilingual body text, but a real DOM query found zero `h1` elements. The historical one-heading assertion would therefore reject a working page read. The in-app browser independently reported `ERR_CONNECTION_CLOSED` for that origin, and an explicit-proxy curl probe failed its TLS handshake; both the proxy probe and the in-app browser successfully reached the official configuration reference, whose AX tree exposed the expected page title and heading.
+
+Record each browser, target, error and successful read separately. These observations do not identify the failing network hop or prove that Chrome and the in-app browser use the same route. Preserve certificate, authentication and request-header checks. If the failure is a connection error rather than an access restriction, one independently reachable, task-relevant public HTTPS page can distinguish a target-specific failure from total browser failure; do not silently discard the first error or use another page to bypass sign-in or policy denial.
+
+Verify the current URL, observed title and meaningful AX/DOM content for public pages. Use a task-owned local fixture when exact selectors or input assertions are needed, and keep its result separate from external HTTPS reachability. If an error tab becomes a policy-blocked internal `data:` page, do not repeatedly bind or inspect it, print its large encoded URL, or bypass that restriction; allow normal temporary-tab cleanup. A target or DOM failure alone does not justify an MSIX repatch.
 
 ## Model Experience Is Partially Broken
 
@@ -77,6 +128,8 @@ Action:
 - Update script search logic when asset filenames drift between Codex Desktop versions.
 - If the unified command registry scores `title`, `id`, and `searchAliases`, `/goal` already matches the Goal command id and the legacy slash-command scorer does not need patching.
 - For the newer plugin page auth shape, force only the local auth-blocked variable to `false`; do not require the old sidebar, skills-page, and detail-page chunks to exist.
+
+Desktop 26.1016.6573.0 and 26.1016.8120.0 insert dotBrowserUse before the optional mcpAppsBrowserUse field in both the renderer payload and main-process receiver. The sender/receiver discovery, rewrite and patched-state patterns preserve these fields independently. Run test-desktop-feature-slot-patterns.ps1 -TemporaryRoot <test-root> to verify legacy, MCP-only, Dot-only and combined layouts, including false-value preservation and idempotence. Do not force the new Dot/MCP Apps values while repairing the five existing browser availability flags.
 
 ## Windows CUA Surface Is Missing After Runtime Verification
 
@@ -167,10 +220,25 @@ Action:
 
 - Reapply the MSIX patch when `browser_use_availability_resolved` is still `statsig-disabled`.
 - When the log is `local-patched` but browser setup fails before discovery, check the browser-client trusted hash before reinstalling an already healthy extension or native host.
-- Validate with a real browser smoke test, not just plugin-list output. A good minimal test opens a controlled tab such as `https://example.com/`, asks the extension backend for the active tab, confirms the title `Example Domain`, and then closes the temporary tab.
+- Validate with a real browser smoke test, not just plugin-list output. A minimal test opens a temporary tab at a task-relevant public HTTPS page, confirms its final URL, observed title and meaningful visible content through the extension backend, then closes the tab. See "Browser Smoke Target Changes or Fails Independently" for target failures and page changes.
 - Keep the distinction explicit: `local-patched` proves the Desktop gate is open; it does not prove Chrome native messaging or the extension backend is healthy.
 
 ## Browser Client Lacks Privileged Node REPL Capabilities
+
+Desktop `26.1029.7803.0` removes both legacy missing-browser-client-path
+diagnostics while retaining schema-2 native-host registration. The previous
+local installer therefore rejected the package with `missing=browser-client
+path hint` before refreshing stale browser AX assets. In this layout, require
+the paired `browserClientPath` / `browserServicePath` assignments using the
+same join function and plugin root, the expected packaged client/service
+filenames, the schema-2 app-server entry and the existing chunked-message
+protocol marker. Scan with bounded buffers (the observed ASAR exceeds 680 MiB),
+including matches across read boundaries. Do not accept the field names alone.
+The packaged/cache client hashes and both native-host state-file checks remain
+required. This is diagnostic compatibility, not a client-byte, authentication,
+or Desktop gate override. On the contributor's package, local refresh then
+passed core strict verification and Sky `0.7.17` window enumeration; this does
+not establish Chrome navigation, native screenshot/input or proxy routing.
 
 Symptoms:
 
@@ -195,7 +263,7 @@ Action:
 - Run `install-computer-use-local.ps1 -VerifyOnly`. The repair restores the exact packaged browser-client bytes into the stable marketplace and versioned cache; `-StrictVerifyOnly` requires those hashes to match and validates either the legacy ASAR hash contract or the complete `26.814` native-host path contract.
 - For an external physical cache root, require the installer to set the resolved marketplace/cache roots in the user-level `NODE_REPL_TRUSTED_CODE_PATHS`, then run the full MSIX patcher and require `CODEX_NODE_REPL_TRUSTED_PATHS_V1` in the installed ASAR. After restart, the Desktop-generated config must contain the original roots plus the physical external roots; only then retry browser setup.
 - Reset the current Node REPL kernel after repair, import the active cached browser client, require `setupBrowserRuntime()` to succeed, and confirm `agent.browsers.get("chrome")` returns the real Chrome extension backend.
-- Finish with a real controlled page smoke test: open `https://example.com/`, verify the final URL, title `Example Domain`, exactly one `h1`, and heading text `Example Domain`, then close the temporary tab.
+- Finish with a real public HTTPS page read through the Desktop browser channel: verify the final URL, observed title and meaningful visible content, then close the temporary tab. Fixed selector assertions require a task-owned fixture; third-party page structure is not a runtime contract.
 - If the official diagnostics fail, repair the concrete extension/native-host problem instead and rerun the same diagnostics before attempting browser-client setup again.
 
 ## Computer Use Settings Says Plugin Unavailable
@@ -756,6 +824,93 @@ The patcher recognizes the complete auth/host/critical-requirements/cache/conver
 
 Run `scripts/test-service-tier-access-patterns.ps1 -TemporaryRoot <D-drive-test-root> -CurrentAsset <unmodified-app-initial-asset>` and `scripts/test-fast-mode-gate-patterns.ps1 -TemporaryRoot <D-drive-test-root>`. The exact 26.1007 asset passed 479 guard/behavior checks, including full-file change isolation and idempotence; the legacy suite passed 60 behavioral cases. A current-package full dry run and a real `/v1/responses` wire capture returned `service_tier=priority`. These results establish patch and request-wire compatibility. Desktop picker behavior, browser commands, and native interaction still need their own post-install evidence.
 
+Desktop `26.1016.6573.0` and `26.1016.8120.0` add `amazonBedrock` as a third recognized authentication mode in both complete service-tier access conditions. The request matcher accepts that optional third comparison only for the same auth local, and the UI matcher accepts either complete two- or three-mode condition followed by the assignment delimiter. Unknown extra conditions, mismatched locals, mixed targets and partial markers are rejected. The shared requirements converter, independent Fast/Ultrafast restrictions, cache arguments and React loading/memo behavior remain unchanged. Run the same two regression suites with the current unmodified asset before the full package dry run.
+
+## Post-update checks and browser split-config targeting
+
+For subsequent updates, use the repository's `scripts/codex-after-update.ps1`
+to distinguish an unverified replacement package from plugin version drift or
+pending acceptance. `-CheckApp` diagnoses the current complete non-phone bundle;
+repair switches are explicit. The launcher resolves models from active
+model/list rather than reverting to old hard-coded model names. See
+`references/post-update-verification.md` for the status contract.
+
+### Browser split-config patch hits a neighboring Computer Use hook
+
+On the installed `26.1023.6621.1` merged app-initial asset, the earlier V3
+in-app config regex matched Computer Use's preceding authMethod-shaped local
+declaration. A browser config marker existed there while the actual browser
+hook still read its original config; another patch run then changed the real
+browser hook. Marker presence and first-run `patched` were therefore insufficient
+to prove a complete, stable browser patch.
+
+The V3 match now binds `featureName:browser_use` or `browser_use_external` to
+its exact options local and corresponding config call. Scoped duplicates and
+mismatched locals are rejected; a historical marker in a neighboring function
+does not hide the missing browser target. Browser hook tests include that
+neighbor unchanged, both configs repaired in one pass, repeat-run stability,
+duplicates, mismatched locals and the exact installed asset. This is a source
+and static-asset improvement; it does not claim a new Desktop deployment.
+
+## Native Desktop 26.1023 hides Ultra after model/list
+
+On Store package `26.1023.6621.0`, the catalog and `model/list` can advertise
+`ultra`, `priority`, and `ultrafast` while Desktop hides those controls. Fast
+still needs the request/UI authentication repair. Native Ultra no longer uses
+the historical account-settings slider hook: the model query in `app-initial`
+and the host capability initialization separately consult gate `1186680773`.
+
+The native Ultra patch recognizes both complete call sites before writing. For
+custom providers only, it admits the catalog's Ultra capability while preserving
+the caller's include-Ultra value, enabled reasoning efforts, model capabilities,
+and the official provider gate. Both sites must be pristine or both patched;
+duplicates, unknown conditions, missing peers and partial markers are rejected.
+Run `scripts/test-native-ultra-reasoning.ps1 -TemporaryRoot <local-test-root>
+-CurrentAssetsDir <original-assets-directory>` and a full dry run. Successful
+fixture and syntax checks are separate from installed Desktop acceptance.
+
+The local `26.1023.6621.0 -> 26.1023.6621.1` deployment completed with
+`verified-complete`: exact-package Desktop window launch, installed ASAR
+integrity, both native Ultra markers, default `gpt-6.1-sol` model/list tiers
+`priority,ultrafast`, and a captured request containing `service_tier=priority`.
+All eight publishable bundled plugins passed strict version/runtime checks;
+fresh Desktop native enumeration returned four windows, and Chrome plus the
+in-app browser read public HTTPS page titles and meaningful AX content. The
+persisted locale was `zh-CN`. Mode/language menus were not directly operated or
+visually checked; native screenshot/input and upstream Ultrafast scheduling
+were not exercised. Successful-run build/recovery artifacts were removed after
+acceptance, with configuration backups and logs retained.
+
+## Recoverable preparation fails on a harmless npm warning
+
+Under Windows PowerShell 5.1, capturing a patcher with `2>&1` while
+`ErrorActionPreference=Stop` can convert `npm warn deprecated asar@3.2.0` into
+a terminating error before any deployment. The recoverable runner prepares the
+package in a hidden independent PowerShell process with separate stdout/stderr
+files and checks its actual exit code. `test-package-preparation-transport.ps1`
+verifies warning preservation, nonzero exit rejection, arrays, booleans and
+paths. Model-list probe transport and post-install runtime refresh reuse the
+reviewed upstream PR #112 behavior; that PR's unrelated Edge changes are not
+required for this local Chrome setup.
+
+## Store update leaves old reserved marketplace and installed plugin versions
+
+The stable mirror can match a new package while Desktop's actual
+`.tmp/bundled-marketplaces/openai-bundled` descriptors and CLI installed version
+records still refer to the preceding build. On `26.1023.6621.0` this mixed
+`26.1023.50603` and `26.1023.51421`, left unified Computer Use referencing a
+removed runtime, and caused full plugin verification to fail.
+
+The local repair synchronizes only already published, publishable reserved
+mirror entries from the installed package, with backups. It then upgrades only
+already installed stale plugin records. A disabled plugin remains disabled,
+including when registration fails; unrelated TOML keys are preserved and
+optional plugins are not installed. Require `test-bundled-plugin-upgrade-repair.ps1`,
+`test-bundled-plugin-version-drift.ps1`, and a post-restart
+`-StrictVerifyOnly -VerifyAllBundledPluginsAvailable` pass. The mirror inventory,
+CLI records, runtime initialization, and actual Desktop browser/native readiness
+are distinct acceptance checks.
+
 ## Model Picker Shows Only One Fast Level (Missing Ultrafast Tier)
 
 Symptoms:
@@ -852,6 +1007,16 @@ Use `lib/msix-safe-install.ps1`: build a higher package revision, validate deplo
 
 Keep original program bytes in a signed higher-revision recovery MSIX until actual launch and runtime acceptance pass. The normal three patcher entrypoints perform guarded in-place deployment but do not automatically build a recovery MSIX or run a startup-recovery transaction. An external executor may call `Invoke-RecoverableMsixInstall` with a separately prepared recovery package and a real `ValidateInstalledPackage` callback. If startup validation fails after a successful update, that helper deploys the prepared recovery package once, in place. Keep logs for both update and recovery; never claim success from `Add-AppxPackage` or signing alone. `scripts/test-msix-safe-install.ps1` covers the no-uninstall contract, manifest/version preservation, non-admin rejection, identity/signature gates, same/other-version Desktop ancestry, deployment failure, and simulated startup recovery. These fixture tests are not live installation proof.
 
+## Elevated Explorer Activation Returns Without Starting Desktop
+
+On Desktop `26.1027.3384.0`, the recoverable installer prepared a valid `.1` patched package and a `.2` original-content recovery package, but both post-install launch checks timed out. Both callbacks used `Start-Process explorer.exe shell:AppsFolder\<AUMID>` from the elevated external PowerShell. The same registered `.2` package subsequently started normally through its ordinary user-session AUMID, so a signed package or a failed Explorer launch alone does not prove ASAR or application failure.
+
+Use `lib/appx-launch.ps1` for the manifest-bound launch. It resolves the Desktop application's AUMID and executable, then invokes the system `IApplicationActivationManager` COM API through a static C# wrapper in the bitness-matched Windows PowerShell. Perform the COM cast in C#, not with a PowerShell cast of the ComImport class; an interface method declared extern on the class can also fail to load in Windows PowerShell 5.1. This does not bypass UAC, deployment preflight, ancestry, package integrity, or the recovery package. The recoverable runner retains exact-package process and model/runtime acceptance; the process probe prefers a visible matching-package window, rechecks liveness after enumeration, and also accepts a valid background-only launch. A process with an unreadable or different path never satisfies acceptance. Before the second repair attempt, the shared helper passed real activation and visible-process checks in both ordinary and elevated session-1 probes against the same `.4` original-content package; this is launch-helper evidence, not deployment acceptance.
+
+The shared native PowerShell resolver uses `Sysnative` from a 32-bit process on 64-bit Windows, because `System32` would be redirected to 32-bit `SysWOW64`. The outer elevated installer bootstrap uses the same resolver. Collect child output as an array and validate a complete nonzero `uint32` PID; indexing a scalar single-line string truncates it to its first character.
+
+Run `scripts/test-appx-launch.ps1 -TemporaryRoot <local-test-root>` under Windows PowerShell 5.1 and PowerShell 7. It checks manifest/AUMID binding, ambiguous and non-full-trust entries, the pinned COM declaration, complete PID and malformed-output handling, matching-process selection, background-only startup, and unreadable-path rejection. A 64-bit test run also launches the fixture through a real 32-bit PowerShell parent without activating an app. These tests cover launch detection and transport, not an actual package deployment. The complete non-phone patcher and recoverable runner both use this helper so future updates do not restore the elevated Explorer path.
+
 ## MSIX Signature Reports Unknown Format When TEMP Does Not Exist
 
 An external executor that changes `TEMP` and `TMP` must create the selected directory before setting those variables or checking an MSIX signature. On Windows PowerShell 5.1 with Desktop `26.1002.7124.0`, the same signed update and recovery packages returned `Valid` under the normal temporary directory, then `UnknownError` with a trust-provider unsupported-format message when the executor pointed both variables at a missing D-drive directory. Creating that exact directory restored `Valid` for both packages without changing their bytes, signer, publisher, or certificate trust.
@@ -904,7 +1069,27 @@ Accept the separate modern layout only when the complete shared readiness predic
 
 The surface fixture suite covers 304 modern platform/readiness combinations for the original and renamed helpers, plus the existing 120 legacy combinations, migration, idempotency, corrupt or duplicate readiness anchors, target selection, and unchanged refusal of partial or ambiguous patches. The original contributor validated a full dry-run, signing, installation, real native screenshots, and browser reads on `26.917.6896.0`. The subsequent `n.Wu` compatibility correction was checked against the actual `26.917.9434.0` bundle with syntax and repeat-run validation; this is separate from Desktop installation or screenshot acceptance.
 
+## Desktop 26.1021 Ships Native Windows CUA and Moves the Power Slider
+
+On the exact Store package `26.1021.2667.0`, `main-Dk6YMjS1.js` already admits Windows in the CUA surface expression. It requires shared readiness, `computerUse`, and the installed computer plugin's `enabled` result; Darwin additionally requires `serviceAppPath`. The surviving Darwin-only condition belongs to legacy skill reconciliation. The surface patcher recognizes the complete native expression together with the unchanged readiness predicate and returns `already-open-native-windows` without writing either condition. Mixed markers, duplicate gates, missing conditions and mismatched locals are rejected.
+
+The Power slider moved into `app-primary` and no longer carries `harborEnabled` or `ModelPickerPowerSliderImpl`. Discovery also recognizes the existing `composer.modelPicker.power` plus `PowerSlider` witnesses when the harbor gate is absent. The existing Power patcher leaves that asset unchanged. Goal discovery skips translation-only label files before running command-gate expressions, avoiding expensive unmatched regex scans while retaining legacy gate witnesses.
+
+Run `test-computer-use-surface-patterns.ps1` and `test-native-layout-discovery.ps1 -TemporaryRoot <local-test-root> -CurrentExtractDir <extracted-asar>`. The latter reads the current asset set and checks the native slider remains byte-identical. These checks and a full DryRun establish compatibility of the selected bundle; installed-package and runtime acceptance remain separate.
+
+## Desktop 26.1027 Splits the Main Bundle and Yoda-Minifies the Gates
+
+On the exact Store package `26.1027.3384.0`, `.vite\build` no longer ships `main-*.js`; the Electron main code lives in `early-bootstrap.js` plus numbered `early-bootstrap-<n>-<hash>.js` chunks. The minifier reverses string comparisons and double-quotes literals. Windows CUA is still native (`h=u&&t.computerUse&&c.enabled&&("win32"===o.platform||"darwin"===o.platform&&null!=c.paths.serviceAppPath)`), the plugin exposure guard becomes `if(!r.installed||null==n||i&&"darwin"!==e.platform)return null;`, and the shared readiness predicate uses `null!=`, `(0,ns.JFB)(e,"mcpToolExposure")` and `"AVAILABLE"===s.plugin.availability`. Discovery and the embedded surface patcher accept both quoting styles and still report `already-open-native-windows` without rewriting the asset. A Yoda-shaped bundle without the native Windows branch fails closed instead of being patched. `NODE_REPL_TRUSTED_CODE_PATHS` and `CODEX_WINDOWS_REGISTERED_CORE` are double-quoted for the same reason.
+
+This build also retires the `sites` bundled plugin: the package marketplace ships eight descriptors and only the uninstall helper remains, in the reversed form `null!=t&&"object"==typeof t&&...Object.hasOwn(t,"sites@openai-bundled")`. The native Windows copy fallback survives but loads through a lazy chunk (`r.e(523).then(r.bind(r,9496))`) with no `windows-file-copy-` filename, so detection must also accept `"win32"!==X().platform)return void await Y().cp(...)`.
+
+The fixture suite adds a recognized native case, a refused Darwin-only Yoda variant, and idempotent repeats. On `26.1027.3384.0` the full DryRun reports `already-open-native-windows` and `patched` for every remaining gate.
+
 ## CUA Requests Time Out After Proxy Variables Are Removed
+
+On Desktop `26.1023.6621.1`, the root and current CUA/Node REPL hosts had complete environment reads with no standard proxy variables despite an enabled explicit Windows proxy. Adding a proxy fallback to the extracted `@oai/cua-repl/bin/cua-repl.mjs` before launch and restarting Desktop restored Chrome and in-app-browser tab creation and GitHub AX reading. The local installer now manages that fallback automatically, and the recoverable installer runs it before shutdown. Use `install-computer-use-local.ps1 -OnlyRuntimeProxy` for a targeted repair and add `-StrictVerifyOnly` for read-only verification. It discovers the current explicit HTTP proxy rather than embedding this host's address, preserves supplied environment values and `--import` preload files, and rejects unknown entry shapes before writing. Originals are stored under `.codex/backups/cua-runtime-proxy`. Reapply after runtime extraction/update; reconnect or restart after a changed entry and validate both browser surfaces. A CONNECT/static pass alone is insufficient. PAC and authenticated/non-HTTP proxies remain unsupported.
+
+On Desktop `26.1027.6604.1`, post-install local verification rejected enabled Windows PAC even though the Desktop root, app-server, CUA and Node REPL processes already inherited explicit HTTP/HTTPS proxies. A complete pair of valid, unauthenticated HTTP proxy URLs now takes precedence over system fallback discovery, leaving the runtime launcher unchanged. Partial or unsupported environment values still fail, and enabled/indeterminate PAC without that pair remains unsupported. Verify current process inheritance and both browser surfaces separately; this selection rule alone does not establish routing or browser success.
 
 On Desktop `26.915.4065.0`, native app enumeration can work and Chrome can connect while tab creation or listing fails with `nodeRepl.fetch request failed`. Compare the actual `cua_repl` child process environment with its app-server parent. Checking `codex-computer-use-swift.exe` alone does not test the process that performs the request.
 
@@ -915,6 +1100,40 @@ Use `python scripts/probe-node-repl-proxy-env.py --pid <root-pid> --pid <current
 When the root has the required proxy but its native CUA child loses it, run `scripts/patch_codex_fast_mode_windows_msix.ps1 -OnlyNodeReplProxyEnv -DryRun`. If both the native CUA surface and proxy inheritance are broken, use `-OnlyComputerUseSurfaceAndProxyEnv -DryRun`. These opt-in modes patch only their selected ASAR targets and reject unrelated repair switches. Use the existing signed MSIX and independent installer workflow if deployment is actually needed; a missing proxy in the root requires launch-environment diagnosis instead.
 
 Run `node scripts/test-node-repl-proxy-env.cjs`, `powershell -NoProfile -File scripts/test-node-repl-proxy-targeted-mode.ps1` and `python -B scripts/test-probe-node-repl-proxy-env.py`. They verify behavior, scope/idempotence/no-write failure paths and synthetic plus task-owned process reads. They do not establish a newly installed Desktop's proxy routing. After a real deployment, verify the CUA child environment and a controlled browser tab. Restarting only its JavaScript kernel does not restart the MCP process.
+
+## Desktop 26.1027 webpack proxy anchor
+
+Store Desktop `26.1027.3384.0` / CLI `0.166.0-alpha.5.1` moves the native Node REPL config builder into `.vite/build/early-bootstrap.js` and emits `"CODEX_WINDOWS_REGISTERED_CORE"` instead of a backtick literal. The surrounding Windows/non-WSL/CLI guards and Set-based allowlist remain equivalent. The previous targeted discovery reports zero targets despite complete live reads showing proxy variables in the Desktop/backend but absent from CUA/Node REPL hosts.
+
+Target discovery and the proxy patcher now accept matching backtick, double-quote or single-quote delimiters while retaining the exact registered-core local binding and unique-anchor checks. Mismatched delimiters, wrong locals, duplicate targets and incomplete markers still fail closed. The resulting patch uses the existing canonical marker and is idempotent. This is a proxy-only compatibility update; the shipped native CUA readiness, installed-plugin guards, updater and model controls remain outside its scope.
+
+The actual Store bundle passed targeted DryRun and syntax validation. Behavior fixtures cover quote equivalence and malformed bindings, and production orchestration fixtures run all three quote styles in Windows PowerShell 5.1 and PowerShell 7. These checks establish preparation compatibility, not installed routing or native screenshot/input acceptance. Recheck fresh child environments and browser operations after deployment. The system-proxy launcher approach in PR #113 addresses a different configuration; it does not replace process-level inheritance when the system proxy is intentionally disabled.
+
+The contributor subsequently installed the proxy-only candidate as `26.1027.3384.1` without recovery. A complete 22,423-entry ASAR comparison found only `early-bootstrap.js` changed; installed ASAR/launcher hashes matched the validated candidate. Fresh Desktop reads passed for eleven core request hosts and eight custom Node children; all 66 sampled connections used the dedicated proxy with the system proxy off. Local IPC, isolated kernels and the artifact daemon were reported separately. Scoped strict verification and provider/CDN reachability passed. Native enumeration returned four windows and forty apps after one initial `list_apps` timeout; native screenshots/input were not exercised. In-app-browser HTTPS navigation and AX succeeded after a pre-repair timeout. Chrome extension/native-host checks and local-page navigation/AX passed, but two navigations to the same public HTTPS page timed out. An independent direct request timed out while an explicit-proxy request returned HTTP 200, consistent with a separate Chrome network-route limitation; this does not establish Chrome HTTPS acceptance. The optional all-bundled check still reported `deep-research` undiscoverable. These are contributor-host results, not guarantees for other versions or networks.
+
+## Desktop 26.1103.3517 native CUA and proxy inheritance
+
+On the exact Store source `26.1103.3517.0` / CLI `0.167.0-alpha.3.2`, the dedicated launcher still supplies the root and backend proxy environment with the Windows system proxy off. Complete live process reads found two CUA MCP and six Node REPL hosts without standard proxy variables, while the root, two backend processes and sixteen custom Node children retained them. Native `getApp`, `listApps` and `listWindows` were available, and read-only enumeration returned forty apps and five windows. The initial 136 connection samples all used the dedicated proxy; the missing CUA environment remains a defect despite that finite sample.
+
+The current bundled AX/cache repair (`install-computer-use-local.ps1 -VerifyOnly`) and separate core `-StrictVerifyOnly` succeeded, including helper enumeration. The optional all-bundled check still found `deep-research` undiscoverable. A full `codex-after-update.ps1 -CheckApp` returned `unsupported`; the direct full DryRun preserved the native Windows CUA guard (`already-open-native-windows`) but stopped at `could not find custom model visibility filter in extracted assets`. Do not apply the pinned 26.1029 complete gate profile to this changed layout. The opt-in `-OnlyNodeReplProxyEnv -DryRun` found the unique builder in `.vite/build/early-bootstrap.js`, reported `patched`, and passed syntax and ASAR-integrity checks. The proxy behavior and targeted-mode fixture suites also passed. A fresh source-bound candidate matched all 19,791 ASAR entries with only `early-bootstrap.js` changed; comparison across 3,761 enumerated source files found only `app.asar` plus its integrity-bearing `ChatGPT.exe` changed among program payloads. This supports a narrow proxy-only candidate, not a full-model or Deep Research repair. Post-install environment, browser and native acceptance require separate evidence.
+
+The contributor then installed the proxy-only candidate as `26.1103.3517.1` without recovery. Installed ASAR/launcher hashes matched the staged files. Fresh complete environment reads covered eleven core request processes and eight custom Node children; all retained standard proxy names. All 114 sampled Desktop-tree connections went through the dedicated proxy, with zero direct and the system proxy off. Core strict verification and provider reachability passed. Native enumeration returned forty apps/five windows; the in-app browser read an official public HTTPS page, and the Chrome extension read a domestic public HTTPS page. Chrome navigation to the same official page still timed out, consistent with an independent direct request timing out while an explicit-proxy request returned HTTP 200. An initial browser inventory logged a Statsig timeout before a later zero-error inventory. These are finite host observations; native screenshot/input, full gate repair and Deep Research discoverability were not established. The initial-to-final config diff was limited to bundled-marketplace metadata and Node REPL environment/trusted paths; selected provider/model, custom MCP, plugin states and protected auth/launcher files were unchanged.
+
+## Custom stdio MCP Launchers Do Not Inherit The Default Proxy
+
+A dedicated Desktop launcher, a healthy backend `.env`, and the CUA proxy patch can all pass while separately configured stdio MCP servers have no standard proxy variables. A connection filter restricted to `ChatGPT.exe` and `codex.exe` misses their Node launchers and servers. Identify the current Desktop process tree, attribute direct sockets to their actual owners, and use the complete-read environment probe on those processes before diagnosing the fault. A registry-mirror connection is a separate observation from a model API or CUA connection; record it instead of silently excluding it from an MCP-wide claim.
+
+The official [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) defines `mcp_servers.<id>.env_vars` as an additional environment-variable allowlist for stdio servers. When the parent has the intended proxy variables and an enabled local server lacks them, back up `config.toml` and merge the required names into that server's existing allowlist, preserving `env`, credentials, arguments, disabled servers, structured entries, and deliberate per-server overrides. For example:
+
+```toml
+[mcp_servers.existing_server]
+# Keep the existing command, args and other configuration.
+env_vars = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy"]
+```
+
+This is a user-config repair, not a reason to repack MSIX, install another MCP, change the system proxy, or replace a domestic package registry. Validate the candidate TOML before writing and compare the parsed result with the intended narrow change. Restart the affected server through a supported lifecycle or cold-start Desktop when its existing processes do not refresh; editing config does not retrofit a running process environment.
+
+On one Windows host with Desktop `26.1013.4894.1` / CLI `0.163.0-alpha.10.2`, all eleven sampled core environments passed after the combined CUA repair, but six custom MCP npm launchers had no proxy variables and held direct connections to the configured domestic registry mirror. Adding the standard allowlist to four already-enabled custom stdio servers and cold-starting Desktop restored inheritance. Fourteen core/custom launcher/server environments then passed complete reads, and all eighty sampled Desktop-tree connections used the dedicated proxy with the system proxy off. This is finite environment/routing evidence, not a guarantee that every future request from every library honors those variables. Native screenshot/input was not exercised.
 
 ## Desktop 26.930.7945 and 26.1002.6548 Process and Proxy Checks
 
@@ -931,6 +1150,29 @@ Desktop `26.1002.6548.0` ships CLI `0.162.0-alpha.2`, bundled plugins `26.1002.5
 The contributor then installed that combined candidate as `26.1002.6548.1` without recovery; the independent installer and ordinary-permission launcher both exited 0. Fresh Desktop checks restored native API members and enumerated 7 windows / 40 apps, with complete standard proxy environment reads for the root, backend, CUA hosts and trusted workers. All 21 sampled app connections used the dedicated proxy. Native screenshot/input was not exercised. Chrome discovery, navigation and AX reading passed after launching Chrome. The in-app browser instead reported `ERR_CONNECTION_CLOSED`; its generated data error page then blocked subsequent operations under the existing URL policy. Keep this unresolved IAB result separate from the passing native transport and Chrome checks; do not relax that policy.
 
 For this build the plugin browser service source is `0e1188675552812f68a2e487f6464a357c378e9534cbde2eb6f6e218dc1d1c46`, and the independent browser-desktop runtime source is `9c7fb0d8123de8959501269de45a0fb0cbab2e454a52bf677e2893fef3f48def`. Both are outside the current exact header profiles, so only that overlay is skipped; do not claim browser authentication repair from a passing runtime check. Sky `0.7.6` needs no legacy request-context overlay. On this host the optional all-bundled availability assertion also reports `deep-research` as undiscoverable while all four requested browser/native plugins are installed and enabled. Record that separately from the passing scoped strict check; it is not evidence that the required CUA cache is broken, and its cause has not been established.
+
+## Windows Screenshot Shows an Occluding App
+
+On Desktop `26.1013.4894.1` with `@oai/cua 0.2.6` and Sky `0.7.8`, a real QQ main window had a process-backed app identifier and a usable accessibility tree, but a separate `getScreenshot()` call displayed an overlapping Codex window with part of QQ still visible underneath. No coordinate input was sent using that wrong image. This reproduced the symptom outside a game and without the reported Codex app-identifier mismatch; missing game AX or incorrect app attribution alone therefore does not explain every occurrence.
+
+During an already-authorized interaction diagnostic:
+
+1. Check the current window inventory and bind the exact intended HWND. If an old window closes or a post/dialog opens a new window, enumerate again and bind that returned window instead of reusing the old handle.
+2. Read the target's fresh accessibility state and confirm an exposed `Raise` secondary action. Derive its element index from that state; do not assume a root index or action exists.
+3. Keep the verified Raise action and capture adjacent in one JavaScript call:
+
+   ```javascript
+   await app.performSecondaryAction(observedRaiseIndex, "Raise");
+   await app.getAXStateAndScreenshot();
+   ```
+
+4. Inspect the actual image together with the accessibility state before using coordinates. If it still shows another app, stop input and retain the failure. Do not choose click locations from the occluding app or repeatedly capture the same obscured target.
+
+On the observed QQ window, this sequence returned the intended image and allowed verified category selection, post navigation, detail-window rebinding, keyboard close, and text expansion. A prior `coordinate input geometry is unavailable` error was recovered by observing the intended foreground window and taking a fresh screenshot before the next input. An error alone does not establish that input reached another app.
+
+`Accessibility state unavailable for window …` is a status string in the recorded Windows binding, not an exception proving that `getApp` returned no object. A screenshot can remain available when AX is absent. Conversely, a correct AX tree does not establish that screenshot pixels show the same window. If AX is absent, do not invent a Raise element; use only documented activation capabilities available in that runtime and within the user's authorized diagnostic scope.
+
+The observations support a foreground/occlusion dependency, not a proven internal capture mechanism: no atomic before/after foreground log or native capture-backend trace was collected, and wrong-image screenshots remained in conversation tool output rather than standalone evidence files. This is an operational workaround, not an MSIX, helper, or runtime-code repair, and it does not establish correct game capture or input. Keep the separate offline window-identity mutation finding distinct; no candidate metadata guard was installed or credited for this recovery. Do not patch unknown helper binaries or repack Desktop merely because this symptom occurs.
 
 ## Windows CUA Entry Instructions Use an Unsupported App Name
 

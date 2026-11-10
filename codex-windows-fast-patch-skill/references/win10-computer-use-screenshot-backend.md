@@ -178,7 +178,7 @@ Desktop `26.803.10989.0` ships `@oai/sky 0.6.6` with original helper SHA-256 `BE
 - The exact guarded rewrite changes five regions: optional-border path at file offset `0x47E01` (`4889c34189d6eb50` -> `e980000000909090`), busy return at `0x4CF86` (`0f85f5340000` -> `0f85d8340000`), one-shot flag at `0x4CF97` (`740d` -> `eb0d`), a 175-byte MTA wrapper at `0x14868F`, and the callback vtable pointer at `0x14B128` (`43db044001000000` -> `8f92144001000000`).
 - IDA/radare2 resolution confirmed the wrapper's `CreateThread`, `CloseHandle`, `RoInitialize`, and `RoUninitialize` IAT calls and the original `FrameArrived` callback at `0x14004DB43`. The wrapper VA is `0x14014928F`; no executable under `WindowsApps` was modified.
 - On Windows 10, the isolated regression script `scripts/test-computer-use-helper-win10-patch.ps1` passed `original -> patched -> idempotent install -> rollback -> idempotent rollback`, complete input/output SHA-256 checks, and rejection of an unknown hash. On newer Windows builds, the same script verifies the in-memory candidate hash, proves that `-Install` is rejected without changing the fixture, and still checks unknown-hash rejection. The live Windows 10 install stored the original at `.codex\backups\computer-use-helper\26.803.10989.0-sky-0.6.6-BE488E66\codex-computer-use.exe.original`.
-- After installation, `install-computer-use-local.ps1 -StrictVerifyOnly -VerifyAllBundledPluginsAvailable` returned `runtime import ok` and `verification ok`. A persistent Node REPL was reset; `sky.list_windows()` ran in one call, then independent calls activated the `D:\Program Files\IDA.PRO` Explorer window and returned a `1125x639` screenshot. The inspected image showed the expected `kg_patch`, `misc`, and `portable_win` entries, and the repeated independent screenshot also returned normally. The former `SetIsBorderRequired / 0x80004002` failure did not recur.
+- After installation, `install-computer-use-local.ps1 -StrictVerifyOnly -VerifyAllBundledPluginsAvailable` returned `runtime import ok` and `verification ok`. A persistent Node REPL was reset; `sky.list_windows()` ran in one call, then independent calls activated an enumerated Explorer test window and returned a `1125x639` screenshot. The inspected image showed the expected folder contents, and the repeated independent screenshot also returned normally. The former `SetIsBorderRequired / 0x80004002` failure did not recur.
 - Cold capture completed in about `452 ms`; two later batches of ten unchanged Explorer captures all succeeded in about `31-48 ms`, with one stable SHA-256 per batch. Accessibility text length was `3419`.
 - Main-helper resources were `58` threads / `661` handles after the first capture and `55/662` after twenty static captures plus a two-second settle. The cursor-manager child remained at one thread / `166` handles, with no linear growth.
 - In a fresh helper session, three CPU Performance-page Task Manager captures spaced about `2.1` seconds apart were each `666x593`, completed in `50-51 ms`, and produced three distinct SHA-256 values: `42764DC1...A68C1`, `6AB486EA...B787`, and `6845A929...7A361`. The test-created Task Manager window was closed afterward.
@@ -458,3 +458,47 @@ All ten PE section headers and every raw section body match the independently ac
 The independent thirteen-region rewrite changes 552 bytes without changing file size and produces complete SHA-256 `5BAE07883BA804D9EB23BFBFFBC99FD83247896F6CFE66109A8F6C4C5EE13B94`. Windows PowerShell 5.1 and PowerShell 7 regressions pass candidate-hash checks, unknown-input rejection and the Windows 11 installation guard. The candidate passes native unwind at 47 instruction boundaries and ten live caller frames without running the EXE entry point. Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion 0.7.6-63C98C4D -HelperPath <exact-original-helper>`.
 
 `ValidatedDesktopVersion` and `EndToEndValidatedDesktopVersion` remain null for this profile. The missing hash support is fixed; Windows 10 screenshot/input acceptance and install/rollback remain pending. The [Windows 11 host validation workflow](win10-validation-on-win11.md) provides a guest/reporter diagnostic with a dedicated native test window, isolated helper copies, before/after capture and optional input. Keep issue #93 open until real Windows 10 evidence resolves its reported failures.
+
+### `@oai/sky 0.7.12` helpers / Desktop 26.1016
+
+Store builds `26.1016.6573.0`, `26.1016.8120.0` and `26.1016.8622.0` contain distinct signed helpers with identical ten PE section bodies and the existing thirteen capture/unwind regions. Each profile guards its own checksum/certificate bytes and complete input/output hashes:
+
+| Profile | Original SHA-256 | Candidate SHA-256 |
+| --- | --- | --- |
+| `0.7.12-6FCC7C64` | `6FCC7C6482DFD9B8E0CFC07F55B89D526779948B9B3EDA30EB2495573A36CC08` | `7C4DC7060A6081506C1614EA0831523EF1D68201CF34E6BD7DE7FB787D63DFA2` |
+| `0.7.12-A8533C3D` | `A8533C3D5F12114ABA5DB329AA2F591BDB66A8DE6C9741F436940158042D53AB` | `40B6ED3F0534EF1BF9D9F79ADF13365ECD75DF5DDE387D8A1F0287ED72338FE8` |
+| `0.7.12-AA6EB7E9` | `AA6EB7E98D62888495F002168C3249D694912A81A029F32A1473F07E52B51679` | `02469CD31ABF82544A9EF21139C8302266CA4CAEF13D864D49C81C637D0AE326` |
+
+Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion <profile> -HelperPath <preserved-original>` for candidate, guarded install, idempotence, rollback, backup preservation and unknown-input checks. The Windows 11 install guard remains in force. `ValidatedDesktopVersion` and `EndToEndValidatedDesktopVersion` remain null: contributor-reported current-Desktop capture/input samples are separate from independent full Windows 10 acceptance and a resource soak.
+
+### `@oai/sky 0.7.13` and `0.7.17` / Desktop 26.1029
+
+The `0.7.13` helper retains the older callback layout; `0.7.17` moves the wrapper section, exception table and imported thread/COM calls. All these profiles pin all thirteen guarded regions and complete hashes. The native unwind test derives the import slots from the pinned wrapper instructions and retains the earlier `0.7.12` profiles.
+
+| Profile | Original SHA-256 | Candidate SHA-256 |
+| --- | --- | --- |
+| `0.7.13-8A64A6A0` | `8A64A6A0FDEA2540F6D74D42EA826E928AD8F5C8891EEBE1CCCBBC8F6A70C2AE` | `8DCC49CB8CE2D341112681F7B96D09BF129F711A74C3C7AAD747D3403032CED0` |
+| `0.7.17-FC0447EF` | `FC0447EFB1AA5A0C527AE88C2ADA9FF7DDC398501BF451275218F1F866424BA8` | `C1B08268538E704ACFB4AFE6A8FE91D26B8D7DC9E0FD8D30E92A792964F6A151` |
+| `0.7.17-1F0DDEE3` | `1F0DDEE3E5955469D35A75A0E28CC491CCC5F46191F116547E671CA93F97331C` | `7EA9A40431C84E40A4AF51230C1C50588D9CE90019EB651D5A61563E7A10B59A` |
+
+`1F0DDEE3` ships in Desktop `26.1029.9216.0`. All nine PE sections are byte-identical to `FC0447EF`; only the COFF timestamp, PE checksum and Authenticode signature differ. Its profile reuses the same thirteen regions with that build's checksum and signature bytes as originals, and the patched output differs from `C1B08268` only in the timestamp before the unused signature tail.
+
+Isolated Windows 10 install, repeat install, rollback, repeat rollback, exact backup and unknown-input checks passed for both profiles. Their candidates each passed 47 unwind instruction boundaries and ten real caller frames without executing the helper entry point.
+
+On installed Desktop `26.1029.7803.3`, the packaged and extracted `0.7.17` helpers matched the candidate hash. The actual Desktop CUA channel returned inspected native settings screenshots with six archived chats and no load error. A coordinate click and reversible Chinese search input changed the list from six rows to zero and back to six. Ten static captures completed in 46-140 ms; eight current-chat frames completed in 47-360 ms and included two distinct images with advancing elapsed time. Over the finite 15-minute resource sample, helper private memory rose 1.54 MiB, handles fell by seven and threads fell by one. Element-index actions occasionally lost their cached state; a fresh Raise/screenshot plus observed coordinates recovered the intended navigation.
+
+These are finite screenshot/input observations, not a continuously animated native-target soak or full exception-dispatch validation. Both installed-validation fields remain null. Keep the complete-hash and Windows 10 installation guards, and record stronger acceptance separately when it is actually measured. Private chat screenshots and accessibility text remain local.
+
+### `@oai/sky 0.7.17` helper `87ECB164` / Desktop 26.1103.3517.0
+
+Windows 10 Pro build `19045` reproduced `FrameArrived timed out` and `window capture timed out` against Notepad while application enumeration, accessibility and keyboard shortcuts worked. A subsequent editor click failed with `coordinate input geometry is unavailable`.
+
+The installed package and extracted per-user helper have the same complete original SHA-256, `87ECB16498B8948590A134820FE9C9B3B6138197486BC82531BE29C5D3D5601A`. The 1,548,592-byte original has a valid OpenAI Authenticode signature. Eleven of the `1F0DDEE3` profile's thirteen guarded regions match exactly; the checksum and the first 512 certificate-overlay bytes differ. This is a new independently pinned profile, not evidence that every PE section matches the older build. Its complete candidate SHA-256 is `225ABFB088EEFBBC3D8002CB85A60447479E4E40396250AFE10E648D9F4EC41A`.
+
+Disassembly confirms the original callback at RVA `0x4247a`, its closure flags and the busy/once branches. The candidate's four indirect wrapper calls resolve through the original import table to `CreateThread`, `CloseHandle`, `RoInitialize` and `RoUninitialize`. The existing wrapper, section and unwind metadata apply without changing their replacement bytes; only this sample's original metadata guards and complete hashes are new.
+
+Run `test-computer-use-helper-win10-patch.ps1 -SkyVersion 0.7.17-87ECB164 -HelperPath <preserved-original>`. On Windows 10, the isolated regression passed candidate hashing, install, repeat install, rollback, repeat rollback, exact backup preservation and unknown-input refusal. The isolated candidate also passed native lookup/unwind at 47 instruction boundaries and ten live caller frames. All PowerShell scripts parsed successfully.
+
+After installing the per-user helper and resetting the Desktop JavaScript kernel, independent `@oai/sky` calls returned eight visually inspected Notepad states. They showed the blank editor, Chinese/English input, full selection, and the Format menu. Screenshot-backed coordinate input and accessibility-index menu input both succeeded. Seven timed captures took 61–167 ms. A later input was refused with `window bounds changed`; interaction stopped without retry, so saving and reopening were not accepted by this run. The target and test text remained local.
+
+`ValidatedDesktopVersion` and `EndToEndValidatedDesktopVersion` remain null. This finite test establishes the reported screenshot and coordinate-input recovery on this host; it does not establish a continuously animated native-target or long-duration resource soak.

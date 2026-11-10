@@ -35,6 +35,9 @@ Notes:
 - Local sources under `projects/` are moved into the target project unless
   `--copy` is passed; a file inside another project's tree is copied unless
   `--move` is explicit, so borrowing a finished project's slices never empties it.
+- Without `--dir`, `init` creates the project under the repository's
+  `projects/` when run inside the repository checkout, and under
+  `<working folder>/projects/` otherwise (skill-only installations).
 - `--format` is optional and accepts registered canvas keys only. Pass it only
   when the actual canvas exactly matches a registered format.
 - Without `--format`, `init` creates `<name>_<YYYYMMDD>`; a name that already
@@ -63,6 +66,10 @@ Notes:
   profiles, `_files/` assets, and PPTX analysis follow the archived stem.
   Pre-existing Markdown and explicitly supplied same-stem Markdown still
   suppress automatic conversion; PPTX intake still keeps each deck separate.
+- When an imported Markdown companion directory is renamed, only local
+  Markdown link/image destinations into that directory are rewritten, including
+  percent-encoded paths and reference definitions. Prose, code, link labels,
+  titles, and external URLs keep their original text.
 - A projects-local supplied source directory left strictly empty after import
   (or empty from the start) is removed; every directory outside `projects/`
   remains untouched. `--copy` never removes directories.

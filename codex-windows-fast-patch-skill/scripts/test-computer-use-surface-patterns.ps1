@@ -47,6 +47,7 @@ if (-not [IO.Path]::GetFullPath($fixtureRoot).StartsWith($temp.TrimEnd('\') + '\
   throw 'fixture root is outside TemporaryRoot'
 }
 New-Item -ItemType Directory -Force -Path $fixtureRoot | Out-Null
+function Invoke-ComputerUseSurfaceRegression {
 $patcherPath = Join-Path $fixtureRoot 'PatchComputerUseSurface.cjs'
 [System.IO.File]::WriteAllText($patcherPath, $patcherAst.Value, [System.Text.UTF8Encoding]::new($false))
 
@@ -197,6 +198,54 @@ if ($LASTEXITCODE -ne 0) { throw 'modern CUA readiness/platform behavior matrix 
 & $node.Source --check $modern.AssetPath
 if ($LASTEXITCODE -ne 0) { throw 'modern CUA output syntax check failed' }
 
+# Desktop 26.1021 already opens Windows with the installed computer plugin guard.
+$nativeSurfaceGate = 'p=f&&t.computerUse&&u.enabled&&(l.platform===`win32`||l.platform===`darwin`&&u.paths.serviceAppPath!=null)'
+$nativeSource = $modernSource.Replace('p=f&&l.platform===`darwin`&&t.computerUse&&u.enabled&&u.paths.serviceAppPath!=null', $nativeSurfaceGate)
+foreach ($name in @('native-windows', 'native-windows-repeat')) {
+  $native = Invoke-PatcherFixture -Name $name -Source $nativeSource -ExpectedExitCode 0
+  if ($native.Output -cne 'already-open-native-windows' -or [IO.File]::ReadAllText($native.AssetPath) -cne $nativeSource) {
+    throw 'native Windows support must be recognized without rewriting the surface or legacy skill gate'
+  }
+}
+$nativeBehaviorPath = Join-Path $fixtureRoot 'native-behavior.cjs'
+[IO.File]::WriteAllText($nativeBehaviorPath, @'
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const context = vm.createContext({});
+vm.runInContext(fs.readFileSync(process.argv[2], 'utf8'), context);
+let cases = 0;
+for (const platform of ['darwin', 'win32', 'linux']) {
+  for (const ready of [false, true]) for (const computerUse of [false, true])
+  for (const enabled of [false, true]) for (const serviceAppPath of [null, '/service']) {
+    const expected = ready && computerUse && enabled &&
+      (platform === 'win32' || platform === 'darwin' && serviceAppPath !== null);
+    assert.equal(context.buildSurface(ready, {platform}, {computerUse}, {enabled, paths:{serviceAppPath}}), expected);
+    cases++;
+  }
+}
+console.log(`NATIVE_WINDOWS_CUA_MATRIX_PASSED cases=${cases}`);
+'@, [Text.UTF8Encoding]::new($false))
+& $node.Source $nativeBehaviorPath $native.AssetPath
+if ($LASTEXITCODE -ne 0) { throw 'native Windows CUA readiness/platform behavior matrix failed' }
+
+# Desktop 26.1027 minifies the same gates with reversed comparisons and
+# double-quoted literals; Windows stays native, so recognition must not rewrite.
+$yodaSource = @'
+function exposePlugin(r,i,a,e){if(!r.installed||null==n||i&&"darwin"!==e.platform)return null;return true;}
+function buildSurface(f,l,t,u){let p;p=f&&t.computerUse&&u.enabled&&("win32"===l.platform||"darwin"===l.platform&&null!=u.paths.serviceAppPath);return p;}
+function ready(t,o,a,n,e,s){return t.browserUseTinysky&&!o&&null!=a.nodePath&&null!=a.nodeReplPath&&(0,ec.JFB)(e,"mcpToolExposure")&&s?.plugin.installed===!0&&s.plugin.enabled&&"AVAILABLE"===s.plugin.availability}
+'@
+foreach ($name in @('yoda-native-windows', 'yoda-native-windows-repeat')) {
+  $yoda = Invoke-PatcherFixture -Name $name -Source $yodaSource -ExpectedExitCode 0
+  if ($yoda.Output -cne 'already-open-native-windows' -or [IO.File]::ReadAllText($yoda.AssetPath) -cne $yodaSource) {
+    throw '26.1027 Yoda-minified native Windows layout must be recognized without rewriting'
+  }
+}
+# A Yoda-minified bundle without the native Windows branch stays unsupported.
+$yodaDarwinOnly = $yodaSource.Replace('("win32"===l.platform||"darwin"===l.platform', '("darwin"===l.platform')
+$null = Invoke-PatcherFixture -Name 'yoda-darwin-only' -Source $yodaDarwinOnly -ExpectedExitCode 2
+
 # The same readiness predicate shipped with renamed import and export symbols.
 $renamedModernSources = @()
 foreach ($helper in @('n.Wu', 'helpers.$q12')) {
@@ -277,6 +326,13 @@ function Assert-RejectedUnchanged {
 }
 
 Assert-RejectedUnchanged 'modern-corrupt-readiness' ($modernPatched.Replace('t.browserUseTinysky', 't.unknownFlag'))
+Assert-RejectedUnchanged 'native-corrupt-readiness' ($nativeSource.Replace('t.browserUseTinysky', 't.unknownFlag'))
+Assert-RejectedUnchanged 'native-duplicate-readiness' ($nativeSource + $modernReadiness)
+Assert-RejectedUnchanged 'native-duplicate-surface' ($nativeSource + $nativeSource)
+Assert-RejectedUnchanged 'native-mixed-marker' ($nativeSource + '/*CODEX_CUA_WINDOWS_SURFACE_V1*/')
+Assert-RejectedUnchanged 'native-missing-enabled' ($nativeSource.Replace('&&u.enabled&&', '&&'))
+Assert-RejectedUnchanged 'native-mismatched-state' ($nativeSource.Replace('u.paths.serviceAppPath', 'v.paths.serviceAppPath'))
+Assert-RejectedUnchanged 'native-mismatched-platform' ($nativeSource.Replace('l.platform===`darwin`', 'other.platform===`darwin`'))
 Assert-RejectedUnchanged 'modern-duplicate-readiness' ($modernPatched + $modernReadiness)
 Assert-RejectedUnchanged 'original-modern-corrupt-readiness' ($modernSource.Replace('t.browserUseTinysky', 't.unknownFlag'))
 Assert-RejectedUnchanged 'original-modern-duplicate-readiness' ($modernSource + $modernReadiness)
@@ -325,6 +381,8 @@ $metadata = '/*CUA_REPL_ENABLED_SURFACES cuaReplSurfaces computerUseNodeRepl*/'
 if ((Find-ComputerUseSurfaceTarget $selectionRoot) -cne $candidate) { throw 'content-based selection failed' }
 [IO.File]::WriteAllText($candidate, $modernSource + '/*CUA_REPL_ENABLED_SURFACES cuaReplSurfaces*/')
 if ((Find-ComputerUseSurfaceTarget $selectionRoot) -cne $candidate) { throw 'modern target selection failed' }
+[IO.File]::WriteAllText($candidate, $nativeSource + '/*CUA_REPL_ENABLED_SURFACES cuaReplSurfaces*/')
+if ((Find-ComputerUseSurfaceTarget $selectionRoot) -cne $candidate) { throw 'native Windows target selection failed' }
 foreach ($source in $renamedModernSources) {
   [IO.File]::WriteAllText($candidate, $source + '/*CUA_REPL_ENABLED_SURFACES cuaReplSurfaces*/')
   if ((Find-ComputerUseSurfaceTarget $selectionRoot) -cne $candidate) { throw 'renamed modern target selection failed' }
@@ -391,6 +449,8 @@ Write-Output 'CUA_FAIL_CLOSED_SELECTION_AND_SCOPE_PASSED'
   }
   function Get-Command {
     param([string]$Name, [string]$ErrorAction)
+    # Exercise acquisition fallback without a cached CLI; cache reuse has its own suite.
+    if ($Name -ceq 'node') { return }
     if ($Name -cne 'npx') { throw "unexpected command lookup: $Name" }
     if ($useNpx) { [pscustomobject]@{ Source = 'Invoke-FakeAsarRunner' } }
   }
@@ -416,5 +476,13 @@ Write-Output 'CUA_FAIL_CLOSED_SELECTION_AND_SCOPE_PASSED'
 }
 Write-Output 'ASAR_RUNNER_FALLBACK_PASSED'
 
-Remove-Item -LiteralPath $fixtureRoot -Recurse -Force
 Write-Output "Windows CUA surface regression passed: $fixtureRoot"
+}
+
+try {
+  Invoke-ComputerUseSurfaceRegression
+} finally {
+  if (Test-Path -LiteralPath $fixtureRoot -PathType Container) {
+    Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}

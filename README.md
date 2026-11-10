@@ -21,7 +21,7 @@
 | [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 个人 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
 | [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 个人 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
 | [`codex-wayland-image-input-fix`](./codex-wayland-image-input-fix/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 诊断 Codex 图片拖拽与 Loupe 复制问题；验证 Wayland/XWayland 取舍、宠物悬浮窗回归并可回滚配置。 | Python 3/procps、systemd 用户会话、wl-clipboard、可选 xclip |
-| [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use 与模型功能漂移。 | PowerShell、Windows Store/MSIX Codex、Node.js、可选 Python/Rust/MSVC/Windows SDK |
+| [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use、模型功能漂移及 Provider 历史/项目归档状态异常。 | PowerShell、Windows Store/MSIX Codex、Node.js、可选 Python/Rust/MSVC/Windows SDK |
 | [`opencode-wl-clipboard-copy-fix`](./opencode-wl-clipboard-copy-fix/SKILL.md) | 个人 | Arch/CachyOS、Wayland | 修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。 | wl-clipboard、可选 xclip |
 
 ### EDA/FPGA
@@ -55,7 +55,7 @@
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`ppt-master`](./ppt-master/SKILL.md) | 第三方 | 跨平台 | 生成、重建、编辑和验证可编辑 PowerPoint，支持模板、原生对象、动画与旁白。 | Python 3.10+、requirements.txt、可选 Playwright/FFmpeg/Pandoc |
+| [`ppt-master`](./ppt-master/SKILL.md) | 第三方 | 跨平台 | 生成、重建、编辑和验证可编辑 PowerPoint，支持模板、原生对象、动画、旁白，以及图片生成/OCR 与图片转 PPT 工作流。 | Python 3.10+、requirements.txt、可选 Playwright/FFmpeg/Pandoc、可选 OCR: rapidocr/onnxruntime |
 | [`research-writing-assistant`](./research-writing-skill/SKILL.md) | 第三方 | 跨平台 | 提供论文头脑风暴、文献综述、章节写作、LaTeX、统计分析、图表与审稿工作流。 | Python、requests/PyMuPDF、可选科研计算与 LaTeX 环境 |
 
 <!-- catalog:end -->
@@ -68,8 +68,8 @@
 
 | Skill | 目录 | 上游 | 分支 | 当前基线 | 版本 | 许可证 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch` | `codex-windows-fast-patch-skill` | [github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`43ac02c`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/43ac02c0dd056b98b0426575b12006661e881b6f) | 上游未单独标记 | 上游未提供 LICENSE（本地自用；再分发前需核实授权） |
-| `ppt-master` | `ppt-master` | [github.com/hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`8070d3d`](https://github.com/hugohe3/ppt-master/commit/8070d3df1f6f54b5fb60a9ae66e79c664f050212) | 6.7.0 | MIT |
+| `codex-windows-fast-patch` | `codex-windows-fast-patch-skill` | [github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`83d564d`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/83d564dd9e9d429ca1a415cd9791fab9922e31c8) | 上游未单独标记 | 上游未提供 LICENSE（本地自用；再分发前需核实授权） |
+| `ppt-master` | `ppt-master` | [github.com/hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`3c6ffd0`](https://github.com/hugohe3/ppt-master/commit/3c6ffd0ee6d6e31aa9ca316bd157173802e3526f) | 6.9.0 | MIT |
 | `research-writing-assistant` | `research-writing-skill` | [github.com/Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | 3.1.0 | MIT |
 
 <!-- third-party:end -->

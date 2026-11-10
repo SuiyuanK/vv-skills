@@ -68,6 +68,7 @@ from pptx_workspace import (  # noqa: E402
     native_structure_path,
     slide_animation_config_sha256,
     source_pptx_path,
+    validate_roundtrip_output_path,
     workspace_resource_specs,
 )
 from slide_roster import discover_slide_svgs  # noqa: E402
@@ -91,6 +92,7 @@ from ..native_objects import (
     native_replacement_kind,
     native_replacement_status,
 )
+from ..native_objects.marker_attributes import native_json_is_authoritative
 from ..native_objects.marker_status import native_marker_release_block_reason
 from ..drawingml.theme_colors import (
     ThemeColorError,
@@ -134,6 +136,7 @@ from .template_structure import (
 from ..animation_config import (
     animation_group_effect_entries,
     load_animation_config,
+    resolve_morph_pairs,
     resolve_slide_animation_config,
     validate_animation_config,
     validate_animation_config_errors,
@@ -440,6 +443,18 @@ def _roundtrip_passthrough_candidates(
         current_animation_config,
         pages,
     )
+    # Explicit identity edits also touch the source endpoint, whose own motion
+    # row may still match the import baseline. Classify both ends as patches.
+    morph_slides = {
+        stem
+        for pair in resolve_morph_pairs(
+            [page.svg_stem for page in pages], expanded_animation_config,
+        )
+        for stem in (pair.source_slide, pair.destination_slide)
+    }
+    candidates.difference_update(
+        page.output_index for page in pages if page.svg_stem in morph_slides
+    )
     pages_by_output = {page.output_index: page for page in pages}
     for index in tuple(candidates):
         page = pages_by_output[index]
@@ -647,6 +662,7 @@ def _roundtrip_slide_patches(
             or raw.get("defs_changed") is True
         )
         patches[index] = RoundtripSlidePatch(
+            warnings=raw.setdefault("warnings", []),
             source_ref_ids=_ref_set("source_ref_ids"),
             edited_ref_ids=_ref_set("edited_ref_ids"),
             deleted_ref_ids=_ref_set("deleted_ref_ids"),
@@ -1756,11 +1772,12 @@ def _native_object_fallbacks(svg_files: list[Path]) -> list[tuple[str, str, str]
     return fallbacks
 
 
-def _native_object_projection_findings(
+def _native_object_preflight_findings(
     svg_files: list[Path],
-) -> list[tuple[str, str, str]]:
-    """Return SVG-first Chart/Table details that native metadata would discard."""
-    findings: list[tuple[str, str, str]] = []
+) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+    """Separate JSON-first payload failures from SVG-first projection findings."""
+    payload_findings: list[tuple[str, str, str]] = []
+    projection_findings: list[tuple[str, str, str]] = []
     for svg_path in svg_files:
         try:
             root = ET.parse(svg_path).getroot()
@@ -1790,12 +1807,15 @@ def _native_object_projection_findings(
                     document_root=root,
                 )
             except RuntimeError as exc:
+                if native_json_is_authoritative(elem):
+                    payload_findings.append((svg_path.name, marker_id, str(exc)))
+                    continue
                 warnings = [f"projection validation failed: {exc}"]
-            findings.extend(
+            projection_findings.extend(
                 (svg_path.name, marker_id, warning)
                 for warning in warnings
             )
-    return findings
+    return payload_findings, projection_findings
 
 
 def _release_blocked_graphics(
@@ -2668,6 +2688,36 @@ Recorded narration:
         except Exception:
             project_name = project_path.name
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    backup_dir: Path | None = None
+    if args.output:
+        native_path = Path(args.output)
+    else:
+        exports_dir = project_path / "exports"
+        # --native-charts-and-tables yields a materially different file (PowerPoint
+        # Chart/Table objects instead of SVG-derived DrawingML shapes), so mark it
+        # in the default-flow name to distinguish the two editable object models.
+        # Narration flags likewise mark _narrated (audio embedded per slide +
+        # auto-advance timings). Flag-driven (not content-sniffed) so the name
+        # is predictable; an explicit -o keeps the caller's exact name untouched.
+        native_tag = "_native_charts_tables" if args.native_objects else ""
+        narrated_tag = "_narrated" if (args.recorded_narration or args.narration_audio_dir) else ""
+        kiosk_tag = "_kiosk" if args.kiosk else ""
+        native_path = exports_dir / f"{project_name}_{timestamp}{native_tag}{narrated_tag}{kiosk_tag}.pptx"
+        # Preserve svg_output/ only when it is the actual source. A custom -s
+        # directory remains the caller-owned source and is not copied under a
+        # misleading svg_output backup name.
+        if not diagnostic_source:
+            backup_dir = project_path / "backup" / timestamp
+
+    if args.roundtrip:
+        try:
+            validate_roundtrip_output_path(project_path, native_path, roundtrip_manifest)
+        except (OSError, RuntimeError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+
     canvas_format = args.format
     expected_viewbox = (
         None
@@ -2892,7 +2942,7 @@ Recorded narration:
                 authoring_report=authoring_roundtrip_report,
                 changed_resource_pages=changed_resource_pages,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
         if roundtrip_passthrough_slides:
@@ -3216,7 +3266,20 @@ Recorded narration:
             )
 
     if args.native_objects:
-        projection_findings = _native_object_projection_findings(native_files)
+        payload_findings, projection_findings = _native_object_preflight_findings(native_files)
+        if payload_findings:
+            print(
+                "Error: --native-charts-and-tables stopped because JSON-first "
+                "native payload validation failed:",
+                file=sys.stderr,
+            )
+            for filename, marker_id, finding in payload_findings:
+                print(f"  {filename}: {marker_id}: {finding}", file=sys.stderr)
+            print(
+                "Correct the reported JSON payload fields in the object's "
+                "metadata and retry the native export.",
+                file=sys.stderr,
+            )
         if projection_findings:
             print(
                 "Error: --native-charts-and-tables stopped because visible "
@@ -3234,6 +3297,7 @@ Recorded narration:
                 "Native-ready=no.",
                 file=sys.stderr,
             )
+        if payload_findings or projection_findings:
             return 1
         print(
             "Warning: --native-charts-and-tables replaces shape-based SVG fallbacks "
@@ -3254,30 +3318,6 @@ Recorded narration:
                 print(f"  {filename}: {marker_id} ({status})", file=sys.stderr)
             if len(fallbacks) > 20:
                 print(f"  ... and {len(fallbacks) - 20} more", file=sys.stderr)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    backup_dir: Path | None = None
-    if args.output:
-        native_path = Path(args.output)
-    else:
-        exports_dir = project_path / "exports"
-        exports_dir.mkdir(parents=True, exist_ok=True)
-        # --native-charts-and-tables yields a materially different file (PowerPoint
-        # Chart/Table objects instead of SVG-derived DrawingML shapes), so mark it
-        # in the default-flow name to distinguish the two editable object models.
-        # Narration flags likewise mark _narrated (audio embedded per slide +
-        # auto-advance timings). Flag-driven (not content-sniffed) so the name
-        # is predictable; an explicit -o keeps the caller's exact name untouched.
-        native_tag = "_native_charts_tables" if args.native_objects else ""
-        narrated_tag = "_narrated" if (args.recorded_narration or args.narration_audio_dir) else ""
-        kiosk_tag = "_kiosk" if args.kiosk else ""
-        native_path = exports_dir / f"{project_name}_{timestamp}{native_tag}{narrated_tag}{kiosk_tag}.pptx"
-        # Preserve svg_output/ only when it is the actual source. A custom -s
-        # directory remains the caller-owned source and is not copied under a
-        # misleading svg_output backup name.
-        if not diagnostic_source:
-            backup_dir = project_path / "backup" / timestamp
 
     native_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -39,7 +39,9 @@ from image_backends.backend_common import (
     MAX_RETRIES,
     is_permanent_error,
     is_rate_limit_error,
+    nearest_aspect_ratio,
     normalize_image_size,
+    note_aspect_ratio,
     resolve_output_path,
     retry_delay,
     save_image_bytes,
@@ -217,29 +219,30 @@ def _generate_image(api_key: str, prompt: str,
     chunk_count = 0
     total_bytes = 0
 
-    for chunk in client.models.generate_content_stream(
-        model=model,
-        contents=contents,
-        config=config,
-    ):
-        elapsed = time.time() - start_time
+    try:
+        for chunk in client.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=config,
+        ):
+            elapsed = time.time() - start_time
 
-        if chunk.parts is None:
-            continue
+            if chunk.parts is None:
+                continue
 
-        for part in chunk.parts:
-            if part.text is not None:
-                print(f"\n  Model says: {part.text}", end="", flush=True)
-            elif part.inline_data is not None:
-                chunk_count += 1
-                data_size = len(part.inline_data.data) if part.inline_data.data else 0
-                total_bytes += data_size
-                size_str = f"{data_size / 1024:.0f}KB" if data_size < 1048576 else f"{data_size / 1048576:.1f}MB"
-                print(f"\n  [OK] Chunk #{chunk_count} received ({size_str}, {elapsed:.1f}s)", end="", flush=True)
-                last_image_data = part
-
-    heartbeat_stop.set()
-    hb_thread.join(timeout=1)
+            for part in chunk.parts:
+                if part.text is not None:
+                    print(f"\n  Model says: {part.text}", end="", flush=True)
+                elif part.inline_data is not None:
+                    chunk_count += 1
+                    data_size = len(part.inline_data.data) if part.inline_data.data else 0
+                    total_bytes += data_size
+                    size_str = f"{data_size / 1024:.0f}KB" if data_size < 1048576 else f"{data_size / 1048576:.1f}MB"
+                    print(f"\n  [OK] Chunk #{chunk_count} received ({size_str}, {elapsed:.1f}s)", end="", flush=True)
+                    last_image_data = part
+    finally:
+        heartbeat_stop.set()
+        hb_thread.join(timeout=1)
 
     elapsed = time.time() - start_time
     print(f"\n  [DONE] Stream complete ({elapsed:.1f}s, {chunk_count} chunk(s), {total_bytes / 1024:.0f}KB total)")
@@ -301,8 +304,14 @@ def generate(prompt: str,
 
     image_size = normalize_image_size(image_size)
 
-    if aspect_ratio not in VALID_ASPECT_RATIOS:
-        raise ValueError(f"Invalid aspect ratio '{aspect_ratio}'. Valid: {VALID_ASPECT_RATIOS}")
+    requested_ratio = aspect_ratio
+    ratios = (
+        GEMINI_2_5_VALID_ASPECT_RATIOS
+        if _model_id(model) in GEMINI_2_5_FLASH_IMAGE_MODELS
+        else VALID_ASPECT_RATIOS
+    )
+    aspect_ratio = nearest_aspect_ratio(aspect_ratio, ratios)
+    note_aspect_ratio(requested_ratio, aspect_ratio)
 
     if image_size not in VALID_IMAGE_SIZES:
         raise ValueError(f"Invalid image size '{image_size}'. Valid: {VALID_IMAGE_SIZES}")
@@ -326,16 +335,16 @@ def generate(prompt: str,
             if is_permanent_error(e):
                 raise
             if attempt < max_retries and is_rate_limit_error(e):
-                delay = retry_delay(attempt, rate_limited=True)
+                delay = retry_delay(attempt, rate_limited=True, exc=last_error)
                 print(f"\n  [WARN] Rate limit hit (attempt {attempt + 1}/{max_retries + 1}). "
                       f"Waiting {delay}s before retry...")
                 time.sleep(delay)
             elif attempt < max_retries:
-                delay = retry_delay(attempt, rate_limited=False)
+                delay = retry_delay(attempt, rate_limited=False, exc=last_error)
                 print(f"\n  [WARN] Error (attempt {attempt + 1}/{max_retries + 1}): {e}. "
                       f"Retrying in {delay}s...")
                 time.sleep(delay)
             else:
                 break
 
-    raise RuntimeError(f"Failed after {max_retries + 1} attempts. Last error: {last_error}")
+    raise RuntimeError(f"Failed after {max_retries + 1} attempts. Last error: {last_error}") from last_error
