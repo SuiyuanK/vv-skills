@@ -2,7 +2,7 @@
 
 这个仓库保存个人可复用的 agent skills、经过审核的第三方 skill 镜像与配套自动化工作流。它同时是 Linux 上 CC Switch 的规范 skill 目录和 GitHub 仓库 [`SuiyuanK/vv-skills`](https://github.com/SuiyuanK/vv-skills) 的本地工作副本。
 
-所有 active skill 保持为顶层目录，便于 CC Switch 发现并部署到 Codex、Claude、opencode 等 Agent。每个 skill 的入口是目录内的 `SKILL.md`；详细操作、风险边界和按需参考资料以该目录为准。
+所有 active skill 以仓库顶层目录存放，便于 CC Switch 识别、启用并部署到 Codex、Claude Code、opencode、DSH 等 Agent；实际部署范围以 CC Switch 的配置为准。每个 skill 的入口是所在目录下的 `SKILL.md`，其中声明 `name`、`description` 与主流程；详细操作、风险边界和按需加载的参考资料以 skill 目录内的其他文件为准。
 
 ## Skill 索引
 
