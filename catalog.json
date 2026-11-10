@@ -88,6 +88,7 @@
     },
     {
       "name": "codex-windows-fast-patch",
+      "naming_exception": "保留第三方上游目录与已部署入口；目录名与 frontmatter/catalog 名称的历史差异，不自动改名。",
       "path": "codex-windows-fast-patch-skill",
       "kind": "third-party",
       "category": "ai-dev-tools",
@@ -268,6 +269,7 @@
     },
     {
       "name": "research-writing-assistant",
+      "naming_exception": "保留第三方上游目录与已部署入口；目录名与 frontmatter/catalog 名称的历史差异，不自动改名。",
       "path": "research-writing-skill",
       "kind": "third-party",
       "category": "research-content",

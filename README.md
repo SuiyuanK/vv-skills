@@ -70,6 +70,12 @@
 
 完整同步边界和必须保留的本地调整见 [第三方 Skills](./docs/THIRD_PARTY.md)。
 
+## 收录与维护边界
+
+仓库收录个人 skill 和用户选定的第三方 skill，可限定 Agent、平台或产品版本，不要求全部跨平台。Agent 内置或私有 skill 由官方机制维护，不自动纳入或复制；归属按实际来源判断。
+
+普通读取与使用不触发维护、同步或推送。修改仓库时遵循[维护流程](./docs/MAINTENANCE.md)，同一时间仅一个 Agent 写入；部署通过 CC Switch，不手工复制或建链。跨平台支持按实际验证范围登记，不可访问的设备或部署明确标为未验证。
+
 ## 使用方式
 
 - 通过 Agent 的 skill 发现机制按名称或任务语义调用。
@@ -81,14 +87,16 @@
 
 - [第三方来源、同步基线与本地调整](./docs/THIRD_PARTY.md)
 - [目录、更新、归档、验证与发布流程](./docs/MAINTENANCE.md)
-- 机器可读目录：[catalog.json](./catalog.json)
+- 机器可读目录：[catalog.json](./catalog.json)，历史目录/入口名称差异通过 `naming_exception` 登记，不自动改名。
 
 更新目录或 README 索引：
 
 ```bash
-python scripts/catalog.py --render
-python scripts/catalog.py --check
+python3 scripts/catalog.py --render
+python3 scripts/catalog.py --check
 ```
+
+Windows 使用 PowerShell，将示例中的 `python3` 替换为 `py -3` 或 `python`。校验脚本仅依赖 Python 标准库；完整 YAML 解析按维护流程另行验证。
 
 ## 仓库结构
 

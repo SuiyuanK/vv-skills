@@ -69,12 +69,12 @@ def frontmatter_name(skill_file: Path) -> str | None:
     lines = skill_file.read_text(encoding="utf-8").splitlines()
     if not lines or lines[0] != "---":
         return None
-    for line in lines[1:]:
-        if line == "---":
-            break
-        if line.startswith("name:"):
-            return line.partition(":")[2].strip().strip('"\'')
-    return None
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        return None
+    names = [line.partition(":")[2].strip().strip('"\'') for line in lines[1:end] if line.startswith("name:")]
+    return names[0] if len(names) == 1 else None
 
 
 def validate_catalog(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -152,6 +152,15 @@ def validate_catalog(data: dict[str, Any]) -> list[dict[str, Any]]:
         ):
             raise CatalogError(f"{label}.dependencies must be a non-empty safe string array")
 
+        naming_exception = skill.get("naming_exception")
+        if naming_exception is not None:
+            require_string(naming_exception, f"{label}.naming_exception")
+        directory_name = path.rsplit("/", 1)[-1]
+        if directory_name != name and naming_exception is None:
+            raise CatalogError(f"{label}: directory/name mismatch requires naming_exception")
+        if directory_name == name and naming_exception is not None:
+            raise CatalogError(f"{label}: naming_exception is unnecessary when directory/name match")
+
         if status == "active":
             if "/" in path or not NAME_RE.fullmatch(path):
                 raise CatalogError(f"active skill {name} must use a valid top-level directory path")
@@ -208,10 +217,6 @@ def validate_catalog(data: dict[str, Any]) -> list[dict[str, Any]]:
             "top-level active skill mismatch: "
             f"unlisted={sorted(missing_from_catalog)}, missing={sorted(missing_from_disk)}"
         )
-
-    third_party_count = sum(skill["kind"] == "third-party" and skill["status"] == "active" for skill in normalized)
-    if third_party_count != 3:
-        raise CatalogError(f"expected exactly 3 active third-party skills, found {third_party_count}")
 
     return normalized
 
@@ -292,7 +297,7 @@ def main() -> int:
 
         current = readme[start:end]
         if current != expected:
-            raise CatalogError("README catalog is stale; run: python scripts/catalog.py --render")
+            raise CatalogError("README catalog is stale; run: python3 scripts/catalog.py --render")
         print(f"catalog check passed: {sum(skill['status'] == 'active' for skill in skills)} active skills")
         return 0
     except CatalogError as exc:
