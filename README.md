@@ -62,11 +62,17 @@
 
 ## 第三方上游基线
 
-| Skill | 上游 | 分支 | 当前基线 | 版本 |
-| --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`43ac02c`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/43ac02c0dd056b98b0426575b12006661e881b6f) | 上游未单独标记 |
-| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`8070d3d`](https://github.com/hugohe3/ppt-master/commit/8070d3df1f6f54b5fb60a9ae66e79c664f050212) | `6.7.0` |
-| `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` |
+以下表格由 `catalog.json` 生成，请勿手工编辑；`Skill` 为 catalog 名称，`目录` 为实际 skill 目录。
+
+<!-- third-party:start -->
+
+| Skill | 目录 | 上游 | 分支 | 当前基线 | 版本 | 许可证 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `codex-windows-fast-patch` | `codex-windows-fast-patch-skill` | [github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`43ac02c`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/43ac02c0dd056b98b0426575b12006661e881b6f) | 上游未单独标记 | 上游未提供 LICENSE（本地自用；再分发前需核实授权） |
+| `ppt-master` | `ppt-master` | [github.com/hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`8070d3d`](https://github.com/hugohe3/ppt-master/commit/8070d3df1f6f54b5fb60a9ae66e79c664f050212) | 6.7.0 | MIT |
+| `research-writing-assistant` | `research-writing-skill` | [github.com/Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | 3.1.0 | MIT |
+
+<!-- third-party:end -->
 
 完整同步边界和必须保留的本地调整见 [第三方 Skills](./docs/THIRD_PARTY.md)。
 
@@ -89,25 +95,31 @@
 - [目录、更新、归档、验证与发布流程](./docs/MAINTENANCE.md)
 - 机器可读目录：[catalog.json](./catalog.json)，历史目录/入口名称差异通过 `naming_exception` 登记，不自动改名。
 
-更新目录或 README 索引：
+更新目录、README 索引与第三方基线表：
 
 ```bash
 python3 scripts/catalog.py --render
 python3 scripts/catalog.py --check
+python3 scripts/validate_skills.py
 ```
 
-Windows 使用 PowerShell，将示例中的 `python3` 替换为 `py -3` 或 `python`。校验脚本仅依赖 Python 标准库；完整 YAML 解析按维护流程另行验证。
+Windows 使用 PowerShell，将示例中的 `python3` 替换为 `py -3` 或 `python`。`catalog.py` 仅依赖 Python 标准库；`validate_skills.py` 在未安装 PyYAML 时自动降级为最小 frontmatter 校验。
 
 ## 仓库结构
 
 ```text
 skill-name/
 ├── SKILL.md
-├── scripts/       # 可选：确定性工具
-├── references/    # 可选：按场景加载的详细说明
-└── assets/        # 可选：输出所需资源
+├── agents/            # 可选：Agent 元数据（如 openai.yaml）
+├── scripts/           # 可选：确定性工具
+├── references/        # 可选：按场景加载的详细说明
+├── assets/            # 可选：输出所需资源
+├── LICENSE            # 第三方按需保留上游许可证
+└── requirements.txt   # 可选：Python 依赖
 
-catalog.json       # 目录元数据源
-scripts/catalog.py # 目录校验与 README 索引生成
-docs/              # 第三方与维护文档
+catalog.json              # 目录元数据源
+scripts/catalog.py        # 目录校验、README 索引与第三方基线生成
+scripts/validate_skills.py  # frontmatter 校验
+docs/                     # 第三方与维护文档
+.github/workflows/        # CI：Linux 与 Windows 校验
 ```

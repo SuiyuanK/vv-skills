@@ -1,0 +1,49 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate catalog and README
+        run: python scripts/catalog.py --check
+      - name: Validate skill frontmatter
+        run: python scripts/validate_skills.py
+      - name: Check line endings in index
+        shell: bash
+        run: |
+          bad="$(git ls-files --eol | grep -E 'i/(crlf|mixed)' || true)"
+          if [ -n "$bad" ]; then
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+
+  check-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate catalog and README
+        run: python scripts/catalog.py --check
+      - name: Validate skill frontmatter
+        run: python scripts/validate_skills.py
+      - name: Check line endings in index
+        shell: bash
+        run: |
+          bad="$(git ls-files --eol | grep -E 'i/(crlf|mixed)' || true)"
+          if [ -n "$bad" ]; then
+            printf '%s\n' "$bad"
+            exit 1
+          fi

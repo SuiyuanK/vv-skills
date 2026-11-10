@@ -4,11 +4,13 @@
 
 ## 当前基线
 
-| Skill | 上游 | 分支 | 当前基线 | 版本 |
-| --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`43ac02c`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/43ac02c0dd056b98b0426575b12006661e881b6f) | 上游未单独标记 |
-| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`8070d3d`](https://github.com/hugohe3/ppt-master/commit/8070d3df1f6f54b5fb60a9ae66e79c664f050212) | `6.7.0` |
-| `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` |
+本表与 `catalog.json` 的 `upstream` 字段一致；根 README 的第三方基线表由 `scripts/catalog.py --render` 生成，不手工编辑。
+
+| Skill | 上游 | 分支 | 当前基线 | 版本 | 许可证 |
+| --- | --- | --- | --- | --- | --- |
+| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`43ac02c`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/43ac02c0dd056b98b0426575b12006661e881b6f) | 上游未单独标记 | 上游未提供 LICENSE（本地自用，再分发前需核实授权） |
+| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`8070d3d`](https://github.com/hugohe3/ppt-master/commit/8070d3df1f6f54b5fb60a9ae66e79c664f050212) | `6.7.0` | MIT |
+| `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` | MIT |
 
 这些目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
 
@@ -16,6 +18,7 @@
 
 - 同步上游可安装 skill 文件集：`SKILL.md`、`agents/`、`scripts/`、`references/` 和 `assets/`。
 - 不引入上游仓库级 `AGENTS.md`、README、SECURITY 或 Git 配置，也不运行上游就地更新器。
+- 上游仓库未提供 LICENSE；本仓库仅作本地镜像使用，不对外分发，再分发前需与上游确认授权。
 - 保留本机验证后的安全调整：Provider History 等数据层修复由用户手动关闭和重新打开 Codex，不自动停止或拉起应用。
 - 每次同步后重新检查 Provider History 安全调整、PowerShell 脚本语法、MSIX dry-run 路由和敏感信息。
 - 主要依赖 Windows PowerShell、Store/MSIX Codex 与 Node.js；原生远控构建才额外需要 Python、Rust、MSVC 或 Windows SDK。
@@ -30,7 +33,7 @@
 
 ## `research-writing-skill`
 
-- 保留上游许可证、README、多平台配置、模块、脚本和子 skills，并在更新后确认 CC Switch 仍能暴露子 skills。
+- 保留上游 MIT 许可证、README、多平台配置、模块、脚本和子 skills，并在更新后确认 CC Switch 仍能暴露子 skills。
 - 上游 `hooks/hooks.json` 曾把 SessionStart 指向 Windows 批处理 `hooks/run-hook.cmd`。Linux 本地修复改为通过 Bash 调用 `hooks/session-start`。
 - SessionStart 自动注入当前保持禁用：文件名为 `hooks/hooks.json.disabled`。除非用户明确要求，不恢复自动注入。
 - 若上游已正式修复跨平台 hook，采用上游实现并移除过时的本地补丁说明；无论上游是否修复，默认仍保持 SessionStart 禁用。
@@ -38,4 +41,4 @@
 
 ## 更新要求
 
-第三方更新必须遵循 [维护流程](./MAINTENANCE.md)：先读取 `catalog.json` 的基线，在调用工作区的 `./tmp/` 获取上游并逐项比较许可证、文件、依赖、本地修复与敏感信息，验证后同时更新目录、基线、本文件和根 README 索引。
+第三方更新必须遵循 [维护流程](./MAINTENANCE.md)：先读取 `catalog.json` 的基线，在调用工作区的 `./tmp/` 获取上游并逐项比较许可证、文件、依赖、本地修复与敏感信息，验证后同时更新目录、基线和本文件；根 README 基线表由 `scripts/catalog.py --render` 生成。

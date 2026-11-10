@@ -99,7 +99,8 @@
       "upstream": {
         "repository": "https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill",
         "branch": "main",
-        "baseline": "43ac02c0dd056b98b0426575b12006661e881b6f"
+        "baseline": "43ac02c0dd056b98b0426575b12006661e881b6f",
+        "license": "上游未提供 LICENSE（本地自用；再分发前需核实授权）"
       }
     },
     {
@@ -264,7 +265,8 @@
         "repository": "https://github.com/hugohe3/ppt-master",
         "branch": "main",
         "baseline": "8070d3df1f6f54b5fb60a9ae66e79c664f050212",
-        "version": "6.7.0"
+        "version": "6.7.0",
+        "license": "MIT"
       }
     },
     {
@@ -281,7 +283,8 @@
         "repository": "https://github.com/Norman-bury/research-writing-skill",
         "branch": "main",
         "baseline": "6f7959554b4614d879d79cb4ece9ed04a7c8a88c",
-        "version": "3.1.0"
+        "version": "3.1.0",
+        "license": "MIT"
       }
     }
   ]

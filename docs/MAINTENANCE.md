@@ -31,16 +31,19 @@ git rev-list --left-right --count main...origin/main
 
 ## 清单、命名与 README
 
-`catalog.json` 是目录元数据源；根 README 分类索引由脚本生成，不手工修改生成区：
+`catalog.json` 是目录元数据源；根 README 分类索引和第三方基线表由脚本生成，不手工修改生成区：
 
 ```bash
 python3 scripts/catalog.py --render
 python3 scripts/catalog.py --check
+python3 scripts/validate_skills.py
 ```
 
 新增、修改、归档、合并、删除或替换时，同步受影响的入口、catalog 用途/平台/依赖/状态及 README；第三方来源或版本变化时更新基线和同步边界。人工章节仅改本次相关内容，详细工作流保留在 skill 自身，不在 README 重复。
 
 新 skill 的目录名、frontmatter `name` 与 catalog `name` 必须一致，使用 kebab-case。历史例外用 catalog 的 `naming_exception` 非空说明登记；不为统一而强行改名。新增或改名涉及部署时，通过 CC Switch 安全迁移；未经用户明确要求不删除旧入口。
+
+`scripts/catalog.py` 的 platforms 白名单与 category 列表属代码内配置；新增平台或分类时同步修改脚本并跑校验，不得绕过。
 
 ## 个人 skill
 
@@ -49,8 +52,8 @@ python3 scripts/catalog.py --check
 ## 第三方 skill
 
 1. 引入前核验真实上游、跟踪分支、目标提交、许可证、维护状态、体积、文件构成、敏感信息及可执行风险，并确认用户要纳入管理。保留 LICENSE；无许可证时说明风险并询问。
-2. `catalog.json.upstream` 是唯一机器可读来源：`repository` 使用 HTTPS，记录 `branch`，`baseline` 为 40 位小写 commit，`version` 可选。
-3. `docs/THIRD_PARTY.md` 记录同步边界、本地修复和依赖；README 来源表与之保持一致，不新增独立来源记录。
+2. `catalog.json.upstream` 是唯一机器可读来源：`repository` 使用 HTTPS，记录 `branch`，`baseline` 为 40 位小写 commit，`license` 记录 SPDX 名称或「上游未提供 LICENSE」及风险说明，`version` 可选。
+3. `docs/THIRD_PARTY.md` 记录同步边界、本地修复、依赖和许可证；README 来源表由 `catalog.json` 生成，不手工编辑，不新增独立来源记录。
 4. 从已记录基线逐项比较目标提交的许可证、文件增删、依赖、敏感信息和本地修复，不直接覆盖。下载与解压只放本次会话开始时工作区根目录的 `./tmp/`。
 5. 只同步约定的可安装文件，不引入上游 `.git`、仓库级 README/AGENTS/CI，除非确有必要且已说明。保留现有约定中的必要文件。
 6. 新增或调整第三方条目时检查 catalog 校验及设计依据；需要调整时同步验证，不删除或跳过校验规避约束。数量从条目计算，不固定为某个数量。
@@ -58,11 +61,11 @@ python3 scripts/catalog.py --check
 
 ## 双平台、依赖与临时文件
 
-两平台仅通过 Git 同步。文本统一 UTF-8（无 BOM）与 LF，根 `.gitattributes` 约束文本换行，二进制文件不转换。不进行与任务无关的全库换行重写；提交前排除仅换行或编码造成的整文件差异。
+两平台仅通过 Git 同步。文本统一 UTF-8（无 BOM）与 LF，根 `.gitattributes` 约束文本换行，二进制文件不转换；`*.cmd`/`*.bat` 因 cmd.exe 兼容性单独保持 CRLF，不按纯文本处理。不进行与任务无关的全库换行重写；提交前排除仅换行或编码造成的整文件差异。
 
 避免大小写不同名、Windows 非法字符、保留名、结尾点或空格及超长路径。skill 使用 HOME、USERPROFILE、仓库相对路径或说明性占位，不写死用户名、盘符或本机绝对路径。按声明范围验证；未验证平台不声称支持。
 
-Linux 示例使用 bash 和 `python3`；Windows 使用 PowerShell 及 `py -3` 或 `python` 等价执行，不默认 bash 可用。
+Linux 示例使用 bash 和 `python3`；Windows 使用 PowerShell 及 `py -3` 或 `python` 等价执行，不默认 bash 可用。仓库 GitHub Actions 在 Linux 与 Windows 上执行 `catalog.py --check`、`validate_skills.py` 和索引换行检查；CI 结果不替代本地验证。
 
 新增或改变 Python/Node 依赖、系统软件、命令、环境变量、权限、网络/API 服务或模型配置时，先说明用途、影响和配置方式。未经授权不安装软件、不修改系统或 Agent 配置；已有明确授权不重复询问。缺失依赖时提供平台适用的方法，继续不受影响的工作，不隐瞒缺失项或跳过必要验证。
 
@@ -74,12 +77,13 @@ Linux 示例使用 bash 和 `python3`；Windows 使用 PowerShell 及 `py -3` �
 
 ```bash
 python3 scripts/catalog.py --check
+python3 scripts/validate_skills.py
 git diff --check
 ```
 
 同时确认：
 
-- frontmatter 可解析，name/目录/catalog 一致或符合已登记例外，引用的脚本与资料存在。catalog 脚本仅检查 frontmatter 边界与 name，不替代完整 YAML 解析；完整解析使用已安装的 YAML 工具或当前可用的 skill 验证器，缺失时按依赖流程处理。
+- frontmatter 可解析，name/目录/catalog 一致或符合已登记例外，引用的脚本与资料存在。`scripts/validate_skills.py` 负责结构与 name/description 校验；安装 PyYAML 时做完整 YAML 解析，未安装时降级为最小校验并明确提示，缺失依赖按依赖流程处理。
 - 脚本通过语法、`--help` 或适用的只读路径检查；破坏性或不可逆步骤仅静态检查或 dry-run，不在真机演练。
 - 多平台或多 Agent 改动至少静态核验编码、换行、路径及涉及的 bash/PowerShell 语法；有条件时分别实测，并如实记录已验证范围和未验证项。
 - 必要验证无法完成时报告阻塞原因，不声称通过。

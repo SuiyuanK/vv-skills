@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the vv-skills catalog and render the generated README index."""
+"""Validate the vv-skills catalog and render generated README blocks."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ CATALOG_PATH = ROOT / "catalog.json"
 README_PATH = ROOT / "README.md"
 START_MARKER = "<!-- catalog:start -->"
 END_MARKER = "<!-- catalog:end -->"
+THIRD_PARTY_START_MARKER = "<!-- third-party:start -->"
+THIRD_PARTY_END_MARKER = "<!-- third-party:end -->"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 ALLOWED_KINDS = {"self", "third-party"}
@@ -190,6 +192,9 @@ def validate_catalog(data: dict[str, Any]) -> list[dict[str, Any]]:
             version = upstream.get("version")
             if version is not None:
                 require_string(version, f"{label}.upstream.version")
+            license_name = require_string(upstream.get("license"), f"{label}.upstream.license")
+            if "|" in license_name or "\n" in license_name:
+                raise CatalogError(f"{label}.upstream.license cannot contain a table delimiter or newline")
         elif upstream is not None:
             raise CatalogError(f"{label}.upstream is only allowed for third-party skills")
 
@@ -260,6 +265,32 @@ def render_block(data: dict[str, Any], skills: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def render_third_party_block(skills: list[dict[str, Any]]) -> str:
+    third_party = sorted(
+        (skill for skill in skills if skill["status"] == "active" and skill["kind"] == "third-party"),
+        key=lambda item: item["name"],
+    )
+    lines = [
+        THIRD_PARTY_START_MARKER,
+        "",
+        "| Skill | 目录 | 上游 | 分支 | 当前基线 | 版本 | 许可证 |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for skill in third_party:
+        upstream = skill["upstream"]
+        repository = upstream["repository"]
+        label = repository.removeprefix("https://").removesuffix(".git")
+        baseline = upstream["baseline"]
+        version = upstream.get("version") or "上游未单独标记"
+        lines.append(
+            f"| `{skill['name']}` | `{skill['path']}` | [{label}]({repository}) | "
+            f"`{upstream['branch']}` | [`{baseline[:7]}`]({repository}/commit/{baseline}) | "
+            f"{version} | {upstream['license']} |"
+        )
+    lines.extend(["", THIRD_PARTY_END_MARKER])
+    return "\n".join(lines)
+
+
 def read_readme() -> str:
     try:
         return README_PATH.read_text(encoding="utf-8")
@@ -267,38 +298,54 @@ def read_readme() -> str:
         raise CatalogError(f"cannot read {README_PATH.name}: {exc}") from exc
 
 
-def catalog_region(text: str) -> tuple[int, int]:
-    if text.count(START_MARKER) != 1 or text.count(END_MARKER) != 1:
-        raise CatalogError("README must contain exactly one catalog marker pair")
-    start = text.index(START_MARKER)
-    end = text.index(END_MARKER, start) + len(END_MARKER)
+def readme_region(text: str, start_marker: str, end_marker: str, label: str) -> tuple[int, int]:
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+        raise CatalogError(f"README must contain exactly one {label} marker pair")
+    start = text.index(start_marker)
+    end = text.index(end_marker, start) + len(end_marker)
     return start, end
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true", help="validate catalog and README without writing")
-    mode.add_argument("--render", action="store_true", help="validate catalog and update README index")
+    mode.add_argument("--check", action="store_true", help="validate catalog and generated README blocks without writing")
+    mode.add_argument("--render", action="store_true", help="validate catalog and update generated README blocks")
     args = parser.parse_args()
 
     try:
         data = load_catalog()
         skills = validate_catalog(data)
-        expected = render_block(data, skills)
+        expected_catalog = render_block(data, skills)
+        expected_third_party = render_third_party_block(skills)
         readme = read_readme()
-        start, end = catalog_region(readme)
+        catalog_start, catalog_end = readme_region(readme, START_MARKER, END_MARKER, "catalog")
+        third_start, third_end = readme_region(
+            readme, THIRD_PARTY_START_MARKER, THIRD_PARTY_END_MARKER, "third-party"
+        )
+        active = sum(skill["status"] == "active" for skill in skills)
 
         if args.render:
-            updated = readme[:start] + expected + readme[end:]
+            replacements = sorted(
+                [
+                    (catalog_start, catalog_end, expected_catalog),
+                    (third_start, third_end, expected_third_party),
+                ],
+                key=lambda item: item[0],
+                reverse=True,
+            )
+            updated = readme
+            for start, end, block in replacements:
+                updated = updated[:start] + block + updated[end:]
             README_PATH.write_text(updated, encoding="utf-8")
-            print(f"rendered README catalog: {sum(skill['status'] == 'active' for skill in skills)} active skills")
+            print(f"rendered README blocks: {active} active skills")
             return 0
 
-        current = readme[start:end]
-        if current != expected:
+        if readme[catalog_start:catalog_end] != expected_catalog:
             raise CatalogError("README catalog is stale; run: python3 scripts/catalog.py --render")
-        print(f"catalog check passed: {sum(skill['status'] == 'active' for skill in skills)} active skills")
+        if readme[third_start:third_end] != expected_third_party:
+            raise CatalogError("README third-party baseline is stale; run: python3 scripts/catalog.py --render")
+        print(f"catalog check passed: {active} active skills")
         return 0
     except CatalogError as exc:
         print(f"catalog error: {exc}", file=sys.stderr)

@@ -1,2 +1,6 @@
 # Normalize detected text to LF; binary files remain unchanged.
 * text=auto eol=lf
+
+# cmd.exe 对 LF 批处理解析不可靠，Windows 批处理单独保持 CRLF。
+*.cmd text eol=crlf
+*.bat text eol=crlf
