@@ -286,6 +286,26 @@
         "version": "3.1.0",
         "license": "MIT"
       }
+    },
+    {
+      "name": "dsh-desktop-tray-integration",
+      "path": "dsh-desktop-tray-integration",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": [
+        "arch-linux",
+        "gnome",
+        "wayland"
+      ],
+      "summary": "为 dsh web 创建 GNOME 桌面快捷方式与顶栏托盘图标：固定端口 launcher、Python Gio SNI/DBusMenu 托盘（双击打开、右键 打开/重启/退出）、symbolic 图标、托盘随服务启停，含验证与回滚。",
+      "dependencies": [
+        "DSH 0.2.x（dsh web）",
+        "GNOME Shell + AppIndicator 扩展",
+        "python3 + PyGObject（gi）",
+        "notify-send/xdg-open/ss/gtk-update-icon-cache",
+        "ImageMagick 或其他图标缩放工具"
+      ],
+      "status": "active"
     }
   ]
 }

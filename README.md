@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **21 个 active skills**：**18 个个人**、**3 个第三方**。
+当前收录 **22 个 active skills**：**19 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -39,6 +39,7 @@
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
+| [`dsh-desktop-tray-integration`](./dsh-desktop-tray-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 为 dsh web 创建 GNOME 桌面快捷方式与顶栏托盘图标：固定端口 launcher、Python Gio SNI/DBusMenu 托盘（双击打开、右键 打开/重启/退出）、symbolic 图标、托盘随服务启停，含验证与回滚。 | DSH 0.2.x（dsh web）、GNOME Shell + AppIndicator 扩展、python3 + PyGObject（gi）、notify-send/xdg-open/ss/gtk-update-icon-cache、ImageMagick 或其他图标缩放工具 |
 | [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
 | [`gnome-xwayland-dock-icon-fix`](./gnome-xwayland-dock-icon-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 按实测 WM_CLASS 修复 GNOME XWayland 运行图标、重复菜单项和分组，并处理自动生成启动项覆盖修复的问题。 | xorg-xprop、desktop-file-utils |
 | [`gnome51-bibata-cursor-fix`](./gnome51-bibata-cursor-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 修复 GNOME 51 桌面/顶部栏回退默认而应用仍显示 Bibata 的问题；从官方图稿构建用户级 SVG 与旧 Xcursor 双格式主题。 | Python 3.11+、librsvg/rsvg-convert、gsettings、获取官方图稿需 HTTPS；Bibata 基线 v2.0.7 |
