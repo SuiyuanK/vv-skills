@@ -69,8 +69,8 @@
 
 | Skill | 目录 | 上游 | 分支 | 当前基线 | 版本 | 许可证 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch` | `codex-windows-fast-patch-skill` | [github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`83d564d`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/83d564dd9e9d429ca1a415cd9791fab9922e31c8) | 上游未单独标记 | 上游未提供 LICENSE（本地自用；再分发前需核实授权） |
-| `ppt-master` | `ppt-master` | [github.com/hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`3c6ffd0`](https://github.com/hugohe3/ppt-master/commit/3c6ffd0ee6d6e31aa9ca316bd157173802e3526f) | 6.9.0 | MIT |
+| `codex-windows-fast-patch` | `codex-windows-fast-patch-skill` | [github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`762c170`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/762c170bf5bf9dce1c15363472cf80cc5e4c3ae5) | 上游未单独标记 | 上游未提供 LICENSE（本地自用；再分发前需核实授权） |
+| `ppt-master` | `ppt-master` | [github.com/hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`01fe549`](https://github.com/hugohe3/ppt-master/commit/01fe549371b98f44be22cd337bbc911013452f09) | 6.9.0 | MIT |
 | `research-writing-assistant` | `research-writing-skill` | [github.com/Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | 3.1.0 | MIT |
 
 <!-- third-party:end -->
