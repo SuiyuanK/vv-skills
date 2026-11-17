@@ -3,6 +3,8 @@ name: codex-wayland-image-input-fix
 description: Diagnose and repair Codex or ChatGPT Desktop on Linux Wayland when dragging image files into the composer does nothing while file-manager copy and paste works. Includes native Wayland startup validation, desktop pet regression checks, reversible backend selection, and the separate GNOME Loupe clipboard lifetime issue. Use for these image-input symptoms, not general attachment, authentication, or network failures.
 ---
 
+> 已于 2026-11-17 按用户要求归档，仅保留历史排查与修复记录。本机相关修复已撤销；当前版本适用性未验证，不作为现行修复方案直接使用。
+
 # Codex Wayland image input repair
 
 Separate file drag-and-drop from clipboard copying. On the validated GNOME case, switching Codex from XWayland to native Wayland restored dragging; keeping Loupe open until pasting resolved copying. Native Wayland subsequently caused a desktop pet placement/clipping regression on this same setup, so the user chose XWayland and copy/paste. Treat native Wayland as a conditional tradeoff, not an unconditional repair.

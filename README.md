@@ -10,17 +10,15 @@
 
 <!-- catalog:start -->
 
-当前收录 **22 个 active skills**：**19 个个人**、**3 个第三方**。
+当前收录 **20 个 active skills**：**17 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
 | [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 个人 | Arch/CachyOS、Linux x86_64 | 把官方 amd64 deb 按 HTTPS 软件源索引校验版本/大小/SHA-256 后构建为 Arch 包；保留构建溯源记录，支持参数文件与 AppArmor 检查。入口见 skill；仅构建，不自动安装。 | bash、curl、libarchive/bsdtar、pacman/makepkg/vercmp、GNU 工具；行为验证需 Python 3；不验证源签名 |
-| [`chatgpt-linux-sigchld-fix`](./chatgpt-linux-sigchld-fix/SKILL.md) | 个人 | Linux x86_64、Arch/CachyOS | 修复 Linux ChatGPT/Codex 会话一直转圈及 SIGCHLD 子进程回收异常；精确哈希门控、升级停用和回滚。 | Python 3.11+、GCC/libc headers、binutils/procps、可选 bubblewrap/desktop-file-utils |
 | [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 个人 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
 | [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 个人 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
-| [`codex-wayland-image-input-fix`](./codex-wayland-image-input-fix/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 诊断 Codex 图片拖拽与 Loupe 复制问题；验证 Wayland/XWayland 取舍、宠物悬浮窗回归并可回滚配置。 | Python 3/procps、systemd 用户会话、wl-clipboard、可选 xclip |
 | [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use、模型功能漂移及 Provider 历史/项目归档状态异常。 | PowerShell、Windows Store/MSIX Codex、Node.js、可选 Python/Rust/MSVC/Windows SDK |
 | [`opencode-wl-clipboard-copy-fix`](./opencode-wl-clipboard-copy-fix/SKILL.md) | 个人 | Arch/CachyOS、Wayland | 修复 opencode 等终端程序在 Wayland 下提示复制成功但剪贴板未更新的问题。 | wl-clipboard、可选 xclip |
 
@@ -60,6 +58,15 @@
 | [`research-writing-assistant`](./research-writing-skill/SKILL.md) | 第三方 | 跨平台 | 提供论文头脑风暴、文献综述、章节写作、LaTeX、统计分析、图表与审稿工作流。 | Python、requests/PyMuPDF、可选科研计算与 LaTeX 环境 |
 
 <!-- catalog:end -->
+
+## 过时归档
+
+以下个人 skill 已于 2026-11-17 按用户要求移入 `archive/`，状态为 `archived`，保留历史记录，不列入 active 索引。本机对应修复已撤销，当前版本适用性未验证。
+
+- [`chatgpt-linux-sigchld-fix`](./archive/chatgpt-linux-sigchld-fix/SKILL.md)：旧版特定哈希的 SIGCHLD 修复及启动包装。
+- [`codex-wayland-image-input-fix`](./archive/codex-wayland-image-input-fix/SKILL.md)：历史图片输入与桌面宠物显示后端兼容排查。
+
+归档后的停用与部署清理由 CC Switch 管理，不手工修改 Agent 目录或部署链接。
 
 ## 第三方上游基线
 

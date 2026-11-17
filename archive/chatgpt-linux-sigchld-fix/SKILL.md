@@ -3,6 +3,8 @@ name: chatgpt-linux-sigchld-fix
 description: Diagnose and repair Linux ChatGPT/Codex Desktop conversations stuck loading when shell environment probes time out, Git is reported unavailable, and zombie helper processes accumulate. Includes a verified SIGCHLD workaround for the exact 26.924.22138 x86-64 executable, version-gated launch persistence, validation, and rollback.
 ---
 
+> 已于 2026-11-17 按用户要求归档，仅保留历史排查与修复记录。本机相关修复已撤销；当前版本适用性未验证，不作为现行修复方案直接使用。
+
 # Linux ChatGPT/Codex conversation loading failure
 
 Use for a desktop window that opens but cannot restore conversations or start new ones, especially with `Failed to load shell env`, `Git is unavailable`, and zombie children. This is not a general network, authentication, or deleted-history repair.
