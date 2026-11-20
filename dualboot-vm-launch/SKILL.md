@@ -1,11 +1,13 @@
 ---
-name: qemu-windows-dualboot
-description: 在 CachyOS/Arch Linux x86_64 上用 QEMU/KVM 启动另一块盘上已安装的 UEFI Windows，并配置 GNOME 启动器或排查引导、显示、指针、剪贴板和 Windows Hello。用于复用现有双系统 Windows，不用于新装普通虚拟机。
+name: dualboot-vm-launch
+description: 在不重启当前宿主的情况下，把另一块盘上已安装的 Windows 或 Linux 作为虚拟机启动，并维护启动器与排查引导、显示、输入和剪贴板。Linux 宿主用 QEMU/KVM 启动 Windows 已验证；Windows 宿主启动 Linux 待验证。
 ---
 
-# 用 QEMU 启动双系统 Windows
+# 把现有双系统作为虚拟机启动
 
-## 先确认原盘
+先区分宿主和客机。Linux 宿主启动 Windows 按下面的已验证流程；Windows 宿主启动 Linux 见 [Windows 宿主预检](references/windows-host-linux-guest.md)，具体虚拟化软件和原盘接入方式待实机验证。两种方向都不用于新装普通虚拟机。
+
+## Linux 宿主 → Windows：先确认原盘
 
 1. 用 `lsblk`、`findmnt`、`efibootmgr -v` 核对磁盘型号、EFI 分区 PARTUUID、Windows 系统分区和宿主根分区。Windows EFI 与系统分区同盘时才直接按单盘方案执行。跨盘引导先查清依赖，不把宿主系统盘或共享数据盘顺手交给客机。
 2. 确认原生 Windows 已完整关机，未休眠或使用快速启动；开了 BitLocker 或设备加密时，让用户自己确认备有恢复密钥，不索取密钥。检查目标分区在宿主未挂载，不强制卸载。沙箱可能隐藏设备节点或把挂载显示为只读；必要时获批在宿主复查。

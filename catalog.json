@@ -29,12 +29,12 @@
   ],
   "skills": [
     {
-      "name": "qemu-windows-dualboot",
-      "path": "qemu-windows-dualboot",
+      "name": "dualboot-vm-launch",
+      "path": "dualboot-vm-launch",
       "kind": "self",
       "category": "linux-desktop-apps",
       "platforms": ["arch-linux", "gnome", "linux-x86_64"],
-      "summary": "用 QEMU/KVM 从双系统 Windows 原盘启动：默认只读和一次性写入层，保留虚拟 TPM，并维护 GNOME 启动器及显示、输入和登录配置。",
+      "summary": "把另一块盘上的双系统作为虚拟机启动：Linux → Windows 已验证，包含默认只读启动与 GNOME 集成；Windows → Linux 待实机验证。",
       "dependencies": ["QEMU/KVM、edk2-ovmf、swtpm", "UDisks2、util-linux", "GNOME 启动器需 Zenity、Python 3 和 PyGObject；剪贴板需 Windows SPICE Guest Tools"],
       "status": "active"
     },

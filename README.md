@@ -38,10 +38,10 @@
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
 | [`dsh-desktop-tray-integration`](./dsh-desktop-tray-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 为 dsh web 创建 GNOME 桌面快捷方式与顶栏托盘图标：固定端口 launcher、Python Gio SNI/DBusMenu 托盘（双击打开、右键 打开/重启/退出）、symbolic 图标、托盘随服务启停，含验证与回滚。 | DSH 0.2.x（dsh web）、GNOME Shell + AppIndicator 扩展、python3 + PyGObject（gi）、notify-send/xdg-open/ss/gtk-update-icon-cache、ImageMagick 或其他图标缩放工具 |
+| [`dualboot-vm-launch`](./dualboot-vm-launch/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Linux x86_64 | 把另一块盘上的双系统作为虚拟机启动：Linux → Windows 已验证，包含默认只读启动与 GNOME 集成；Windows → Linux 待实机验证。 | QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux、GNOME 启动器需 Zenity、Python 3 和 PyGObject；剪贴板需 Windows SPICE Guest Tools |
 | [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。 | Ghostty、gsettings、GNOME 或 Cinnamon/Nemo |
 | [`gnome-xwayland-dock-icon-fix`](./gnome-xwayland-dock-icon-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 按实测 WM_CLASS 修复 GNOME XWayland 运行图标、重复菜单项和分组，并处理自动生成启动项覆盖修复的问题。 | xorg-xprop、desktop-file-utils |
 | [`gnome51-bibata-cursor-fix`](./gnome51-bibata-cursor-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 修复 GNOME 51 桌面/顶部栏回退默认而应用仍显示 Bibata 的问题；从官方图稿构建用户级 SVG 与旧 Xcursor 双格式主题。 | Python 3.11+、librsvg/rsvg-convert、gsettings、获取官方图稿需 HTTPS；Bibata 基线 v2.0.7 |
-| [`qemu-windows-dualboot`](./qemu-windows-dualboot/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Linux x86_64 | 用 QEMU/KVM 从双系统 Windows 原盘启动：默认只读和一次性写入层，保留虚拟 TPM，并维护 GNOME 启动器及显示、输入和登录配置。 | QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux、GNOME 启动器需 Zenity、Python 3 和 PyGObject；剪贴板需 Windows SPICE Guest Tools |
 | [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
 
 ### 系统恢复
