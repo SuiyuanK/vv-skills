@@ -29,6 +29,16 @@
   ],
   "skills": [
     {
+      "name": "qemu-windows-dualboot",
+      "path": "qemu-windows-dualboot",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": ["arch-linux", "gnome", "linux-x86_64"],
+      "summary": "用 QEMU/KVM 从双系统 Windows 原盘启动：默认只读和一次性写入层，保留虚拟 TPM，并维护 GNOME 启动器及显示、输入和登录配置。",
+      "dependencies": ["QEMU/KVM、edk2-ovmf、swtpm", "UDisks2、util-linux", "GNOME 启动器需 Zenity、Python 3 和 PyGObject；剪贴板需 Windows SPICE Guest Tools"],
+      "status": "active"
+    },
+    {
       "name": "windows-store-service-registration-fix",
       "path": "windows-store-service-registration-fix",
       "kind": "self",
