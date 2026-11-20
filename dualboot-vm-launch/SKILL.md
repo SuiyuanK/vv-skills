@@ -5,7 +5,7 @@ description: 在不重启当前宿主的情况下，把另一块盘上已安装�
 
 # 把现有双系统作为虚拟机启动
 
-先区分宿主和客机。Linux 宿主启动 Windows 按下面的流程。Windows 宿主启动现有 CachyOS，或维护桌面快捷方式、排查虚拟 NVMe 和输入焦点时，读 [Windows 宿主启动 CachyOS](references/windows-host-linux-guest.md)。本 skill 面向既有双系统。
+先区分宿主和客机。Linux 宿主启动 Windows 按下面的流程。Windows 宿主启动现有 CachyOS，或维护桌面启动模式、排查虚拟 NVMe 和输入焦点时，读 [Windows 宿主启动 CachyOS](references/windows-host-linux-guest.md)。本 skill 面向既有双系统。两侧的每次只读启动均使用全新写入层，旧差量不复用、不合并回原盘。
 
 ## Linux 宿主 → Windows：先确认原盘
 

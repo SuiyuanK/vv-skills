@@ -34,8 +34,8 @@
       "kind": "self",
       "category": "linux-desktop-apps",
       "platforms": ["arch-linux", "gnome", "linux-x86_64", "windows"],
-      "summary": "只读启动另一块实体盘上的双系统。已验证 Arch/CachyOS 宿主用 QEMU/KVM 启动 Windows，以及 Windows 宿主用 QEMU/WHPX 启动 CachyOS。",
-      "dependencies": ["Linux：QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux", "Linux GNOME 启动器：Zenity、Python 3、PyGObject；剪贴板需 Windows SPICE Guest Tools", "Windows：QEMU/WHPX、EDK2 UEFI、Windows PowerShell、Python 3；实体盘读取需管理员权限"],
+      "summary": "默认只读启动另一块实体盘上的双系统，每次只读启动新建写入层。已验证 Arch/CachyOS 宿主用 QEMU/KVM 启动 Windows，以及 Windows 宿主用 QEMU/WHPX 启动 CachyOS。",
+      "dependencies": ["Linux：QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux", "Linux GNOME 启动器：Zenity、Python 3、PyGObject；剪贴板需 Windows SPICE Guest Tools", "Windows：QEMU/WHPX、EDK2 UEFI、Windows PowerShell、Python 3；桌面选择器需 Tkinter，实体盘访问需管理员权限"],
       "status": "active"
     },
     {
