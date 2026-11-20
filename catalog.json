@@ -33,9 +33,9 @@
       "path": "dualboot-vm-launch",
       "kind": "self",
       "category": "linux-desktop-apps",
-      "platforms": ["arch-linux", "gnome", "linux-x86_64"],
-      "summary": "把另一块盘上的双系统作为虚拟机启动：Linux → Windows 已验证，包含默认只读启动与 GNOME 集成；Windows → Linux 待实机验证。",
-      "dependencies": ["QEMU/KVM、edk2-ovmf、swtpm", "UDisks2、util-linux", "GNOME 启动器需 Zenity、Python 3 和 PyGObject；剪贴板需 Windows SPICE Guest Tools"],
+      "platforms": ["arch-linux", "gnome", "linux-x86_64", "windows"],
+      "summary": "只读启动另一块实体盘上的双系统。已验证 Arch/CachyOS 宿主用 QEMU/KVM 启动 Windows，以及 Windows 宿主用 QEMU/WHPX 启动 CachyOS。",
+      "dependencies": ["Linux：QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux", "Linux GNOME 启动器：Zenity、Python 3、PyGObject；剪贴板需 Windows SPICE Guest Tools", "Windows：QEMU/WHPX、EDK2 UEFI、Windows PowerShell、Python 3；实体盘读取需管理员权限"],
       "status": "active"
     },
     {
