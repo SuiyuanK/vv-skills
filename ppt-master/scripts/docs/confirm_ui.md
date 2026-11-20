@@ -45,7 +45,8 @@ python3 scripts/confirm_ui/server.py <project_path> --shutdown    # Step 4 clean
 - Without `--port`, binds the first free port from `127.0.0.1:5050`; the launch log prints the actual URL. `--port N` is exact and fails when unavailable. Auto-open is suppressed by `--no-browser`.
 - In `--daemon` mode the launcher starts the child with browser opening suppressed, then accepts readiness only when `GET /api/health` identifies this confirm service, project, and child process. It opens the printed `http://127.0.0.1:<port>` URL only after that check.
 - Confirm UI and live preview use different defaults (`5050` / `6060`) and separate project-local locks (`.confirm_ui.lock` / `live_preview/lock.json`). Step 4 shuts down the confirm service before ending; concurrent projects may use different ports.
-- `--daemon` starts the Flask process in the background and returns after the health check. Every Default UI run launches directly into combined Stage 1 and keeps the same process live through final Stage 2. The wait budget defaults to **590 s** (`--wait-timeout`); on timeout the detached server remains live, and the caller re-checks both Stage-1 receipts before chat fallback.
+- `--daemon` starts the Flask process in the background and returns after the health check. Every Default UI run launches directly into combined Stage 1 and keeps the same process live through final Stage 2. The wait budget defaults to **590 s** (`--wait-timeout`); timeout stops only the waiter (it does not shut the server down), and the caller re-checks both Stage-1 receipts before chat fallback.
+- **Foreground mode (managed hosts / Windows Job sandboxes)**: omitting `--daemon` runs Flask in the foreground with the same port, lock, and `--no-browser` / `--timeout` behavior. On Windows hosts that forbid Job breakaway and tear down per-command Jobs when a command exits, `--daemon` logs a breakaway warning and the child cannot outlive the launcher; start the foreground command as a host-managed background task instead, verify `GET /api/health` from a separate call, and continue using `--wait-only` and `--shutdown` as usual.
 - `--wait-only` attaches to the page opened by `--daemon` and blocks until the requested receipt. If it is already persisted, the command returns before recovery, so a fast submit between launch, chat handoff, and wait is not lost. Otherwise, if the recorded server died, it restarts on the recorded/default port. Use `stage1` for the combined communication/template submission and the default/final wait for Stage 2.
 - Stage 2 checks the selected roots and the installer's receipt directly. There is no manual completion command or handoff sidecar.
 - `--shutdown` stops a confirm server left running for this project and exits — **idempotent** (a no-op when nothing is running). Tries a graceful `/api/shutdown`, falls back to killing the recorded pid, then clears the lock. Generate Step 4 runs this on every path so the selected port is released before live preview starts.
@@ -103,11 +104,10 @@ separate artifact from the Strategist contract. Its files live under
   `design_spec.md`.
 - The array supplies exact-root candidates. The user may select multiple roots
   when their kind sets do not overlap; each root is selected atomically.
-- Do not write library entries into this block. The server reads only
-  `templates/brands/brands_index.json`,
-  `templates/styles/styles_index.json`,
-  `templates/layouts/layouts_index.json`, and
-  `templates/decks/decks_index.json`, derives each direct-child workspace root,
+- Do not write library entries into this block. The server reads the four
+  `templates/{brands,styles,layouts,decks}/*_index.json` files and any existing
+  `templates/local/{brands,styles,layouts,decks}/*_index.json`, merges each kind's
+  built-in and local candidates, derives each direct-child workspace root,
   and validates that it exists with `templates/design_spec.md`. It never scans
   kind directories.
 
@@ -133,7 +133,11 @@ Stage-1 `GET /api/recommendations` embeds this browser catalog as top-level
 ```
 
 A library candidate has `key`, `source: "library"`, `kind`, `id`, `label`,
-`summary`, and canonical absolute `workspace_root`. An unregistered explicit
+`summary`, and canonical absolute `workspace_root`. Built-in keys use
+`library:<kind>:<id>`; local keys use `library:local:<kind>:<id>`. If both layers
+contain the same ID, both remain selectable with `built-in` / `local` labels.
+IDs share `register_template.py`'s Unicode-aware validation, including Chinese
+names; invalid index entries stop catalog loading. An unregistered explicit
 candidate has `key`, `source: "explicit"`, parsed `kind`, `label`, and
 canonical absolute `workspace_root`. If a supplied root exactly equals a registered canonical
 root, the server reuses the library candidate/key instead of duplicating it as
@@ -217,7 +221,8 @@ precedence. The browser cannot submit arbitrary paths
 because the server resolves posted keys against the catalog it just built.
 `root_snapshots` freezes each selected root's source label, kinds, spec identities,
 and SHA-256 hashes for all files under `templates/`, `images/`, and `icons/`.
-`options_sha256` binds the receipt to the entire Stage-1 recommendation, four index files, and
+`options_sha256` binds the receipt to the entire Stage-1 recommendation, built-in
+indexes, non-empty local indexes, and
 resolved candidates. `selection_sha256` binds the mode, canonical sorted
 selections, and snapshots to that option hash. Every receipt read checks source
 bytes and rebuilds the catalog using the frozen selected-root kinds, while

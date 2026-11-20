@@ -9,7 +9,7 @@
 | Skill | 上游 | 分支 | 当前基线 | 版本 | 许可证 |
 | --- | --- | --- | --- | --- | --- |
 | `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`762c170`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/762c170bf5bf9dce1c15363472cf80cc5e4c3ae5) | 上游未单独标记 | 上游未提供 LICENSE（本地自用，再分发前需核实授权） |
-| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`01fe549`](https://github.com/hugohe3/ppt-master/commit/01fe549371b98f44be22cd337bbc911013452f09) | `6.9.0` | MIT |
+| `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`63a0367`](https://github.com/hugohe3/ppt-master/commit/63a03673d5c3c928e7f52983a2c8ec65bac30002) | `6.10.0` | MIT |
 | `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` | MIT |
 
 这些目录是上游内容在 `vv-skills` 中的镜像，不替代或冒充上游仓库。
@@ -30,10 +30,10 @@
 
 - 只同步上游 `skills/ppt-master/` 可安装目录并保留其 MIT `LICENSE`。
 - 不复制上游网站、示例演示文稿或项目工作区。
-- 不覆盖或提交 `.venv`、缓存、生成的项目、预览或临时产物。
+- 不覆盖或提交 `.venv`、缓存、生成的项目、预览、临时产物或 `ppt-master/templates/local/` 下的个人模板。
 - Python 3.10+ 依赖以 `ppt-master/requirements.txt` 为准；Playwright、FFmpeg 和 Pandoc 只用于对应的可选能力。
-- 当前基线 v6.9.0；`requirements.txt` 新增可选 OCR 依赖（`rapidocr`、`onnxruntime`），默认注释、不自动安装。
-- 基线 `01fe549`：同步 `scripts/source_to_md/web_to_md.py` 的 Windows 图片链接修复（Markdown 链接改用正斜杠；上游 #349）。
+- 当前基线 v6.10.0，保留可选 OCR 依赖（`rapidocr`、`onnxruntime`），默认注释、不自动安装。
+- 基线 `63a0367` 包含 v6.10.0 发布及其后的 Windows 本地界面服务启动修复。个人模板迁至独立库，并同步网页编码、SVG 图标填充、PPTX 公式往返及旁白拆分修复。
 - 上游历史曾改写；旧基线 `b87f5f5` 已不可达。比较更新时必须从 `catalog.json` 的当前可达基线开始，不猜测提交祖先关系。
 
 ## `research-writing-skill`

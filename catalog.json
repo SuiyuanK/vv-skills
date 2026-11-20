@@ -274,8 +274,8 @@
       "upstream": {
         "repository": "https://github.com/hugohe3/ppt-master",
         "branch": "main",
-        "baseline": "01fe549371b98f44be22cd337bbc911013452f09",
-        "version": "6.9.0",
+        "baseline": "63a03673d5c3c928e7f52983a2c8ec65bac30002",
+        "version": "6.10.0",
         "license": "MIT"
       }
     },
