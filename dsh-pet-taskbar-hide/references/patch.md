@@ -24,9 +24,10 @@ XWayland window even in a Wayland session, with
 
 - `enabled()` — requires `DISPLAY` and `DSH_PET_TASKBAR_FIX !== '0'`.
 - `SCRIPT` — an inline python-xlib program that walks the window tree, matches
-  titles containing `dsh-pet`, and sends a root-directed `_NET_WM_STATE`
-  ClientMessage (`action=1, atom=_NET_WM_STATE_SKIP_TASKBAR`) only to windows
-  that do not already carry the atom.
+  windows whose title contains `dsh-pet` **and** whose `WM_CLASS` contains
+  `electron`, and sends a root-directed `_NET_WM_STATE` ClientMessage
+  (`action=1, atom=_NET_WM_STATE_SKIP_TASKBAR`) only to windows that do not
+  already carry the atom.
 - `suppressTaskbar()` — runs that program through `execFile('python3', ...)`
   with an 8 s timeout and ignores every error.
 - `attach()` — calls `suppressTaskbar()` immediately and then every 1000 ms;
@@ -74,6 +75,19 @@ Both revert paths are byte-exact, and the sandbox round trip (apply → revert �
   window (`window.send_event`) produced no effect on GNOME Shell; send to the
   root with `SubstructureRedirectMask | SubstructureNotifyMask`, then
   `display.flush()`.
+- **Title alone is not enough — always AND with `WM_CLASS`.** A title-only
+  match hit the Chrome window whose tab was titled `隐藏 dsh-pet 图标保留托盘图标
+  — DeepSeek Harness`: that browser lost its Dock icon *and* could no longer be
+  minimised (`SKIP_TASKBAR` removes the taskbar button, so there is nothing to
+  click and the Tab switcher no longer lists it). Confirmed on this machine.
+- **Removing the atom again needs `source_indication=0`**, i.e.
+  `data=(32, [0, SKIP, 0, 0, 0])`. A remove message with `1` (pager/WM source)
+  is silently ignored by GNOME Shell, and `window.send_event(...)` without the
+  root redirect never takes effect. Use `toggle_skip_taskbar.py --remove`.
+- **Editing the module needs a helper restart.** The inline `SCRIPT` string is
+  read once when the helper starts; until it is restarted the old title-only
+  logic keeps re-applying the atom 1x/s, so a manual cleanup appears to undo
+  itself. Restart, then clear leftover atoms from already-open windows.
 - **Never match on PID.** PIDs and window ids are fresh per launch; match the
   title substring and confirm with `xprop`.
 - **Do not trust the atom as proof for the user.** GNOME Shell may still draw
