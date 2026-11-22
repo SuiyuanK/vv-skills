@@ -316,6 +316,26 @@
         "ImageMagick 或其他图标缩放工具"
       ],
       "status": "active"
+    },
+    {
+      "name": "dsh-pet-taskbar-hide",
+      "path": "dsh-pet-taskbar-hide",
+      "kind": "self",
+      "category": "linux-desktop-apps",
+      "platforms": [
+        "arch-linux",
+        "gnome",
+        "wayland"
+      ],
+      "summary": "隐藏 dsh-pet 桌宠的任务栏/仪表盘图标、只保留托盘图标：诊断 XWayland 窗口、一次性验证 _NET_WM_STATE_SKIP_TASKBAR、安装 helper 本地补丁（含语法检查与备份）、升级后重装、回滚，含可复用脚本。",
+      "dependencies": [
+        "dsh-pet（Electron 桌面宠物插件，profiles/<profile>/node_modules/dsh-pet）",
+        "python3 + python-xlib",
+        "xorg-xprop",
+        "node（仅用于补丁语法检查）",
+        "GNOME Shell + AppIndicator 扩展（保留托盘图标时必需）"
+      ],
+      "status": "active"
     }
   ]
 }
