@@ -91,7 +91,8 @@ def set_skip_taskbar(display, root, window, add: bool) -> bool:
     event = E.ClientMessage(
         window=window,
         client_type=state,
-        data=(32, [1 if add else 0, skip, 0, 1, 0]),
+        # data[3] 是 source indication：1（pager）在 GNOME 下移除常被忽略，用 0（unspecified）
+        data=(32, [1 if add else 0, skip, 0, 0, 0]),
     )
     root.send_event(event, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
     display.flush()
