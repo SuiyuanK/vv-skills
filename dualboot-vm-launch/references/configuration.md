@@ -4,7 +4,7 @@
 
 - CachyOS x86_64、GNOME Wayland、QEMU 11.1.3；Windows 为另一块 NVMe 上已安装的 UEFI 系统。真实验证了只读启动、进入 Windows 桌面和 2560×1440 图像输出。可写启动器分支仅做过模拟验证。
 - Arch 系依赖：`qemu-desktop`（含本流程所需 QEMU/GTK 组件）、`edk2-ovmf`、`swtpm`；启动器需 `zenity`、Python 3 + PyGObject、UDisks2、`lsblk`，菜单检查用 `desktop-file-validate`。先核对本机包和命令，再给缺失依赖的安装方法；不擅自安装。
-- 已有启动脚本在 TMP 工作区的 `Scripts/linux/tools/windows-qemu-readonly.py`；用户菜单项是 `~/.local/share/applications/windows-qemu-readonly.desktop`。默认状态目录是 `~/.local/share/windows-qemu-readonly/`，包含 `OVMF_VARS.fd`、`tpm2-state/` 和菜单用的 SVG。定位实际工作区和分区，不从此记录猜盘符或写死主机路径。
+- 已有启动脚本在 TMP 工作区的 `scripts/linux/tools/windows-qemu-readonly.py`；用户菜单项是 `~/.local/share/applications/windows-qemu-readonly.desktop`。默认状态目录是 `~/.local/share/windows-qemu-readonly/`，包含 `OVMF_VARS.fd`、`tpm2-state/` 和菜单用的 SVG。定位实际工作区和分区，不从此记录猜盘符或写死主机路径。
 
 ## 参数与排障
 

@@ -27,7 +27,7 @@
 
 ## 本机入口与排查
 
-- TMP 工作区的 `Scripts/windows/cachyos-vm.py` 是本机启动器，`focused_win_keys.py` 为其键盘辅助模块。桌面「CachyOS 虚拟机」快捷方式用本机 Python 3 的 `pythonw.exe` 运行 `-B "<启动器路径>" --desktop`。管理员 PowerShell 可使用 `py -3 -B .\Scripts\windows\cachyos-vm.py --clean-shutdown` 直接走只读流程。
+- TMP 工作区的 `scripts/windows/cachyos-vm.py` 是本机启动器，`focused_win_keys.py` 为其键盘辅助模块。桌面「CachyOS 虚拟机」快捷方式用本机 Python 3 的 `pythonw.exe` 运行 `-B "<启动器路径>" --desktop`。管理员 PowerShell 可使用 `py -3 -B .\scripts\windows\cachyos-vm.py --clean-shutdown` 直接走只读流程。
 - `--check` 只读检查依赖和目标盘身份，`--test` 使用合成镜像验证只读模式的写入隔离，以及直接模式写入底盘的行为。已用合成镜像连续验证两次只读启动创建独立 QCOW2，且第二次启动后第一个写入层的哈希保持一致。正式运行日志在 TMP 工作区的 `tmp/cachyos-vm/`。
 - USB Tablet 提供绝对鼠标定位，点击其他窗口即可切换焦点。本机辅助模块仅在该 QEMU 进程的窗口处于前台时截获左右 Win 键，经进程内的 QMP 标准输入转发成 Linux Super 键。切走焦点时释放客机中的 Win 键。普通鼠标、按键、剪贴板由各自原有机制处理。
 - 修改虚拟硬件前先正常关闭客机。排查时区分 QEMU 进程是否仍在运行、UEFI 是否找到引导项、GRUB 是否启动内核，以及客机是否到达登录界面。
