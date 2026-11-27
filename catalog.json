@@ -215,7 +215,7 @@
     },
     {
       "name": "gnome51-bibata-cursor-fix",
-      "path": "gnome51-bibata-cursor-fix",
+      "path": "archive/gnome51-bibata-cursor-fix",
       "kind": "self",
       "category": "linux-desktop-apps",
       "platforms": [
@@ -230,7 +230,7 @@
         "gsettings",
         "获取官方图稿需 HTTPS；Bibata 基线 v2.0.7"
       ],
-      "status": "active"
+      "status": "archived"
     },
     {
       "name": "gnome-xwayland-dock-icon-fix",
