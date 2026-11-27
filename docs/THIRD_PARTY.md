@@ -8,7 +8,7 @@
 
 | Skill | 上游 | 分支 | 当前基线 | 版本 | 许可证 |
 | --- | --- | --- | --- | --- | --- |
-| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`762c170`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/762c170bf5bf9dce1c15363472cf80cc5e4c3ae5) | 上游未单独标记 | 上游未提供 LICENSE（本地自用，再分发前需核实授权） |
+| `codex-windows-fast-patch-skill` | [chen0416ccc-cpu/codex-windows-fast-patch-skill](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill) | `main` | [`14f1875`](https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill/commit/14f18754a5323d61a337c877c9ae7dbae85d1675) | 上游未单独标记 | 上游未提供 LICENSE（本地自用，再分发前需核实授权） |
 | `ppt-master` | [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | `main` | [`63a0367`](https://github.com/hugohe3/ppt-master/commit/63a03673d5c3c928e7f52983a2c8ec65bac30002) | `6.10.0` | MIT |
 | `research-writing-skill` | [Norman-bury/research-writing-skill](https://github.com/Norman-bury/research-writing-skill) | `main` | [`6f79595`](https://github.com/Norman-bury/research-writing-skill/commit/6f7959554b4614d879d79cb4ece9ed04a7c8a88c) | `3.1.0` | MIT |
 
@@ -23,6 +23,7 @@
 - 本地 `SKILL.md` 用 `## Update Policy` 取代上游 `## Self-Update Preflight`；受 CC Switch 管理的副本不自更新，统一按 `vv-skills` 流程更新。
 - 此前基线新增 dots、executor runtime、post-update 验证、project/archive state、remote review 等 references，以及 codex-after-update、model experience repair 等 scripts；新增工具以 PowerShell 与 Node.js 为主，Python 诊断脚本可选。
 - 基线 `762c170`：同步 Windows 10 helper 精确哈希档案 `58FFF5E2`（issue #94）、package-backed CUA runtime 诊断、core strict trusted parent 覆盖测试；新增 `scripts/test-node-repl-trusted-coverage.ps1`，同步 2 个 references 与 CUA patch/test 脚本。
+- 基线 `14f1875`：增加 Desktop 26.1103.7773 和 26.1106.6628 的版本配置与回归测试，补上 MSIX 部署前的进程退出检查、代码签名证书识别、Sky 0.7.21 的 Windows 10 截图兼容，以及恢复会话后内置浏览器的排查。
 - 每次同步后重新检查 Update Policy、Provider History 安全调整、PowerShell/Node 脚本语法、MSIX dry-run 路由和敏感信息。
 - 主要依赖 Windows PowerShell、Store/MSIX Codex 与 Node.js；原生远控构建才额外需要 Python、Rust、MSVC 或 Windows SDK。
 

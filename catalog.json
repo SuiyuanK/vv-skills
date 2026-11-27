@@ -109,7 +109,7 @@
       "upstream": {
         "repository": "https://github.com/chen0416ccc-cpu/codex-windows-fast-patch-skill",
         "branch": "main",
-        "baseline": "762c170bf5bf9dce1c15363472cf80cc5e4c3ae5",
+        "baseline": "14f18754a5323d61a337c877c9ae7dbae85d1675",
         "license": "上游未提供 LICENSE（本地自用；再分发前需核实授权）"
       }
     },
