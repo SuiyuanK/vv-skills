@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **22 个 active skills**：**19 个个人**、**3 个第三方**。
+当前收录 **21 个 active skills**：**18 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -40,7 +40,6 @@
 | [`dsh-desktop-tray-integration`](./dsh-desktop-tray-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 为 dsh web 创建 GNOME 桌面快捷方式与顶栏托盘图标：固定端口 launcher、Python Gio SNI/DBusMenu 托盘（双击打开、右键 打开/重启/退出）、symbolic 图标、托盘随服务启停，含验证与回滚。 | DSH 0.2.x（dsh web）、GNOME Shell + AppIndicator 扩展、python3 + PyGObject（gi）、notify-send/xdg-open/ss/gtk-update-icon-cache、ImageMagick 或其他图标缩放工具 |
 | [`dsh-pet-taskbar-hide`](./dsh-pet-taskbar-hide/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Wayland | 隐藏 dsh-pet 桌宠的任务栏/仪表盘图标、只保留托盘图标：诊断 XWayland 窗口、一次性验证 _NET_WM_STATE_SKIP_TASKBAR、安装 helper 本地补丁（含语法检查与备份）、升级后重装、回滚，含可复用脚本。 | dsh-pet（Electron 桌面宠物插件，profiles/<profile>/node_modules/dsh-pet）、python3 + python-xlib、xorg-xprop、node（仅用于补丁语法检查）、GNOME Shell + AppIndicator 扩展（保留托盘图标时必需） |
 | [`dualboot-vm-launch`](./dualboot-vm-launch/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Linux x86_64、Windows | 默认只读启动另一块实体盘上的双系统，每次只读启动新建写入层。已验证 Arch/CachyOS 宿主用 QEMU/KVM 启动 Windows，以及 Windows 宿主用 QEMU/WHPX 启动 CachyOS。 | Linux：QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux、Linux GNOME 启动器：Zenity、Python 3、PyGObject；剪贴板需 Windows SPICE Guest Tools、Windows：QEMU/WHPX、EDK2 UEFI、Windows PowerShell、Python 3；桌面选择器需 Tkinter，实体盘访问需管理员权限 |
-| [`ghostty-desktop-integration`](./ghostty-desktop-integration/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Cinnamon/Nemo | 诊断 GNOME 下的 Ghostty 终端选择与快捷键，处理旧设置和 Cinnamon/Nemo 的工作目录问题。 | Ghostty、gsettings；清理旧设置需 dconf、GNOME 或 Cinnamon/Nemo |
 | [`gnome-xwayland-dock-icon-fix`](./gnome-xwayland-dock-icon-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 按实测 WM_CLASS 修复 GNOME XWayland 运行图标、重复菜单项和分组，并处理自动生成启动项覆盖修复的问题。 | xorg-xprop、desktop-file-utils |
 | [`gnome51-bibata-cursor-fix`](./gnome51-bibata-cursor-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 修复 GNOME 51 桌面/顶部栏回退默认而应用仍显示 Bibata 的问题；从官方图稿构建用户级 SVG 与旧 Xcursor 双格式主题。 | Python 3.11+、librsvg/rsvg-convert、gsettings、获取官方图稿需 HTTPS；Bibata 基线 v2.0.7 |
 | [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
@@ -63,10 +62,10 @@
 
 ## 过时归档
 
-以下个人 skill 已于 2026-11-17 按用户要求移入 `archive/`，状态为 `archived`，保留历史记录，不列入 active 索引。本机对应修复已撤销，当前版本适用性未验证。
+以下个人 skill 已按用户要求移入 `archive/`，状态为 `archived`，保留历史记录。
 
-- [`chatgpt-linux-sigchld-fix`](./archive/chatgpt-linux-sigchld-fix/SKILL.md)：旧版特定哈希的 SIGCHLD 修复及启动包装。
-- [`codex-wayland-image-input-fix`](./archive/codex-wayland-image-input-fix/SKILL.md)：历史图片输入与桌面宠物显示后端兼容排查。
+- 2026-11-17 · [`chatgpt-linux-sigchld-fix`](./archive/chatgpt-linux-sigchld-fix/SKILL.md) 和 [`codex-wayland-image-input-fix`](./archive/codex-wayland-image-input-fix/SKILL.md)。记录早期 SIGCHLD 启动包装及图片输入兼容排查。本机对应修复已撤销，当前版本适用性未验证。
+- 2026-11-27 · [`ghostty-desktop-integration`](./archive/ghostty-desktop-integration/SKILL.md)。记录 GNOME 旧默认终端设置的撤销、快捷键和 Cinnamon/Nemo 工作目录修复。
 
 归档后的停用与部署清理由 CC Switch 管理，不手工修改 Agent 目录或部署链接。
 
