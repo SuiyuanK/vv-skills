@@ -244,13 +244,13 @@
     },
     {
       "name": "qqmusic-linux-fix",
-      "path": "qqmusic-linux-fix",
+      "path": "archive/qqmusic-linux-fix",
       "kind": "self",
       "category": "linux-desktop-apps",
       "platforms": ["ubuntu-linux", "linux-x86_64"],
       "summary": "诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。",
       "dependencies": ["官方 QQ 音乐客户端", "可选 desktop-file-utils"],
-      "status": "active"
+      "status": "archived"
     },
     {
       "name": "linux-ext4-superblock-recovery",

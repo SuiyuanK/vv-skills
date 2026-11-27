@@ -10,7 +10,7 @@
 
 <!-- catalog:start -->
 
-当前收录 **21 个 active skills**：**18 个个人**、**3 个第三方**。
+当前收录 **20 个 active skills**：**17 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
@@ -42,7 +42,6 @@
 | [`dualboot-vm-launch`](./dualboot-vm-launch/SKILL.md) | 个人 | Arch/CachyOS、GNOME、Linux x86_64、Windows | 默认只读启动另一块实体盘上的双系统，每次只读启动新建写入层。已验证 Arch/CachyOS 宿主用 QEMU/KVM 启动 Windows，以及 Windows 宿主用 QEMU/WHPX 启动 CachyOS。 | Linux：QEMU/KVM、edk2-ovmf、swtpm、UDisks2、util-linux、Linux GNOME 启动器：Zenity、Python 3、PyGObject；剪贴板需 Windows SPICE Guest Tools、Windows：QEMU/WHPX、EDK2 UEFI、Windows PowerShell、Python 3；桌面选择器需 Tkinter，实体盘访问需管理员权限 |
 | [`gnome-xwayland-dock-icon-fix`](./gnome-xwayland-dock-icon-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 按实测 WM_CLASS 修复 GNOME XWayland 运行图标、重复菜单项和分组，并处理自动生成启动项覆盖修复的问题。 | xorg-xprop、desktop-file-utils |
 | [`gnome51-bibata-cursor-fix`](./gnome51-bibata-cursor-fix/SKILL.md) | 个人 | GNOME、Wayland、Linux | 修复 GNOME 51 桌面/顶部栏回退默认而应用仍显示 Bibata 的问题；从官方图稿构建用户级 SVG 与旧 Xcursor 双格式主题。 | Python 3.11+、librsvg/rsvg-convert、gsettings、获取官方图稿需 HTTPS；Bibata 基线 v2.0.7 |
-| [`qqmusic-linux-fix`](./qqmusic-linux-fix/SKILL.md) | 个人 | Ubuntu/Linux、Linux x86_64 | 诊断并修复官方 QQ 音乐 Electron 客户端在 Ubuntu 26.04 图形栈上的启动闪退。 | 官方 QQ 音乐客户端、可选 desktop-file-utils |
 
 ### 系统恢复
 
@@ -66,6 +65,7 @@
 
 - 2026-11-17 · [`chatgpt-linux-sigchld-fix`](./archive/chatgpt-linux-sigchld-fix/SKILL.md) 和 [`codex-wayland-image-input-fix`](./archive/codex-wayland-image-input-fix/SKILL.md)。记录早期 SIGCHLD 启动包装及图片输入兼容排查。本机对应修复已撤销，当前版本适用性未验证。
 - 2026-11-27 · [`ghostty-desktop-integration`](./archive/ghostty-desktop-integration/SKILL.md)。记录 GNOME 旧默认终端设置的撤销、快捷键和 Cinnamon/Nemo 工作目录修复。
+- 2026-11-27 · [`qqmusic-linux-fix`](./archive/qqmusic-linux-fix/SKILL.md)。保留 Ubuntu 26.04 官方 QQ 音乐客户端启动闪退的排查和临时启动方案。
 
 归档后的停用与部署清理由 CC Switch 管理，不手工修改 Agent 目录或部署链接。
 
