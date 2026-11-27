@@ -10,13 +10,12 @@
 
 <!-- catalog:start -->
 
-当前收录 **19 个 active skills**：**16 个个人**、**3 个第三方**。
+当前收录 **18 个 active skills**：**15 个个人**、**3 个第三方**。
 
 ### AI 与开发工具
 
 | Skill | 类型 | 平台 | 用途 | 依赖摘要 |
 | --- | --- | --- | --- | --- |
-| [`chatgpt-arch-deb-updater`](./chatgpt-arch-deb-updater/SKILL.md) | 个人 | Arch/CachyOS、Linux x86_64 | 把官方 amd64 deb 按 HTTPS 软件源索引校验版本/大小/SHA-256 后构建为 Arch 包；保留构建溯源记录，支持参数文件与 AppArmor 检查。入口见 skill；仅构建，不自动安装。 | bash、curl、libarchive/bsdtar、pacman/makepkg/vercmp、GNU 工具；行为验证需 Python 3；不验证源签名 |
 | [`codex-history-recovery`](./codex-history-recovery/SKILL.md) | 个人 | Windows | 安全恢复、合并和修复 Windows Codex Desktop 本地历史、SQLite 元数据与项目记录。 | PowerShell、Python |
 | [`codex-html-mime-fix`](./codex-html-mime-fix/SKILL.md) | 个人 | Ubuntu/Linux | 修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。 | Google Chrome、xdg-utils、desktop-file-utils |
 | [`codex-windows-fast-patch`](./codex-windows-fast-patch-skill/SKILL.md) | 第三方 | Windows | 修复 Windows Codex Desktop 升级后的 Fast Mode、插件、浏览器、Computer Use、模型功能漂移及 Provider 历史/项目归档状态异常。 | PowerShell、Windows Store/MSIX Codex、Node.js、可选 Python/Rust/MSVC/Windows SDK |
@@ -66,6 +65,7 @@
 - 2026-11-27 · [`ghostty-desktop-integration`](./archive/ghostty-desktop-integration/SKILL.md)。记录 GNOME 旧默认终端设置的撤销、快捷键和 Cinnamon/Nemo 工作目录修复。
 - 2026-11-27 · [`qqmusic-linux-fix`](./archive/qqmusic-linux-fix/SKILL.md)。保留 Ubuntu 26.04 官方 QQ 音乐客户端启动闪退的排查和临时启动方案。
 - 2026-11-27 · [`gnome51-bibata-cursor-fix`](./archive/gnome51-bibata-cursor-fix/SKILL.md)。保留 GNOME 51.0 的 Bibata SVG 兼容方案。Mutter 51.1 恢复 Xcursor 回退后，本机已切回原版主题。
+- 2026-11-27 · [`chatgpt-arch-deb-updater`](./archive/chatgpt-arch-deb-updater/SKILL.md)。保留将官方 ChatGPT/Codex Desktop amd64 deb 构建成 Arch/CachyOS 软件包的流程。
 
 归档后的停用与部署清理由 CC Switch 管理，不手工修改 Agent 目录或部署链接。
 
