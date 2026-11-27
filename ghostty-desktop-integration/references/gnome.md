@@ -1,68 +1,45 @@
-# GNOME default terminal on CachyOS/Arch
+# Ghostty terminal integration on GNOME and CachyOS/Arch
 
-Use this reference only after confirming an active GNOME session. It covers switching the default terminal to Ghostty, binding `Ctrl+Alt+T`, and safely removing an old terminal. The verified environment is CachyOS/Arch with GNOME and Ptyxis or Alacritty being replaced by Ghostty.
+Use this reference after confirming an active GNOME session. Check terminal selection and the keyboard shortcut independently.
 
-## Preconditions and safety
+## Terminal selection
 
-- Require `XDG_CURRENT_DESKTOP` or equivalent session evidence to identify GNOME.
-- Change only the relevant `gsettings` keys. Do not modify pacman configuration.
-- Before uninstalling a terminal, launch Ghostty and verify the shortcut so the user is not left without a working terminal.
-- Commands requiring `sudo` are run by the user in an interactive terminal.
-
-## Inspect current state
+Check the installed versions and the terminal candidates on PATH:
 
 ```bash
-pacman -Qq | grep -i -E "ptyxis|alacritty|kitty|konsole|gnome-terminal|xterm|wezterm|st$|foot"
-printf 'DESKTOP=%s\n' "$XDG_CURRENT_DESKTOP"
-gsettings get org.gnome.desktop.default-applications.terminal exec
-gsettings get org.gnome.desktop.default-applications.terminal exec-arg
+pacman -Q glib2 gsettings-desktop-schemas ghostty
+command -v xdg-terminal-exec ghostty
+```
+
+Inspect the installed `org.gnome.desktop.default-applications.terminal` schema. When it marks `exec` and `exec-arg` as deprecated and ignored, verify terminal selection through GIO. If `xdg-terminal-exec` is available, inspect its selection with `xdg-terminal-exec --print-id`. Otherwise, test a known application that uses `Terminal=true` and observe which terminal starts. The fallback list can vary by distribution and package build.
+
+On 2026-11-27, CachyOS with GNOME 51.1, `glib2 2.90.2-1.1` and Ghostty 1.4.0 selected `ghostty -e` through GIO without `xdg-terminal-exec`. A launch trace confirmed this both with an isolated settings backend and after clearing the legacy user overrides.
+
+On a system where the keys are ignored, clear these overrides only when the user requests cleanup and the stored values match the old Ghostty setup. Read and retain those values for rollback with:
+
+```bash
+dconf read /org/gnome/desktop/applications/terminal/exec
+dconf read /org/gnome/desktop/applications/terminal/exec-arg
+```
+
+For the old setup the stored values are `'ghostty'` and `''`. Reset just these two keys and verify that both `dconf read` commands return no value. GSettings can still show schema defaults after the reset.
+
+```bash
+gsettings reset org.gnome.desktop.default-applications.terminal exec
+gsettings reset org.gnome.desktop.default-applications.terminal exec-arg
+```
+
+Repeat the GIO launch test after cleanup.
+
+## Ctrl+Alt+T
+
+The installed GNOME Settings Daemon 51.1 on CachyOS has no built-in terminal shortcut. A custom binding can call `ghostty` directly.
+
+```bash
+gsettings list-keys org.gnome.settings-daemon.plugins.media-keys
 gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings
 ```
 
-Confirm `ghostty` resolves to the intended executable before proposing changes.
+Inspect the matching custom entry for its command and binding. Use GNOME Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts to add or edit the Ghostty binding if requested. Preserve the other shortcut entries. Press `Ctrl+Alt+T` and verify that it opens a Ghostty window.
 
-## Configure Ghostty
-
-Set the GNOME default terminal:
-
-```bash
-gsettings set org.gnome.desktop.default-applications.terminal exec 'ghostty'
-gsettings set org.gnome.desktop.default-applications.terminal exec-arg ''
-```
-
-GNOME installations using Ptyxis may not expose the older `panel-terminal` key. Use a custom media-key binding for `Ctrl+Alt+T`:
-
-```bash
-gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal0/']"
-gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal0/ name "Open Terminal"
-gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal0/ command "ghostty"
-gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal0/ binding "<Ctrl><Alt>t"
-```
-
-Before writing, preserve the existing default-terminal and custom-keybinding values so they can be restored. If `terminal0` already contains unrelated user configuration, do not overwrite it; choose an unused entry with the user.
-
-## Verify
-
-Press `Ctrl+Alt+T` and require a Ghostty window. Then inspect:
-
-```bash
-gsettings get org.gnome.desktop.default-applications.terminal exec
-gsettings get org.gnome.desktop.default-applications.terminal exec-arg
-gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings
-```
-
-If the shortcut does not refresh, log out and back in. Do not assume `Alt+F2` followed by `r` works on a Wayland GNOME session.
-
-For a file-manager action, invoke **Open in Terminal** and confirm it opens Ghostty in the selected location.
-
-## Optionally remove old terminals
-
-Only after Ghostty and the shortcut have passed verification, inspect reverse dependencies and show the exact packages to be removed. With explicit authorization, the user may run, for example:
-
-```bash
-sudo pacman -Rns ptyxis alacritty
-```
-
-Do not include a package that is not installed, still required, or not explicitly selected for removal.
-
-`xdg-terminal-exec` is not required for this GNOME configuration path. Its absence does not invalidate the `gsettings` result.
+If the task involves a file manager action, test **Open in Terminal** in the selected folder. Before removing an old terminal package, check reverse dependencies and get approval for the specific package removal.

@@ -18,7 +18,7 @@ command -v ghostty
 ghostty --version
 ```
 
-- For a GNOME session, read [references/gnome.md](references/gnome.md). Use it for the default terminal, `Ctrl+Alt+T`, and safe removal of an old terminal.
+- For a GNOME session, read [references/gnome.md](references/gnome.md). Use it to verify GIO terminal selection, retire obsolete settings, and diagnose or configure `Ctrl+Alt+T`.
 - For Cinnamon with Nemo, read [references/cinnamon-nemo.md](references/cinnamon-nemo.md). Use it only for Nemo's **Open in Terminal** working-directory failure caused by Ghostty single-instance reuse.
 - If the variables are empty, conflicting, or identify another desktop, gather session evidence and ask the user before changing any setting. Do not guess a schema from installed packages alone.
 

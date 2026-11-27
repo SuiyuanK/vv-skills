@@ -208,8 +208,8 @@
       "kind": "self",
       "category": "linux-desktop-apps",
       "platforms": ["arch-linux", "gnome", "cinnamon"],
-      "summary": "配置和修复 GNOME 或 Cinnamon/Nemo 环境中的 Ghostty 默认终端与工作目录集成。",
-      "dependencies": ["Ghostty", "gsettings", "GNOME 或 Cinnamon/Nemo"],
+      "summary": "诊断 GNOME 下的 Ghostty 终端选择与快捷键，处理旧设置和 Cinnamon/Nemo 的工作目录问题。",
+      "dependencies": ["Ghostty", "gsettings；清理旧设置需 dconf", "GNOME 或 Cinnamon/Nemo"],
       "status": "active",
       "supersedes": ["gnome-default-terminal-ghostty", "nemo-cinnamon-ghostty"]
     },
