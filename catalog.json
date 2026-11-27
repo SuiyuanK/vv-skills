@@ -88,13 +88,13 @@
     },
     {
       "name": "codex-html-mime-fix",
-      "path": "codex-html-mime-fix",
+      "path": "archive/codex-html-mime-fix",
       "kind": "self",
       "category": "ai-dev-tools",
       "platforms": ["ubuntu-linux"],
       "summary": "修复 Linux Codex/ChatGPT Desktop 启动后抢占 text/html 默认程序的问题。",
       "dependencies": ["Google Chrome", "xdg-utils", "desktop-file-utils"],
-      "status": "active"
+      "status": "archived"
     },
     {
       "name": "codex-windows-fast-patch",
